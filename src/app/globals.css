@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* INPUTS A PRUEBA DE USUARIOS */
+.input-base {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid #ccc;
+}
+/* ======================================================
+   TEMA GLOBAL MARO – FORMULARIOS CLÍNICOS Y OPERATIVOS
+   Blindaje contra SO / Dark mode / High Contrast
+====================================================== */
+
+:root {
+  /* Paleta MARO */
+  --maro-bg: #ffffff;
+  --maro-bg-soft: #fff1f2;      /* rosa pálido */
+  --maro-border: #cbd5e1;       /* slate-300 */
+  --maro-border-strong: #94a3b8;/* slate-400 */
+  --maro-text: #1e293b;         /* slate-800 */
+  --maro-muted: #64748b;        /* slate-500 */
+  --maro-focus: #f43f5e;        /* rose-500 */
+  --maro-focus-soft: rgba(244, 63, 94, 0.25);
+}
+
+/* =========================
+   Reset de controles nativos
+========================= */
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  color-scheme: light !important;
+}
+
+/* =========================
+   Inputs / Textareas
+========================= */
+
+input,
+textarea {
+  background-color: var(--maro-bg) !important;
+  color: var(--maro-text) !important;
+  border: 1px solid var(--maro-border) !important;
+  border-radius: 0.5rem;
+}
+
+/* Placeholder */
+input::placeholder,
+textarea::placeholder {
+  color: var(--maro-muted);
+}
+
+/* Focus */
+input:focus,
+textarea:focus {
+  outline: none !important;
+  border-color: var(--maro-focus) !important;
+  box-shadow: 0 0 0 2px var(--maro-focus-soft) !important;
+}
+
+/* =========================
+   Selects (el mayor problema)
+========================= */
+
+select {
+  background-color: var(--maro-bg) !important;
+  color: var(--maro-text) !important;
+  border: 1px solid var(--maro-border-strong) !important;
+  border-radius: 0.5rem;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  padding-right: 2.25rem;
+}
+
+/* Opciones */
+select option {
+  background-color: #ffffff;
+  color: #1e293b;
+}
+
+/* Focus */
+select:focus {
+  outline: none !important;
+  border-color: var(--maro-focus) !important;
+  box-shadow: 0 0 0 2px var(--maro-focus-soft) !important;
+}
+
+/* =========================
+   Checkboxes y radios
+========================= */
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--maro-focus);
+}
+
+/* =========================
+   Disabled (muy importante)
+========================= */
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: #f1f5f9 !important; /* slate-100 */
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+}
