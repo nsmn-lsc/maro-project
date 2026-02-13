@@ -140,6 +140,62 @@ export const evaluacionesAPI = {
   },
 };
 
+// API de Factor de Riesgo Obstétrico
+export const factorRiesgoAPI = {
+  /**
+   * Calcula el factor de riesgo basado en los datos del caso y su evaluación
+   * Recopila automáticamente todos los campos disponibles en la BD
+   */
+  calcular: async (casoId: number) => {
+    return fetchAPI<{
+      success: boolean;
+      casoId: number;
+      resultado: {
+        puntajeTotal: number;
+        detalles: Array<{
+          campo: string;
+          valor: string;
+          puntos: number;
+          criterio: string;
+        }>;
+        categoria: "BAJO" | "MODERADO" | "ALTO";
+        sugerencias: string[];
+      };
+    }>('/api/casos/calcular-factor-riesgo', {
+      method: 'POST',
+      body: JSON.stringify({ casoId }),
+    });
+  },
+
+  /**
+   * Obtener factor de riesgo calculado de un caso (GET alternativo)
+   */
+  obtener: async (casoId: number) => {
+    return fetchAPI<{
+      success: boolean;
+      casoId: number;
+      resultado: any;
+    }>(`/api/casos/calcular-factor-riesgo?casoId=${casoId}`);
+  },
+
+  /**
+   * Obtener historial de cálculos de factor de riesgo para un caso
+   */
+  obtenerHistorial: async (casoId: number) => {
+    return fetchAPI<{
+      success: boolean;
+      data: Array<{
+        id: number;
+        puntajeTotal: number;
+        categoria: string;
+        detalles: any;
+        sugerencias: any;
+        createdAt: string;
+      }>;
+    }>(`/api/casos/calcular-factor-riesgo/historial?casoId=${casoId}`);
+  },
+};
+
 // Helper para manejar errores de forma consistente
 export function manejarErrorAPI(error: unknown): string {
   if (error instanceof APIError) {

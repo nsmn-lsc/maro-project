@@ -49,6 +49,19 @@ Aplicación web para la gestión de casos obstétricos de alto riesgo en el sist
 
 ## 📋 Características
 
+### 🆕 Contador de Factor de Riesgo Obstétrico (Recién Implementado!)
+Sistema en tiempo real que evalúa y muestra el factor de riesgo durante la captura de datos:
+- Actualización automática conforme se llenan los campos
+- Tres niveles de riesgo (BAJO/MODERADO/ALTO) con códigos de color
+- Detalle de factores individuales que contribuyen al riesgo
+- Recomendaciones según nivel de riesgo
+
+**Ver en acción:**
+- Página: [`/pacientes/nuevo`](http://localhost:3000/pacientes/nuevo)
+- Documentación: [RESUMEN_30_SEGUNDOS.md](RESUMEN_30_SEGUNDOS.md)
+
+### Core Features
+
 - ✅ **Evaluación automatizada de riesgo** obstétrico (AMARILLO/NARANJA/ROJO)
 - ✅ **Validación de congruencia clínica** con detección de estudios faltantes
 - ✅ **Bitácora legal** completa de decisiones y actores
