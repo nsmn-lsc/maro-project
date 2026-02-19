@@ -88,12 +88,7 @@ export default function Dashboard() {
           return res.json();
         };
 
-        let data = await fetchMetrics(params.toString());
-
-        // Fallback sin filtros para evitar ceros por desalineación de sesión/CLUES.
-        if ((Number(data.total) || 0) === 0 && (user?.clues || user?.region)) {
-          data = await fetchMetrics("summary=metrics");
-        }
+        const data = await fetchMetrics(params.toString());
 
         if (!cancelled) {
           setMetrics({
@@ -213,9 +208,10 @@ export default function Dashboard() {
                   accent: "bg-emerald-500/20 text-emerald-100",
                 },
                 {
-                  title: "Alto riesgo (≥3)",
-                  value: metrics.alto_riesgo,
+                  title: "Alto riesgo (≥25)",
+                  value: "--",
                   accent: "bg-amber-500/20 text-amber-100",
+                  note: "Sumatoria en construcción",
                 },
                 {
                   title: "Ingresos últimos 7 días",
@@ -233,6 +229,7 @@ export default function Dashboard() {
                       {loadingMetrics ? "…" : card.value}
                     </span>
                   </div>
+                  {card.note && <p className="mt-2 text-xs text-slate-200/70">{card.note}</p>}
                   {metricsError && <p className="mt-2 text-xs text-red-200">{metricsError}</p>}
                 </div>
               ))}

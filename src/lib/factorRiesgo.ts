@@ -574,28 +574,24 @@ export function calcularFactorRiesgo(datos: DatosFactorRiesgo): ResultadoFactorR
 
   let categoria: "BAJO" | "MODERADO" | "ALTO";
   const sugerencias: string[] = [];
+  const recomendacionGenerica = "recomendacion";
 
   if (puntajeTotal >= 20) {
     categoria = "ALTO";
-    sugerencias.push("Requiere evaluación urgente por especialista");
-    sugerencias.push("Considerar referencia a nivel de atención superior");
-    sugerencias.push("Implementar monitoreo más frecuente");
+    sugerencias.push(recomendacionGenerica);
   } else if (puntajeTotal >= 10) {
     categoria = "MODERADO";
-    sugerencias.push("Seguimiento clínico regular");
-    sugerencias.push("Completar estudios faltantes según protocolo");
-    sugerencias.push("Valorar necesidad de interconsulta especializada");
+    sugerencias.push(recomendacionGenerica);
   } else {
     categoria = "BAJO";
-    sugerencias.push("Continuar con control prenatal de rutina");
-    sugerencias.push("Mantener vigilancia periódica");
+    sugerencias.push(recomendacionGenerica);
   }
 
   return {
     puntajeTotal,
     detalles,
     categoria,
-    sugerencias,
+    sugerencias: [recomendacionGenerica],
   };
 }
 

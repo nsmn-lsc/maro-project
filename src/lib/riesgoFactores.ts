@@ -56,75 +56,75 @@ export interface ResultadoFactores {
 
 const CRITERIOS = {
   gestas: [
-    { rango: [2, 4], puntos: 1, razon: "Gestaciones 2-4: multiparidad normal" },
-    { rango: [5, 100], puntos: 4, razon: "Gestaciones ≥5: gran multiparidad (alto riesgo)" },
+    { rango: [2, 4], puntos: 1, razon: "recomendacion" },
+    { rango: [5, 100], puntos: 4, razon: "recomendacion" },
   ],
   cesareas: [
-    { rango: [2, 100], puntos: 4, razon: "Cesáreas ≥2: cicatrices uterinas múltiples (riesgo de rotura)" },
+    { rango: [2, 100], puntos: 4, razon: "recomendacion" },
   ],
   abortos: [
-    { rango: [2, 2], puntos: 2, razon: "Abortos previos 2: historia de pérdidas gestacionales" },
-    { rango: [3, 100], puntos: 4, razon: "Abortos ≥3: abortos recurrentes (estudio incompleto?)" },
+    { rango: [2, 2], puntos: 2, razon: "recomendacion" },
+    { rango: [3, 100], puntos: 4, razon: "recomendacion" },
   ],
   ant_preeclampsia: [
-    { valor: true, puntos: 4, razon: "Preeclampsia previa: ALTO riesgo de recurrencia (25-50%)" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   ant_hemorragia: [
-    { valor: true, puntos: 4, razon: "Hemorragia posparto previa: riesgo de recurrencia" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   ant_sepsis: [
-    { valor: true, puntos: 4, razon: "Sepsis/infección grave previa: requiere vigilancia" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   ant_bajo_peso_macrosomia: [
-    { valor: true, puntos: 4, razon: "Antecedente de bajo peso o macrosomía: riesgo recurrencia" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   ant_muerte_perinatal: [
-    { valor: true, puntos: 4, razon: "Muerte perinatal previa: requiere MÁXIMA vigilancia" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   // FACTORES DE RIESGO: Comorbilidades y toxicomanías
   factor_diabetes: [
-    { valor: true, puntos: 4, razon: "Diabetes: requiere control estricto de glucemia" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_hipertension: [
-    { valor: true, puntos: 4, razon: "Hipertensión: riesgo de preeclampsia y complicaciones" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_obesidad: [
-    { valor: true, puntos: 4, razon: "Obesidad: factor de riesgo metabólico" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_cardiopatia: [
-    { valor: true, puntos: 4, razon: "Cardiopatía: requiere evaluación cardiológica" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_hepatopatia: [
-    { valor: true, puntos: 4, razon: "Hepatopatía: riesgo de complicaciones hepáticas" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_enf_autoinmune: [
-    { valor: true, puntos: 4, razon: "Enfermedad autoinmune: requiere seguimiento especializado" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_nefropatia: [
-    { valor: true, puntos: 4, razon: "Nefropatía: riesgo de insuficiencia renal" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_coagulopatias: [
-    { valor: true, puntos: 4, razon: "Coagulopatías: riesgo hemorrágico o trombótico" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_neuropatia: [
-    { valor: true, puntos: 4, razon: "Neuropatía: requiere manejo especializado" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_enf_psiquiatrica: [
-    { valor: true, puntos: 4, razon: "Enfermedad psiquiátrica: requiere apoyo psicológico" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_alcoholismo: [
-    { valor: true, puntos: 4, razon: "Alcoholismo: riesgo de síndrome alcohólico fetal" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   factor_tabaquismo: [
-    { valor: true, puntos: 2, razon: "Tabaquismo: riesgo de bajo peso y complicaciones" },
+    { valor: true, puntos: 2, razon: "recomendacion" },
   ],
   factor_drogas_ilicitas: [
-    { valor: true, puntos: 4, razon: "Drogas ilícitas: alto riesgo para madre y feto" },
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
   // FACTORES EPIDEMIOLÓGICOS
   factores_riesgo_epid: [
-    { valor: 'es_contacto', puntos: 4, razon: "Contacto con enfermedad vigilancia epidemiológica" },
-    { valor: 'es_portadora', puntos: 6, razon: "Portadora de enfermedad sujeta a vigilancia epidemiológica" },
+    { valor: 'es_contacto', puntos: 4, razon: "recomendacion" },
+    { valor: 'es_portadora', puntos: 6, razon: "recomendacion" },
   ],
 };
 

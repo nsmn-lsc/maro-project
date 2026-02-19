@@ -270,7 +270,7 @@ export default function NuevoPaciente() {
             </span>
           </div>
           <p className="text-slate-200/80 max-w-3xl">
-            Captura completa de datos para cat_pacientes. Conservamos el fondo del dashboard y secciones ordenadas para agilizar la captura clínica.
+            Captura completa de datos para catalogo de pacientes asi como tamizajes iniciales primer contacto
           </p>
         </header>
 

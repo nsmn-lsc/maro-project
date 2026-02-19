@@ -157,15 +157,7 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
       <div className="mt-4 pt-4 border-t opacity-70">
         <div className="text-xs font-semibold mb-1">RECOMENDACIÓN:</div>
         <div className="text-xs">
-          {resultado.nivel === 'BAJO' && (
-            "Continuar con control prenatal de rutina. Vigilar aparición de nuevos síntomas."
-          )}
-          {resultado.nivel === 'MODERADO' && (
-            "Incrementar frecuencia de vigilancia. Considerar interconsulta si factores empeoran."
-          )}
-          {resultado.nivel === 'ALTO' && (
-            "Requiere evaluación especializada. Coordinar con nivel de atención superior si es necesario."
-          )}
+          {"recomendacion"}
         </div>
       </div>
     </div>

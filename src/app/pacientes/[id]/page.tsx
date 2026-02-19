@@ -372,28 +372,9 @@ export default function PacienteDetalle() {
 
                     {/* Recomendación clínica */}
                     <div className="rounded-lg bg-white/15 backdrop-blur-sm border border-white/30 px-3 py-2">
-                      <div className="text-[10px] font-semibold text-white mb-1.5">📋 RECOMENDACIÓN CLÍNICA:</div>
+                      <div className="text-[10px] font-semibold text-white mb-1.5">📋 RECOMENDACIÓN:</div>
                       <div className="text-[10px] text-white/90">
-                        {resultadoRiesgo.nivel === 'BAJO' && (
-                          "Continuar con control prenatal de rutina."
-                        )}
-                        {resultadoRiesgo.nivel === 'ALTO' && (
-                          <>Sacar consulta con segundo nivel de atención, a GYO y especialidades acorde a comorbilidades.
-                            {patient.semanas_gestacion && patient.semanas_gestacion >= 30 && patient.semanas_gestacion <= 31 ? (
-                              <span className="font-bold"> Cita en máximo 3 semanas.</span>
-                            ) : (
-                              <span className="font-bold"> Cita en 6 semanas máximo.</span>
-                            )}
-                          </>
-                        )}
-                        {resultadoRiesgo.nivel === 'MUY_ALTO' && (
-                          <>Sacar consulta con segundo o tercer nivel de atención, a GYO y especialidades acorde a comorbilidades.
-                            <span className="font-bold"> Cita en 2 semanas máximo.</span>
-                          </>
-                        )}
-                        {resultadoRiesgo.nivel === 'CRITICO' && (
-                          "⚠️ COLEGIAR CASO - Requiere colegiación inmediata del caso y atención especializada urgente."
-                        )}
+                        {`RECOMENDACIÓN - CASO: ${resultadoRiesgo.nivel.replaceAll('_', ' ')}`}
                       </div>
                     </div>
                   </div>
@@ -463,14 +444,9 @@ export default function PacienteDetalle() {
 
                     {/* Recomendación clínica para tamizajes */}
                     <div className="rounded-lg bg-white/15 backdrop-blur-sm border border-white/30 px-3 py-2">
-                      <div className="text-[10px] font-semibold text-white mb-1.5">📋 RECOMENDACIÓN CLÍNICA:</div>
+                      <div className="text-[10px] font-semibold text-white mb-1.5">📋 RECOMENDACIÓN:</div>
                       <div className="text-[10px] text-white/90">
-                        {resultadoTamizajes.nivel === 'SIN_HALLAZGOS' && (
-                          "Seguimiento de rutina. Resultados de tamizajes sin hallazgos positivos."
-                        )}
-                        {resultadoTamizajes.nivel === 'ALERTA' && (
-                          "Iniciar protocolo de seguimiento específico según hallazgo. Referir a especialidad si es necesario."
-                        )}
+                        {`RECOMENDACIÓN - CASO: ${resultadoTamizajes.nivel.replaceAll('_', ' ')}`}
                       </div>
                     </div>
                   </div>

@@ -278,12 +278,7 @@ export default function FloatingContadorRiesgo({ resultadoAntecedentes, resultad
               <div className={`mt-4 pt-4 border-t ${colorTamizajes.text} opacity-70`}>
                 <div className="text-[10px] font-semibold mb-1">RECOMENDACIÓN:</div>
                 <div className="text-[10px]">
-                  {resultadoTamizajes.nivel === 'SIN_HALLAZGOS' && (
-                    "Seguimiento de rutina."
-                  )}
-                  {resultadoTamizajes.nivel === 'ALERTA' && (
-                    "Iniciar protocolo de seguimiento específico según hallazgo."
-                  )}
+                  {"recomendacion"}
                 </div>
               </div>
             )}
@@ -293,28 +288,9 @@ export default function FloatingContadorRiesgo({ resultadoAntecedentes, resultad
         {/* RECOMENDACIÓN GENERAL PARA ANTECEDENTES */}
         {resultadoAntecedentes.factores.length > 0 && (
           <div className={`rounded-xl shadow-xl bg-white/95 border ${colorAntecedentes.border} px-4 py-3`}>
-            <div className={`text-[10px] font-semibold mb-1 ${colorAntecedentes.text}`}>📋 RECOMENDACIÓN (Antecedentes):</div>
+            <div className={`text-[10px] font-semibold mb-1 ${colorAntecedentes.text}`}>📋 RECOMENDACIÓN:</div>
             <div className={`text-[10px] ${colorAntecedentes.text}`}>
-              {resultadoAntecedentes.nivel === 'BAJO' && (
-                "Continuar con control prenatal de rutina."
-              )}
-              {resultadoAntecedentes.nivel === 'ALTO' && (
-                <>Sacar consulta con segundo nivel de atención, a GYO y especialidades acorde a comorbilidades.
-                  {semanasGestacion >= 30 && semanasGestacion <= 31 ? (
-                    <span className="font-bold"> Cita en máximo 3 semanas.</span>
-                  ) : (
-                    <span className="font-bold"> Cita en 6 semanas máximo.</span>
-                  )}
-                </>
-              )}
-              {resultadoAntecedentes.nivel === 'MUY_ALTO' && (
-                <>Sacar consulta con segundo o tercer nivel de atención, a GYO y especialidades acorde a comorbilidades.
-                  <span className="font-bold"> Cita en 2 semanas máximo.</span>
-                </>
-              )}
-              {resultadoAntecedentes.nivel === 'CRITICO' && (
-                "⚠️ COLEGIAR CASO - Requiere colegiación inmediata del caso y atención especializada urgente."
-              )}
+              {"recomendacion"}r
             </div>
           </div>
         )}

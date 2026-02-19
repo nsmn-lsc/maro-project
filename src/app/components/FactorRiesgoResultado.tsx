@@ -132,8 +132,7 @@ export default function FactorRiesgoResultado({
       {/* Referencias (opcional) */}
       <div className="mt-4 text-xs opacity-60">
         <p>
-          <strong>Nota:</strong> Este cálculo se basa en criterios clínicos validados.
-          Requiere interpretación profesional junto con evaluación clínica completa.
+          <strong>Nota:</strong> recomendacion
         </p>
       </div>
     </div>

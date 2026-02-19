@@ -351,10 +351,10 @@ export default function EvaluacionClinicaConRiesgo() {
                       ⚠️ ACCIÓN REQUERIDA
                     </h3>
                     <ul className="text-red-800 text-sm space-y-1">
-                      <li>• Referencia urgente a nivel superior</li>
-                      <li>• Notificar a coordinación estatal</li>
-                      <li>• Evaluar necesidad de traslado</li>
-                      <li>• Documentar decisión tomada</li>
+                      <li>• recomendacion</li>
+                      <li>• recomendacion</li>
+                      <li>• recomendacion</li>
+                      <li>• recomendacion</li>
                     </ul>
                   </div>
                 )}
@@ -365,10 +365,10 @@ export default function EvaluacionClinicaConRiesgo() {
                       ⚠️ SEGUIMIENTO ESPECIALIZADO
                     </h3>
                     <ul className="text-yellow-800 text-sm space-y-1">
-                      <li>• Agendar cita con especialista</li>
-                      <li>• Completar estudios recomendados</li>
-                      <li>• Monitoreo más frecuente</li>
-                      <li>• Educar paciente sobre signos de alarma</li>
+                      <li>• recomendacion</li>
+                      <li>• recomendacion</li>
+                      <li>• recomendacion</li>
+                      <li>• recomendacion</li>
                     </ul>
                   </div>
                 )}

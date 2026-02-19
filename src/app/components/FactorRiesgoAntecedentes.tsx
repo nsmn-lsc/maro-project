@@ -48,23 +48,21 @@ export default function FactorRiesgoAntecedentes({
   }
 
   // Determinar recomendación según nivel y semanas gestación
-  let recomendacion = 'Control normal en centro de salud';
+  let recomendacion = 'recomendacion';
   let citaDias = '6 semanas';
   let accionEspecial = '';
 
   if (factorRiesgo >= 4 && factorRiesgo <= 9) {
-    recomendacion =
-      'Sacar consulta con segundo nivel de atención, a Ginecología y especialidades acorde a comorbilidades';
+    recomendacion = 'recomendacion';
     citaDias =
       semanasGestacion >= 30 && semanasGestacion <= 31 ? '3 semanas' : '6 semanas máximo';
     accionEspecial = '📋 Referir a especialista';
   } else if (factorRiesgo >= 10 && factorRiesgo <= 25) {
-    recomendacion =
-      'Sacar consulta con segundo o tercer nivel de atención, a Ginecología y especialidades acorde a comorbilidades';
+    recomendacion = 'recomendacion';
     citaDias = '2 semanas máximo';
     accionEspecial = '📋 Referir a segundo/tercer nivel';
   } else if (factorRiesgo > 25) {
-    recomendacion = 'COLEGIAR CASO - Colegiación inmediata y atención especializada urgente';
+    recomendacion = 'recomendacion';
     citaDias = 'INMEDIATO';
     accionEspecial = '🚨 COLEGIACIÓN URGENTE';
   }

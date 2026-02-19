@@ -37,27 +37,27 @@ const CRITERIOS_TAMIZAJES = {
   prueba_vih: {
     valor: 'Reactiva',
     puntos: 4,
-    razon: 'VIH reactiva: requiere confirmación y seguimiento especializado',
+    razon: 'recomendacion',
   },
   prueba_vdrl: {
     valor: 'Reactiva',
     puntos: 4,
-    razon: 'VDRL reactiva: posible sífilis, requiere tratamiento inmediato',
+    razon: 'recomendacion',
   },
   prueba_hepatitis_c: {
     valor: 'Reactiva',
     puntos: 4,
-    razon: 'Hepatitis C reactiva: requiere evaluación hepática',
+    razon: 'recomendacion',
   },
   diabetes_glicemia: {
     valores_riesgo: ['Resistencia a la insulina', 'Diabetes'],
     puntos: 4,
-    razon: 'Alteración glucémica: requiere control metabólico estricto',
+    razon: 'recomendacion',
   },
   violencia: {
     valor: 'Positiva',
     puntos: 4,
-    razon: 'Violencia detectada: requiere intervención de trabajo social',
+    razon: 'recomendacion',
   },
 };
 
@@ -140,10 +140,10 @@ export function evaluarTamizajes(datos: DatosTamizajes): ResultadoTamizajes {
 
   if (puntajeTotal === 0) {
     nivel = "SIN_HALLAZGOS";
-    descripcion = "Sin hallazgos de riesgo en tamizajes iniciales.";
+    descripcion = "recomendacion";
   } else {
     nivel = "ALERTA";
-    descripcion = `Se detectaron hallazgos que requieren seguimiento y atención específica.`;
+    descripcion = "recomendacion";
   }
 
   return {

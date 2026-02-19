@@ -71,7 +71,7 @@ export async function GET(request: Request) {
         `SELECT 
             COUNT(*) AS total,
             SUM(CASE WHEN riesgo_obstetrico_ingreso >= 3 THEN 1 ELSE 0 END) AS alto_riesgo,
-            SUM(CASE WHEN fecha_ingreso_cpn >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) AS semana_actual
+            SUM(CASE WHEN DATE(fecha_ingreso_cpn) BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE() THEN 1 ELSE 0 END) AS semana_actual
          FROM cat_pacientes
          ${whereClause}`,
         params

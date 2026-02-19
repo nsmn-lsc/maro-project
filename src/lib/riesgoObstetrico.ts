@@ -70,7 +70,8 @@ function clampNum(n?: number) {
 }
 
 function addUnique(arr: string[], item: string) {
-  if (!arr.includes(item)) arr.push(item);
+  const texto = "recomendacion";
+  if (!arr.includes(texto)) arr.push(texto);
 }
 
 function proteinuriaPuntos(v?: EvaluacionClinica["proteinuriaTira"]) {
@@ -90,6 +91,7 @@ function proteinuriaPuntos(v?: EvaluacionClinica["proteinuriaTira"]) {
 export function evaluarRiesgoObstetrico(e: EvaluacionClinica): RiesgoResultado {
   const razones: string[] = [];
   const recomendaciones: string[] = [];
+  const recomendacionGenerica = "recomendacion";
 
   let score = 0;
 
@@ -123,18 +125,15 @@ export function evaluarRiesgoObstetrico(e: EvaluacionClinica): RiesgoResultado {
     if (e.frecuenciaRespiratoria !== undefined && e.frecuenciaRespiratoria >= 30)
       addUnique(razones, "FR ≥ 30: compromiso respiratorio, requiere manejo urgente.");
 
-    recomendaciones.push(
-      "Manejo inmediato según protocolo local (ABCDE) y valoración por equipo experto.",
-      "Definir necesidad de traslado/colaboración interhospitalaria según capacidad resolutiva."
-    );
+    recomendaciones.push(recomendacionGenerica);
 
     return {
       nivel: "ROJO",
       score: 999,
       titulo: "MUY ALTO RIESGO",
       colorClass: "bg-red-600 text-white",
-      razones,
-      recomendaciones,
+      razones: [recomendacionGenerica],
+      recomendaciones: [recomendacionGenerica],
       referencias: [
         { etiqueta: "NOM-007-SSA2-2016 (atención del embarazo/parto/puerperio)" },
         { etiqueta: "WHO: adolescent pregnancy & complicaciones (referencia global)" },
@@ -151,7 +150,7 @@ export function evaluarRiesgoObstetrico(e: EvaluacionClinica): RiesgoResultado {
     if (edad <= 16) {
       score += 4;
       addUnique(razones, "Edad ≤ 16: mayor probabilidad de complicaciones maternas y perinatales.");
-      recomendaciones.push("Vigilancia estrecha; considerar interconsulta/seguimiento por segundo nivel según evolución.");
+      recomendaciones.push(recomendacionGenerica);
     } else if (edad >= 35) {
       score += 3;
       addUnique(razones, "Edad ≥ 35: incrementa riesgo de complicaciones obstétricas y comorbilidades.");
@@ -274,23 +273,17 @@ export function evaluarRiesgoObstetrico(e: EvaluacionClinica): RiesgoResultado {
     nivel = "ROJO";
     titulo = "MUY ALTO RIESGO";
     colorClass = "bg-red-600 text-white";
-    recomendaciones.push(
-      "Priorizar referencia/contrarreferencia y apoyo de equipo experto según capacidad resolutiva.",
-      "Evitar demoras: documentar decisiones clínicas y plan de seguridad."
-    );
+    recomendaciones.push(recomendacionGenerica);
   } else if (score >= 6) {
     nivel = "NARANJA";
     titulo = "ALTO RIESGO";
     colorClass = "bg-orange-500 text-white";
-    recomendaciones.push(
-      "Plan de vigilancia estrecha y criterios de escalamiento claros.",
-      "Considerar colegiación temprana si hay dudas clínicas o limitaciones de recursos."
-    );
+    recomendaciones.push(recomendacionGenerica);
   } else {
     nivel = "AMARILLO";
     titulo = "RIESGO (VIGILANCIA)";
     colorClass = "bg-amber-400 text-black";
-    recomendaciones.push("Continuar vigilancia y tamizaje; documentar factores de riesgo y plan.");
+    recomendaciones.push(recomendacionGenerica);
   }
 
   const referencias = [
@@ -304,5 +297,5 @@ export function evaluarRiesgoObstetrico(e: EvaluacionClinica): RiesgoResultado {
     },
   ];
 
-  return { nivel, score, titulo, colorClass, razones, recomendaciones, referencias };
+  return { nivel, score, titulo, colorClass, razones: [recomendacionGenerica], recomendaciones: [recomendacionGenerica], referencias };
 }

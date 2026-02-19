@@ -203,20 +203,21 @@ export default function EvaluacionClinicaPage() {
   // Pedagogía puntual (microexplicaciones)
   const microTips = useMemo(() => {
     const tips: string[] = [];
+    const addTip = () => {
+      if (!tips.includes("recomendacion")) tips.push("recomendacion");
+    };
     const edad = clinica.edad;
     if (typeof edad === "number" && edad <= 16) {
-      tips.push(
-        "Edad ≤16: aumenta riesgo de complicaciones hipertensivas, infecciosas y prematuridad; requiere vigilancia estrecha."
-      );
+      addTip();
     }
     if ((clinica.sistolica ?? 0) >= 160 || (clinica.diastolica ?? 0) >= 110) {
-      tips.push("TA en rango de crisis hipertensiva: NO colegiable. Activar referencia inmediata a 2º nivel.");
+      addTip();
     }
     if (clinica.convulsiones) {
-      tips.push("Convulsiones en embarazo = emergencia obstétrica (sospecha eclampsia) hasta demostrar lo contrario.");
+      addTip();
     }
     if (clinica.sangradoVaginal) {
-      tips.push("Sangrado vaginal: descartar hemorragia obstétrica. Prioridad: referencia y estabilización.");
+      addTip();
     }
     return tips;
   }, [clinica]);
@@ -334,7 +335,7 @@ export default function EvaluacionClinicaPage() {
     // regla: si urgencia -> NO colegiable (otra tubería)
     if (urgencia) {
       alert(
-        "Este caso cumple criterios de URGENCIA obstétrica.\n\nNo es colegiable en MARO.\nActiva referencia inmediata a 2º nivel."
+        "recomendacion"
       );
       return;
     }
@@ -357,12 +358,7 @@ export default function EvaluacionClinicaPage() {
 
     alert(
       [
-        "🚨 URGENCIA OBSTÉTRICA — REFERENCIA INMEDIATA A 2º NIVEL",
-        "",
-        "1) Dar instrucciones claras y precisas a la paciente (signos de alarma y salida inmediata).",
-        "2) Elaborar hoja de referencia ENFOCADA a parámetros de urgencia (no relleno).",
-        "3) Contactar enlace Zonal/Regional para alertamiento del hospital receptor.",
-        "4) Traslado seguro según disponibilidad (considerar que en 1er nivel puede no haber médico por tardes/noches).",
+        "recomendacion",
         "",
         `ID caso (trazabilidad): ${idCaso}`,
       ].join("\n")
@@ -389,7 +385,7 @@ export default function EvaluacionClinicaPage() {
               ) : null}
             </p>
             <p className="mt-1 text-xs text-white/55">
-              * MARO es para riesgo (alto y muy alto) con evolución adversa esperable. Urgencia obstétrica ACTIVAR REFERENCIA AL SEGUNDO NIVEL. La responsabilidad del tratamiento y seguimiento está a cargo del médico tratante.
+              recomendacion
             </p>
           </div>
 
@@ -407,13 +403,13 @@ export default function EvaluacionClinicaPage() {
               <div>
                 <div className="text-sm font-semibold">🚨 URGENCIA OBSTÉTRICA (no colegiable)</div>
                 <div className="mt-1 text-sm text-white/90">
-                  Este caso activa criterios de referencia inmediata a 2º nivel. MARO no permite “colegiar” una urgencia.
+                  recomendacion
                 </div>
                 <ul className="mt-2 list-disc pl-5 text-sm text-white/90 space-y-1">
-                  <li>Dar instrucciones claras y precisas a la paciente (salida inmediata).</li>
-                  <li>Hoja de referencia enfocada en urgencia (parámetros críticos).</li>
-                  <li>Contactar enlace Zonal/Regional para alertamiento del hospital receptor.</li>
-                  <li>Traslado seguro según disponibilidad (1er nivel puede no tener médico en tardes/noches).</li>
+                  <li>recomendacion</li>
+                  <li>recomendacion</li>
+                  <li>recomendacion</li>
+                  <li>recomendacion</li>
                 </ul>
               </div>
               <div className="shrink-0">
@@ -789,14 +785,14 @@ export default function EvaluacionClinicaPage() {
                   <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white">
                     <div className="font-semibold">🚨 No colegiable</div>
                     <div className="mt-1 text-white/90">
-                      Caso con criterios de urgencia obstétrica. Activar referencia inmediata a 2º nivel.
+                      recomendacion
                     </div>
                   </div>
                 ) : (
                   <div className="mt-3 rounded-xl border border-black/10 bg-black/10 p-3 text-sm">
                     <div className="font-semibold">Enfoque MARO</div>
                     <div className="mt-1">
-                      Riesgo que puede escalar si no se interviene a tiempo. Colegiación para anticipar “punto de no retorno”.
+                      recomendacion
                     </div>
                   </div>
                 )}
