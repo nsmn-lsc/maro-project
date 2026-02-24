@@ -1,14 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type RiesgoMARO = "ROJO" | "NARANJA" | "AMARILLO";
 
 export default function ExpertosClinicosMARO() {
+  const router = useRouter();
   /* =========================
      MOCK MARO (luego se liga)
   ========================= */
   const riesgo: RiesgoMARO = "ROJO";
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("maro:user");
+    if (!stored) {
+      router.replace("/inicial");
+      return;
+    }
+
+    try {
+      const session = JSON.parse(stored) as { nivel?: number };
+      if ((session.nivel ?? 0) < 3) {
+        router.replace("/dashboard");
+        return;
+      }
+      setAuthChecked(true);
+    } catch {
+      router.replace("/inicial");
+    }
+  }, [router]);
 
   const riesgoStyle =
     riesgo === "ROJO"
@@ -34,6 +56,14 @@ export default function ExpertosClinicosMARO() {
 
   const [conclusiones, setConclusiones] = useState("");
   const [fechaProxima, setFechaProxima] = useState("");
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-rose-50 text-stone-700">
+        Validando acceso...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-rose-50 p-6 text-stone-800">

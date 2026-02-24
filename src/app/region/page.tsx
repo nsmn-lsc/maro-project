@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 /* =========================
    TIPOS
@@ -182,17 +183,47 @@ const motivosColegiacionInicial: MotivosColegiacion = {
 ========================= */
 
 export default function RegionPage() {
+  const router = useRouter();
   const [casos, setCasos] = useState<CasoGuardado[]>([]);
   const [activo, setActivo] = useState<CasoGuardado | null>(null);
   const [ruta, setRuta] = useState<RutaRegional | "">("");
   const [plan, setPlan] = useState<PlanRegional>({});
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
+    const stored = localStorage.getItem("maro:user");
+    if (!stored) {
+      router.replace("/inicial");
+      return;
+    }
+
+    try {
+      const session = JSON.parse(stored) as { nivel?: number };
+      if ((session.nivel ?? 0) < 2) {
+        router.replace("/dashboard");
+        return;
+      }
+      setAuthChecked(true);
+    } catch {
+      router.replace("/inicial");
+    }
+  }, [router]);
+
+  useEffect(() => {
+    if (!authChecked) return;
     const keys = Object.keys(localStorage).filter(k =>
       k.startsWith("maro_caso_")
     );
     setCasos(keys.map(k => JSON.parse(localStorage.getItem(k) || "{}")));
-  }, []);
+  }, [authChecked]);
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-fuchsia-900 to-pink-900 text-white">
+        Validando acceso...
+      </div>
+    );
+  }
 
   function guardarDecision() {
     if (!activo || !ruta || !plan.responsableRegional) {

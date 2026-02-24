@@ -29,8 +29,32 @@ export default function AccesoInicial() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`/api/unidades/${encodeURIComponent(usuario)}`);
+      const usuarioNormalizado = usuario.trim();
+      const esIntentoEstatal = usuarioNormalizado.toLowerCase().includes("estatal");
+
+      const authEstatalRes = await fetch("/api/auth/estatal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario: usuarioNormalizado, password }),
+      });
+
+      if (authEstatalRes.ok) {
+        const estatalSession = await authEstatalRes.json();
+        localStorage.setItem("maro:user", JSON.stringify(estatalSession));
+        router.push("/estatal");
+        return;
+      }
+
+      if (esIntentoEstatal) {
+        const authError = await authEstatalRes.json().catch(() => null);
+        throw new Error(authError?.message || "Credenciales estatales inválidas");
+      }
+
+      const res = await fetch(`/api/unidades/${encodeURIComponent(usuarioNormalizado)}`);
       if (!res.ok) {
+        if (res.status >= 500) {
+          throw new Error("Error del servidor al validar CLUES");
+        }
         throw new Error("No se encontró la CLUES en catálogo");
       }
       const data: UnitRecord = await res.json();
@@ -45,7 +69,8 @@ export default function AccesoInicial() {
       };
 
       localStorage.setItem("maro:user", JSON.stringify(session));
-      router.push("/dashboard");
+      const destino = data.NIVEL >= 2 ? "/region" : "/dashboard";
+      router.push(destino);
     } catch (err: any) {
       setError(err?.message || "Error al validar acceso");
     } finally {

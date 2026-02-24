@@ -282,6 +282,14 @@ export default function Dashboard() {
               <p className="text-sm text-slate-200/70">Últimos 8 registros capturados</p>
             </div>
             <div className="flex gap-2">
+              {(user?.nivel ?? 0) >= 3 && (
+                <Link
+                  href="/estatal"
+                  className="text-sm text-red-100 bg-red-500/15 border border-red-500/30 px-3 py-1.5 rounded-full hover:border-red-300/70 hover:text-white"
+                >
+                  Módulo estatal (≥25)
+                </Link>
+              )}
               <Link
                 href="/pacientes/nuevo"
                 className="text-sm text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 rounded-full hover:border-emerald-300/70 hover:text-white"

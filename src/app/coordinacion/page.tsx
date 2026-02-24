@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   CasoEstatal,
   Decision,
@@ -112,12 +113,34 @@ function Section({
    Página Coordinación Estatal (MARO)
 ========================= */
 export default function CoordinacionEstatalMAROPage() {
+  const router = useRouter();
   const [casos, setCasos] = useState<CasoEstatal[]>([]);
   const [selectedFolio, setSelectedFolio] = useState<string | null>(null);
   const [umbralMin, setUmbralMin] = useState<number>(120);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("maro:user");
+    if (!stored) {
+      router.replace("/inicial");
+      return;
+    }
+
+    try {
+      const session = JSON.parse(stored) as { nivel?: number };
+      if ((session.nivel ?? 0) < 3) {
+        router.replace("/dashboard");
+        return;
+      }
+      setAuthChecked(true);
+    } catch {
+      router.replace("/inicial");
+    }
+  }, [router]);
 
   // Carga inicial (localStorage -> demo)
   useEffect(() => {
+    if (!authChecked) return;
     const loaded = persistencia.load();
     if (loaded.length > 0) {
       setCasos(loaded);
@@ -128,7 +151,15 @@ export default function CoordinacionEstatalMAROPage() {
     setCasos(seed);
     setSelectedFolio(seed[0]?.folio ?? null);
     persistencia.save(seed);
-  }, []);
+  }, [authChecked]);
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 text-slate-700">
+        Validando acceso...
+      </div>
+    );
+  }
 
   // Persistencia
   useEffect(() => {

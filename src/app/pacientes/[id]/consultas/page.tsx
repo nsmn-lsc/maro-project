@@ -17,6 +17,9 @@ interface Consulta {
   fondo_uterino_acorde_sdg: 0 | 1;
   ivu_repeticion: 0 | 1;
   reclasificacion_ro: number | null;
+  puntaje_consulta_parametros: number | null;
+  puntaje_total_consulta: number | null;
+  riesgo_25_plus: 0 | 1;
   alarma_obstetrica: string | null;
   diagnostico: string | null;
   plan: string | null;
@@ -64,10 +67,11 @@ export default function ConsultasPaciente() {
     semanas_gestacion: number;
   }>({ factor_riesgo_antecedentes: 0, factor_riesgo_tamizajes: 0, semanas_gestacion: 0 });
   const [minimizarRiesgo, setMinimizarRiesgo] = useState(false);
+  const [minimizarConsulta, setMinimizarConsulta] = useState(false);
 
   // Validaciones de signos vitales - ROJAS (críticas)
   const taSistolicaNumber = form.ta_sistolica === "" ? null : Number(form.ta_sistolica);
-  const taSistolicaAlerta = taSistolicaNumber !== null && (taSistolicaNumber < 89 || taSistolicaNumber > 160);
+  const taSistolicaAlerta = taSistolicaNumber !== null && (taSistolicaNumber <= 89 || taSistolicaNumber >= 160);
   
   const taDiastolicaNumber = form.ta_diastolica === "" ? null : Number(form.ta_diastolica);
   const taDiastolicaAlerta = taDiastolicaNumber !== null && (taDiastolicaNumber <= 50 || taDiastolicaNumber >= 110);
@@ -84,8 +88,89 @@ export default function ConsultasPaciente() {
   const temperaturaNumber = form.temperatura === "" ? null : Number(form.temperatura);
   const temperaturaAlerta = temperaturaNumber !== null && (temperaturaNumber < 36 || temperaturaNumber > 39);
 
+  const puntajeTaSistolica = taSistolicaNumber === null
+    ? 0
+    : (taSistolicaNumber <= 89 || taSistolicaNumber >= 160)
+      ? 4
+      : (taSistolicaNumber >= 140 && taSistolicaNumber <= 159)
+        ? 2
+        : 0;
+
+  const puntajeTaDiastolica = taDiastolicaNumber === null
+    ? 0
+    : (taDiastolicaNumber <= 50 || taDiastolicaNumber >= 110)
+      ? 4
+      : (taDiastolicaNumber >= 90 && taDiastolicaNumber <= 109)
+        ? 2
+        : 0;
+
+  const puntajeFrecuenciaCardiaca = frecuenciaCardiacaNumber === null
+    ? 0
+    : (frecuenciaCardiacaNumber < 60 || frecuenciaCardiacaNumber > 100)
+      ? 4
+      : 0;
+
+  const puntajeIndiceChoque = indiceChoqueNumber === null
+    ? 0
+    : indiceChoqueNumber > 0.8
+      ? 4
+      : (indiceChoqueNumber >= 0.7 && indiceChoqueNumber <= 0.8)
+        ? 2
+        : 0;
+
+  const puntajeTemperatura = temperaturaNumber === null
+    ? 0
+    : (temperaturaNumber < 36 || temperaturaNumber > 39)
+      ? 4
+      : (temperaturaNumber >= 37.5 && temperaturaNumber <= 38.9)
+        ? 2
+        : 0;
+
+  const puntajeConsultaParametros =
+    puntajeTaSistolica +
+    puntajeTaDiastolica +
+    puntajeFrecuenciaCardiaca +
+    puntajeIndiceChoque +
+    puntajeTemperatura;
+
+  const hallazgosConsulta = [
+    {
+      campo: "T/A Sistólica",
+      valor: taSistolicaNumber,
+      puntos: puntajeTaSistolica,
+      criterio: "≤89 o ≥160 = 4 pts · 140-159 = 2 pts",
+    },
+    {
+      campo: "T/A Diastólica",
+      valor: taDiastolicaNumber,
+      puntos: puntajeTaDiastolica,
+      criterio: "≤50 o ≥110 = 4 pts · 90-109 = 2 pts",
+    },
+    {
+      campo: "Frecuencia cardiaca",
+      valor: frecuenciaCardiacaNumber,
+      puntos: puntajeFrecuenciaCardiaca,
+      criterio: "<60 o >100 = 4 pts",
+    },
+    {
+      campo: "Índice de choque",
+      valor: indiceChoqueNumber,
+      puntos: puntajeIndiceChoque,
+      criterio: ">0.8 = 4 pts · 0.7-0.8 = 2 pts",
+    },
+    {
+      campo: "Temperatura",
+      valor: temperaturaNumber,
+      puntos: puntajeTemperatura,
+      criterio: "<36 o >39 = 4 pts · 37.5-38.9 = 2 pts",
+    },
+  ].filter((item) => item.puntos > 0);
+
   const reclasificacionRoNumber = form.reclasificacion_ro === "" ? 0 : Number(form.reclasificacion_ro);
-  const puntajeRiesgoTotal = (pacienteData.factor_riesgo_antecedentes || 0) + (pacienteData.factor_riesgo_tamizajes || 0) + (Number.isNaN(reclasificacionRoNumber) ? 0 : reclasificacionRoNumber);
+  const puntajeRiesgoTotal =
+    (pacienteData.factor_riesgo_antecedentes || 0) +
+    (pacienteData.factor_riesgo_tamizajes || 0) +
+    puntajeConsultaParametros;
 
   // Validaciones AMARILLAS (advertencia) - solo si no está en rojo
   const taSistolicaAdvertencia = taSistolicaNumber !== null && !taSistolicaAlerta && (taSistolicaNumber >= 140 && taSistolicaNumber <= 159);
@@ -494,22 +579,88 @@ export default function ConsultasPaciente() {
       </div>
 
       {/* Badge flotante de riesgo total (antecedentes + consulta) */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
+        {minimizarConsulta ? (
+          <button
+            type="button"
+            onClick={() => setMinimizarConsulta(false)}
+            className={`rounded-2xl border-2 w-[320px] px-4 py-2 shadow-2xl backdrop-blur-sm text-sm font-semibold text-left ${
+              puntajeConsultaParametros <= 3 ? 'bg-green-500/20 text-green-100 border-green-400/60' :
+              puntajeConsultaParametros <= 9 ? 'bg-amber-500/20 text-amber-100 border-amber-400/60' :
+              puntajeConsultaParametros <= 25 ? 'bg-orange-500/20 text-orange-100 border-orange-400/60' :
+              'bg-red-500/20 text-red-100 border-red-500/60'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span>Consulta (Parámetros)</span>
+              <span className="font-bold">{puntajeConsultaParametros} pts</span>
+            </div>
+          </button>
+        ) : (
+          <div className={`rounded-2xl border-2 p-3 shadow-2xl backdrop-blur-sm w-[320px] ${
+            puntajeConsultaParametros <= 3 ? 'bg-green-500/20 text-green-100 border-green-400/60' :
+            puntajeConsultaParametros <= 9 ? 'bg-amber-500/20 text-amber-100 border-amber-400/60' :
+            puntajeConsultaParametros <= 25 ? 'bg-orange-500/20 text-orange-100 border-orange-400/60' :
+            'bg-red-500/20 text-red-100 border-red-500/60'
+          }`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-slate-200/90">Consulta (Parámetros)</div>
+              <div className="text-lg font-bold">{puntajeConsultaParametros} pts</div>
+            </div>
+
+            <div className="mt-2">
+              {hallazgosConsulta.length > 0 ? (
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-semibold text-slate-100/80">HALLAZGOS ({hallazgosConsulta.length})</div>
+                  {hallazgosConsulta.map((item) => (
+                    <div key={item.campo} className="rounded-lg bg-white/10 border border-white/20 px-2.5 py-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="text-xs font-semibold text-white">{item.campo}: {item.valor ?? "—"}</div>
+                          <div className="text-[10px] text-white/75">{item.criterio}</div>
+                        </div>
+                        <div className="text-sm font-bold text-white">+{item.puntos}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg bg-white/10 border border-white/20 px-2.5 py-1.5 text-xs text-slate-100/90 text-center">
+                  ✅ Sin hallazgos de riesgo en parámetros de consulta
+                </div>
+              )}
+            </div>
+
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setMinimizarConsulta(true)}
+                className="text-xs text-slate-200/80 hover:text-white"
+              >
+                Minimizar
+              </button>
+            </div>
+          </div>
+        )}
+
         {minimizarRiesgo ? (
           <button
             type="button"
             onClick={() => setMinimizarRiesgo(false)}
-            className={`rounded-full border-2 px-4 py-2 shadow-2xl backdrop-blur-sm text-sm font-semibold ${
+            className={`rounded-2xl border-2 w-[320px] px-4 py-2 shadow-2xl backdrop-blur-sm text-sm font-semibold text-left ${
               puntajeRiesgoTotal <= 3 ? 'bg-green-500/20 text-green-100 border-green-400/60' :
               puntajeRiesgoTotal <= 9 ? 'bg-amber-500/20 text-amber-100 border-amber-400/60' :
               puntajeRiesgoTotal <= 25 ? 'bg-orange-500/20 text-orange-100 border-orange-400/60' :
               'bg-red-500/20 text-red-100 border-red-500/60'
             }`}
           >
-            Riesgo: {puntajeRiesgoTotal} pts
+            <div className="flex items-center justify-between gap-2">
+              <span>Riesgo Total</span>
+              <span className="font-bold">{puntajeRiesgoTotal} pts</span>
+            </div>
           </button>
         ) : (
-          <div className={`rounded-2xl border-2 p-4 shadow-2xl backdrop-blur-sm max-w-[300px] ${
+          <div className={`rounded-2xl border-2 p-4 shadow-2xl backdrop-blur-sm w-[320px] ${
             puntajeRiesgoTotal <= 3 ? 'bg-green-500/20 border-green-400/60' :
             puntajeRiesgoTotal <= 9 ? 'bg-amber-500/20 border-amber-400/60' :
             puntajeRiesgoTotal <= 25 ? 'bg-orange-500/20 border-orange-400/60' :
@@ -545,7 +696,11 @@ export default function ConsultasPaciente() {
                 <span>{pacienteData.factor_riesgo_tamizajes || 0} pts</span>
               </div>
               <div className="flex justify-between gap-6">
-                <span>Consulta (RO):</span>
+                <span>Consulta (Parámetros):</span>
+                <span>{puntajeConsultaParametros} pts</span>
+              </div>
+              <div className="flex justify-between gap-6">
+                <span>Reclasificación RO:</span>
                 <span>{Number.isNaN(reclasificacionRoNumber) ? 0 : reclasificacionRoNumber} pts</span>
               </div>
             </div>
@@ -581,6 +736,11 @@ export default function ConsultasPaciente() {
                 <thead className="text-slate-100/80">
                   <tr className="border-b border-white/10">
                     <th className="py-2 pr-4">Fecha</th>
+                    <th className="py-2 pr-4">T/A</th>
+                    <th className="py-2 pr-4">FC</th>
+                    <th className="py-2 pr-4">FR</th>
+                    <th className="py-2 pr-4">Temp</th>
+                    <th className="py-2 pr-4">Puntaje Total</th>
                     <th className="py-2 pr-4">RO</th>
                     <th className="py-2 pr-4">Alarma</th>
                     <th className="py-2 pr-4">Diagnóstico</th>
@@ -592,6 +752,25 @@ export default function ConsultasPaciente() {
                   {consultas.map((c) => (
                     <tr key={c.id} className="hover:bg-white/5">
                       <td className="py-2 pr-4 text-white">{formatDate(c.fecha_consulta)}</td>
+                      <td className="py-2 pr-4 text-slate-100/80">
+                        {c.ta_sistolica ?? "—"}/{c.ta_diastolica ?? "—"}
+                      </td>
+                      <td className="py-2 pr-4 text-slate-100/80">{c.frecuencia_cardiaca ?? "—"}</td>
+                      <td className="py-2 pr-4 text-slate-100/80">{c.frecuencia_respiratoria ?? "—"}</td>
+                      <td className="py-2 pr-4 text-slate-100/80">{c.temperatura ?? "—"}</td>
+                      <td className="py-2 pr-4">
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                          (c.puntaje_total_consulta ?? 0) >= 25
+                            ? 'bg-red-500/20 text-red-100'
+                            : (c.puntaje_total_consulta ?? 0) >= 10
+                              ? 'bg-orange-500/20 text-orange-100'
+                              : (c.puntaje_total_consulta ?? 0) >= 4
+                                ? 'bg-amber-500/20 text-amber-100'
+                                : 'bg-green-500/20 text-green-100'
+                        }`}>
+                          {c.puntaje_total_consulta ?? 0} pts
+                        </span>
+                      </td>
                       <td className="py-2 pr-4 text-slate-100/80">{c.reclasificacion_ro ?? "—"}</td>
                       <td className="py-2 pr-4 text-slate-100/80">{c.alarma_obstetrica || "—"}</td>
                       <td className="py-2 pr-4 text-slate-100/80">{formatDiagnostico(c.diagnostico)}</td>
