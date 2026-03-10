@@ -124,13 +124,29 @@ export async function GET(request: Request) {
       d.prueba_vih, d.prueba_vdrl, d.prueba_hepatitis_c, d.diabetes_glicemia, d.violencia
     ` : `
       p.id, p.folio, p.nombre_completo, p.clues_id, p.municipio, p.fecha_ingreso_cpn, 
-      p.sdg_ingreso, p.semanas_gestacion, p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes
+      p.sdg_ingreso, p.semanas_gestacion, p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes,
+      COALESCE(c.puntaje_consulta_parametros, 0) AS puntaje_ultima_consulta,
+      COALESCE(
+        c.puntaje_total_consulta,
+        COALESCE(p.factor_riesgo_antecedentes, 0) + COALESCE(p.factor_riesgo_tamizajes, 0) + COALESCE(c.puntaje_consulta_parametros, 0)
+      ) AS puntaje_total_actual
     `;
 
     const fromClause = idFilter ? `
       FROM cat_pacientes p
       LEFT JOIN detecciones d ON p.id = d.paciente_id
-    ` : `FROM cat_pacientes p`;
+    ` : `
+      FROM cat_pacientes p
+      LEFT JOIN (
+        SELECT c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta
+        FROM consultas_prenatales c1
+        INNER JOIN (
+          SELECT paciente_id, MAX(id) AS last_consulta_id
+          FROM consultas_prenatales
+          GROUP BY paciente_id
+        ) last_c ON last_c.last_consulta_id = c1.id
+      ) c ON c.paciente_id = p.id
+    `;
 
     const rows = await query(
       `SELECT ${selectFields}
@@ -160,7 +176,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const nombre = (body.nombre_completo || "").trim();
-    const clues = (body.clues_id || "").trim();
+    const clues = String(body.clues_id || "").trim().toUpperCase();
     if (!nombre) {
       return NextResponse.json({ message: "El nombre es obligatorio" }, { status: 400 });
     }
@@ -168,18 +184,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "La CLUES es obligatoria" }, { status: 400 });
     }
 
+    const unidadRows: any = await query(
+      `SELECT clues, unidad, region, municipio FROM cat_unidades WHERE clues = ? LIMIT 1`,
+      [clues]
+    );
+
+    if (!unidadRows || unidadRows.length === 0) {
+      return NextResponse.json(
+        {
+          message: `La CLUES ${clues} no existe en catálogo de unidades (cat_unidades). Importa el catálogo antes de registrar pacientes.`,
+          code: "CLUES_NOT_FOUND",
+        },
+        { status: 400 }
+      );
+    }
+
+    const unidadCatalogo = unidadRows[0];
+
     // Generar folio automáticamente si no se proporciona
     const folio = body.folio || await generarSiguienteFolio(clues);
 
     const payload = {
       folio: folio,
-      region: body.region || null,
+      region: body.region || unidadCatalogo.region || null,
       fecha_ingreso_cpn: body.fecha_ingreso_cpn || null,
       clues_id: clues,
-      unidad: body.unidad || null,
+      unidad: body.unidad || unidadCatalogo.unidad || null,
       tipo_localidad: body.tipo_localidad || null,
       hospital_referencia: body.hospital_referencia || null,
-      municipio: body.municipio || null,
+      municipio: body.municipio || unidadCatalogo.municipio || null,
       localidad: body.localidad || null,
       colonia: body.colonia || null,
       direccion: body.direccion || null,

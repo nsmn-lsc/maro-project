@@ -1,5 +1,17 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { isTelegramAlertsEnabled } from "@/lib/telegramAlerts";
+
+const TELEGRAM_RIESGO_TIPO = "RIESGO_25_PLUS";
+
+async function hasColumn(columnName: string) {
+  try {
+    const rows = await query<any[]>(`SHOW COLUMNS FROM consultas_prenatales LIKE '${columnName}'`);
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 function toNumberOrNull(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -69,12 +81,21 @@ export async function GET(request: Request) {
   }
 
   try {
+    const [hasColegiado, hasFechaColegiado] = await Promise.all([
+      hasColumn("colegiado"),
+      hasColumn("fecha_colegiado"),
+    ]);
+
+    const colegiadoExpr = hasColegiado ? "COALESCE(colegiado, 0)" : "0";
+    const fechaColegiadoExpr = hasFechaColegiado ? "fecha_colegiado" : "NULL";
+
     const rows = await query(
             `SELECT id, paciente_id, fecha_consulta,
               ta_sistolica, ta_diastolica, frecuencia_cardiaca, indice_choque, frecuencia_respiratoria, temperatura,
-              fondo_uterino_acorde_sdg, ivu_repeticion, reclasificacion_ro,
+              fondo_uterino_acorde_sdg, ivu_repeticion, estado_conciencia, hemorragia, respiracion, color_piel,
               puntaje_consulta_parametros, puntaje_total_consulta, riesgo_25_plus,
-              alarma_obstetrica, diagnostico, plan, fecha_referencia, area_referencia,
+              ${colegiadoExpr} AS colegiado, ${fechaColegiadoExpr} AS fecha_colegiado,
+              diagnostico, plan, fecha_referencia, area_referencia,
               notas, created_at
          FROM consultas_prenatales
         WHERE paciente_id = ?
@@ -111,7 +132,7 @@ export async function POST(request: Request) {
     });
 
     const pacienteRows: any = await query(
-      `SELECT factor_riesgo_antecedentes, factor_riesgo_tamizajes
+      `SELECT factor_riesgo_antecedentes, factor_riesgo_tamizajes, folio, unidad
          FROM cat_pacientes
         WHERE id = ?
         LIMIT 1`,
@@ -139,11 +160,13 @@ export async function POST(request: Request) {
       temperatura,
       fondo_uterino_acorde_sdg: body.fondo_uterino_acorde_sdg ? 1 : 0,
       ivu_repeticion: body.ivu_repeticion ? 1 : 0,
-      reclasificacion_ro: body.reclasificacion_ro ?? null,
+      estado_conciencia: body.estado_conciencia || null,
+      hemorragia: body.hemorragia || null,
+      respiracion: body.respiracion || null,
+      color_piel: body.color_piel || null,
       puntaje_consulta_parametros: puntajeConsultaParametros,
       puntaje_total_consulta: puntajeTotalConsulta,
       riesgo_25_plus: riesgo25Plus,
-      alarma_obstetrica: body.alarma_obstetrica || null,
       diagnostico: body.diagnostico || null,
       plan: body.plan || null,
       fecha_referencia: body.fecha_referencia || null,
@@ -163,6 +186,39 @@ export async function POST(request: Request) {
       `INSERT INTO consultas_prenatales (${Object.keys(payload).join(", ")}) VALUES (${placeholders})`,
       values
     );
+
+    const consultaId = Number(result?.insertId) || null;
+    const puntajeTotal = Number(puntajeTotalConsulta) || 0;
+
+    if (consultaId && riesgo25Plus === 1 && isTelegramAlertsEnabled()) {
+      const folio = paciente?.folio || null;
+      const unidad = paciente?.unidad || null;
+
+      try {
+        await query(
+          `INSERT INTO alertas_telegram (
+            tipo, paciente_id, consulta_id, folio, unidad, puntaje_total, payload_json
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE id = id`,
+          [
+            TELEGRAM_RIESGO_TIPO,
+            pacienteId,
+            consultaId,
+            folio,
+            unidad,
+            puntajeTotal,
+            JSON.stringify({ folio, unidad, puntaje_total: puntajeTotal }),
+          ]
+        );
+      } catch (enqueueError: any) {
+        // El guardado clinico no debe fallar por problemas de la cola de alertas.
+        console.error("No se pudo encolar alerta Telegram", {
+          consultaId,
+          pacienteId,
+          error: enqueueError?.message || enqueueError,
+        });
+      }
+    }
 
     return NextResponse.json({ id: result.insertId, ...payload }, { status: 201 });
   } catch (error: any) {

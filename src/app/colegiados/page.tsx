@@ -6,11 +6,10 @@ import { useRouter } from "next/navigation";
 
 type SessionInfo = {
   nivel?: number;
-  unidad?: string;
-  displayName?: string;
 };
 
-type RegistroRiesgo = {
+type RegistroColegiado = {
+  consulta_id: number;
   paciente_id: number;
   folio: string | null;
   nombre_completo: string | null;
@@ -18,30 +17,42 @@ type RegistroRiesgo = {
   municipio: string | null;
   unidad: string | null;
   clues_id: string | null;
-  consulta_id: number;
   fecha_consulta: string | null;
-  puntaje_total_consulta: number;
-  puntaje_consulta_parametros: number;
+  puntaje_total_consulta: number | null;
   riesgo_25_plus: number;
-  colegiado: number;
-  consulta_creada: string;
+  fecha_colegiado: string | null;
 };
 
-export default function ModuloEstatalRiesgoPage() {
+function formatDate(value: string | null, includeTime = false) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+
+  if (!includeTime) return `${dd}-${mm}-${yyyy}`;
+
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+}
+
+export default function ColegiadosPage() {
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
-  const [registros, setRegistros] = useState<RegistroRiesgo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sessionName, setSessionName] = useState("Usuario Estatal");
+  const [registros, setRegistros] = useState<RegistroColegiado[]>([]);
 
-  const loadRegistros = useCallback(async (silent = false) => {
+  const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch("/api/estatal/riesgo?limit=500", { cache: "no-store" });
-      if (!res.ok) throw new Error("No se pudo cargar el módulo estatal");
-      const data = (await res.json()) as RegistroRiesgo[];
-      setRegistros(data);
+      const res = await fetch("/api/estatal/colegiados", { cache: "no-store" });
+      if (!res.ok) throw new Error("No se pudo cargar el módulo de colegiados");
+      const data = (await res.json()) as RegistroColegiado[];
+      setRegistros(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err: any) {
       setError(err?.message || "Error desconocido");
@@ -63,7 +74,6 @@ export default function ModuloEstatalRiesgoPage() {
         router.replace("/dashboard");
         return;
       }
-      setSessionName(session.displayName || session.unidad || "Usuario Estatal");
       setAuthChecked(true);
     } catch {
       router.replace("/inicial");
@@ -72,47 +82,34 @@ export default function ModuloEstatalRiesgoPage() {
 
   useEffect(() => {
     if (!authChecked) return;
-
-    let cancelled = false;
-
-    const run = async () => {
-      try {
-        await loadRegistros(false);
-      } catch {
-      }
-    };
-
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [authChecked, loadRegistros]);
+    loadData();
+  }, [authChecked, loadData]);
 
   useEffect(() => {
     if (!authChecked) return;
 
     const handleWindowFocus = () => {
-      loadRegistros(true);
+      loadData(true);
     };
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        loadRegistros(true);
+        loadData(true);
       }
     };
 
     const handleStorageSync = (event: StorageEvent) => {
       if (event.key === "maro:colegiado-updated") {
-        loadRegistros(true);
+        loadData(true);
       }
     };
 
     const handleCustomSync = () => {
-      loadRegistros(true);
+      loadData(true);
     };
 
     const intervalId = window.setInterval(() => {
-      loadRegistros(true);
+      loadData(true);
     }, 15000);
 
     window.addEventListener("focus", handleWindowFocus);
@@ -127,79 +124,58 @@ export default function ModuloEstatalRiesgoPage() {
       window.removeEventListener("maro:colegiado-updated", handleCustomSync as EventListener);
       window.clearInterval(intervalId);
     };
-  }, [authChecked, loadRegistros]);
+  }, [authChecked, loadData]);
 
-  const totalRegistros = registros.length;
-  const promedioPuntaje = useMemo(() => {
-    if (registros.length === 0) return 0;
-    const sum = registros.reduce((acc, r) => acc + (Number(r.puntaje_total_consulta) || 0), 0);
-    return Math.round((sum / registros.length) * 10) / 10;
-  }, [registros]);
-
-  const formatDate = (value: string | null) => {
-    if (!value) return "—";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
-  };
-
-  const estatalBackgroundStyle = {
+  const bgStyle = {
     backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(15,118,110,0.6)), url(/maro_back_estatal.png)",
     backgroundSize: "cover",
     backgroundPosition: "center",
     backgroundRepeat: "no-repeat" as const,
   };
 
+  const total = registros.length;
+  const riesgo25 = useMemo(
+    () => registros.filter((r) => Number(r.riesgo_25_plus) === 1).length,
+    [registros]
+  );
+
   if (!authChecked) {
     return (
-      <main className="min-h-screen relative text-slate-100" style={estatalBackgroundStyle}>
+      <main className="min-h-screen relative text-slate-100" style={bgStyle}>
         <div className="absolute inset-0 bg-black/45" aria-hidden />
-        <div className="relative min-h-screen flex items-center justify-center">
-          Validando acceso estatal...
-        </div>
+        <div className="relative min-h-screen flex items-center justify-center">Validando acceso estatal...</div>
       </main>
     );
   }
 
   return (
-    <main
-      className="min-h-screen relative text-slate-100"
-      style={estatalBackgroundStyle}
-    >
+    <main className="min-h-screen relative text-slate-100" style={bgStyle}>
       <div className="absolute inset-0 bg-black/45" aria-hidden />
 
       <div className="relative max-w-7xl mx-auto space-y-6 p-6 lg:p-10">
-        <header className="space-y-2">
-          <p className="text-sm uppercase tracking-[0.2em] text-cyan-300/80">Nivel estatal</p>
-          <h1 className="text-3xl font-bold">Pacientes con puntaje total ≥ 25</h1>
-          <p className="text-slate-300/80">Vista consolidada de todas las unidades · Sesión: {sessionName}</p>
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-2">
+            <p className="text-sm uppercase tracking-[0.2em] text-cyan-300/80">Nivel estatal</p>
+            <h1 className="text-3xl font-bold">Módulo de Colegiados</h1>
+            <p className="text-slate-300/80">Registros enviados desde el módulo estatal</p>
+          </div>
+          <Link href="/estatal" className="text-sm px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400">
+            Volver a estatal
+          </Link>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <Card title="Registros activos" value={String(totalRegistros)} />
-          <Card title="Puntaje promedio" value={`${promedioPuntaje} pts`} />
-          <Card title="Cobertura" value="Todas las unidades" />
+        <section className="grid gap-4 md:grid-cols-2">
+          <Card title="Casos colegiados" value={String(total)} />
+          <Card title="Con riesgo ≥ 25" value={String(riesgo25)} />
         </section>
 
         <section className="bg-slate-900/60 border border-slate-700 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Concentrado estatal de riesgo alto</h2>
-            <div className="flex items-center gap-2">
-              <Link href="/colegiados" className="text-sm px-3 py-1.5 rounded-full border border-emerald-500/50 text-emerald-200 hover:border-emerald-300">
-                Ver colegiados
-              </Link>
-            </div>
-          </div>
-
           {loading ? (
-            <p className="text-slate-300">Cargando registros...</p>
+            <p className="text-slate-300">Cargando casos colegiados...</p>
           ) : error ? (
             <p className="text-red-300">{error}</p>
           ) : registros.length === 0 ? (
-            <p className="text-slate-300">No hay pacientes con puntaje total ≥ 25.</p>
+            <p className="text-slate-300">No hay casos colegiados enviados.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -210,14 +186,14 @@ export default function ModuloEstatalRiesgoPage() {
                     <th className="py-2 pr-4">Región</th>
                     <th className="py-2 pr-4">Unidad</th>
                     <th className="py-2 pr-4">Fecha consulta</th>
+                    <th className="py-2 pr-4">Fecha colegiado</th>
                     <th className="py-2 pr-4">Puntaje total</th>
-                    <th className="py-2 pr-4">Colegiado</th>
                     <th className="py-2 pr-0 text-right">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
                   {registros.map((row) => (
-                    <tr key={`${row.consulta_id}-${row.paciente_id}`} className="hover:bg-slate-800/40">
+                    <tr key={row.consulta_id} className="hover:bg-slate-800/40">
                       <td className="py-2 pr-4">{row.folio || "—"}</td>
                       <td className="py-2 pr-4">{row.nombre_completo || "Sin nombre"}</td>
                       <td className="py-2 pr-4">{row.region || "—"}</td>
@@ -226,28 +202,18 @@ export default function ModuloEstatalRiesgoPage() {
                         <div className="text-xs text-slate-400">{row.clues_id || ""}</div>
                       </td>
                       <td className="py-2 pr-4">{formatDate(row.fecha_consulta)}</td>
+                      <td className="py-2 pr-4">{formatDate(row.fecha_colegiado, true)}</td>
                       <td className="py-2 pr-4">
                         <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-red-500/20 text-red-200 border border-red-500/40">
-                          {row.puntaje_total_consulta} pts
+                          {Number(row.puntaje_total_consulta) || 0} pts
                         </span>
-                      </td>
-                      <td className="py-2 pr-4">
-                        {Number(row.colegiado) === 1 ? (
-                          <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-500/40">
-                            Sí
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-slate-700/40 text-slate-200 border border-slate-600">
-                            No
-                          </span>
-                        )}
                       </td>
                       <td className="py-2 pr-0 text-right">
                         <Link
                           href={`/estatal/pacientes/${row.paciente_id}`}
                           className="text-xs px-2 py-1 rounded-full border border-cyan-500/40 text-cyan-200 hover:border-cyan-300"
                         >
-                          Ver paciente
+                          Por determinar
                         </Link>
                       </td>
                     </tr>

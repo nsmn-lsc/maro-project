@@ -20,6 +20,7 @@ export async function GET(request: Request) {
       hasPuntajeTotal,
       hasPuntajeConsulta,
       hasRiesgo25,
+      hasColegiado,
       hasAntecedentes,
       hasTamizajes,
       hasRiesgoIngreso,
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
       hasColumn("consultas_prenatales", "puntaje_total_consulta"),
       hasColumn("consultas_prenatales", "puntaje_consulta_parametros"),
       hasColumn("consultas_prenatales", "riesgo_25_plus"),
+      hasColumn("consultas_prenatales", "colegiado"),
       hasColumn("cat_pacientes", "factor_riesgo_antecedentes"),
       hasColumn("cat_pacientes", "factor_riesgo_tamizajes"),
       hasColumn("cat_pacientes", "riesgo_obstetrico_ingreso"),
@@ -56,6 +58,10 @@ export async function GET(request: Request) {
       ? "COALESCE(c.riesgo_25_plus, 0)"
       : `CASE WHEN ${puntajeTotalExpr} >= 25 THEN 1 ELSE 0 END`;
 
+    const colegiadoExpr = hasColegiado
+      ? "COALESCE(c.colegiado, 0)"
+      : "0";
+
     const whereRiesgo = hasRiesgo25
       ? "COALESCE(c.riesgo_25_plus, 0) = 1"
       : `${puntajeTotalExpr} >= 25`;
@@ -74,6 +80,7 @@ export async function GET(request: Request) {
           ${puntajeTotalExpr} AS puntaje_total_consulta,
           ${puntajeConsultaExpr} AS puntaje_consulta_parametros,
           ${riesgo25Expr} AS riesgo_25_plus,
+          ${colegiadoExpr} AS colegiado,
           c.created_at AS consulta_creada
        FROM consultas_prenatales c
        INNER JOIN cat_pacientes cp ON cp.id = c.paciente_id
@@ -105,6 +112,7 @@ export async function GET(request: Request) {
             25 AS puntaje_total_consulta,
             0 AS puntaje_consulta_parametros,
             1 AS riesgo_25_plus,
+            0 AS colegiado,
             c.created_at AS consulta_creada
          FROM consultas_prenatales c
          INNER JOIN cat_pacientes cp ON cp.id = c.paciente_id

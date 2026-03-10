@@ -14,6 +14,8 @@ type Patient = {
   sdg_ingreso: number | null;
   factor_riesgo_antecedentes: number | null;
   factor_riesgo_tamizajes: number | null;
+  puntaje_ultima_consulta: number | null;
+  puntaje_total_actual: number | null;
 };
 
 type SessionInfo = {
@@ -135,6 +137,8 @@ export default function Dashboard() {
       "SDG": p.sdg_ingreso ?? "—",
       "Puntaje Antecedentes": p.factor_riesgo_antecedentes ?? "—",
       "Puntaje Tamizajes": p.factor_riesgo_tamizajes ?? "—",
+      "Puntaje Última Consulta": p.puntaje_ultima_consulta ?? "—",
+      "Puntaje Total Actual": p.puntaje_total_actual ?? "—",
     }));
 
     // Crear workbook y worksheet
@@ -150,6 +154,8 @@ export default function Dashboard() {
       { wch: 6 },  // SDG
       { wch: 22 }, // Puntaje Antecedentes
       { wch: 18 }, // Puntaje Tamizajes
+      { wch: 24 }, // Puntaje Última Consulta
+      { wch: 20 }, // Puntaje Total Actual
     ];
     ws["!cols"] = colWidths;
 
@@ -322,6 +328,8 @@ export default function Dashboard() {
                     <th className="py-2 pr-4">SDG</th>
                     <th className="py-2 pr-4">Antecedentes</th>
                     <th className="py-2 pr-4">Tamizajes</th>
+                    <th className="py-2 pr-4">Última consulta</th>
+                    <th className="py-2 pr-4">Total actual</th>
                     <th className="py-2 pr-4 text-right">Acciones</th>
                   </tr>
                 </thead>
@@ -360,6 +368,35 @@ export default function Dashboard() {
                           </span>
                         )}
                       </td>
+                      <td className="py-2 pr-4">
+                        {(p.puntaje_ultima_consulta ?? 0) === 0 ? (
+                          <span className="inline-block px-2 py-1 rounded text-xs font-semibold bg-slate-500/20 text-slate-100">
+                            0 pts
+                          </span>
+                        ) : (
+                          <span className="inline-block px-2 py-1 rounded text-xs font-semibold bg-cyan-500/20 text-cyan-100">
+                            {p.puntaje_ultima_consulta} pts
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {(() => {
+                          const score = p.puntaje_total_actual ?? 0;
+                          return (
+                            <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                              score >= 25
+                                ? 'bg-red-500/20 text-red-100'
+                                : score >= 10
+                                  ? 'bg-orange-500/20 text-orange-100'
+                                  : score >= 4
+                                    ? 'bg-amber-500/20 text-amber-100'
+                                    : 'bg-green-500/20 text-green-100'
+                            }`}>
+                              {score} pts
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="py-2 pr-0 text-right">
                         <div className="flex justify-end gap-2">
                           <Link
@@ -367,12 +404,6 @@ export default function Dashboard() {
                             className="text-xs text-cyan-100 bg-cyan-500/15 border border-cyan-500/30 px-2 py-1 rounded-full hover:border-cyan-300/70 hover:text-white"
                           >
                             Seguimiento
-                          </Link>
-                          <Link
-                            href={`/pacientes/${p.id}/editar`}
-                            className="text-xs text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-2 py-1 rounded-full hover:border-emerald-300/70 hover:text-white"
-                          >
-                            Editar
                           </Link>
                         </div>
                       </td>
@@ -401,7 +432,7 @@ export default function Dashboard() {
             </div>
           </div>
           <p className="text-sm text-amber-200/80 bg-amber-500/20 border border-amber-400/30 rounded-lg px-4 py-3">
-            Descarga los datos de pacientes en formato Excel. El archivo incluye folio, nombre, ingreso, semanas de gestación y puntajes de riesgo. Aun en construcción, esta función te permitirá obtener un reporte basico inicial de los pacientes registrados en tu unidad para análisis y seguimiento.
+            Descarga los datos de pacientes en formato Excel. El archivo incluye folio, nombre, ingreso, semanas de gestación, puntaje de antecedentes, tamizajes, puntaje de última consulta y total actual. Aun en construcción, esta función te permitirá obtener un reporte basico inicial de los pacientes registrados en tu unidad para análisis y seguimiento.
           </p>
         </section>
       </div>

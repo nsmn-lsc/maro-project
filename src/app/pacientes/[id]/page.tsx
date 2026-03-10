@@ -56,6 +56,12 @@ type Patient = {
   factor_riesgo_tamizajes?: number | null;
 };
 
+type ConsultaResumen = {
+  id: number;
+  colegiado?: 0 | 1;
+  fecha_colegiado?: string | null;
+};
+
 export default function PacienteDetalle() {
   const params = useParams();
   const router = useRouter();
@@ -66,17 +72,27 @@ export default function PacienteDetalle() {
   const [error, setError] = useState<string | null>(null);
   const [expandidoRiesgo, setExpandidoRiesgo] = useState(false);
   const [expandidoTamizajes, setExpandidoTamizajes] = useState(false);
+  const [ultimaConsulta, setUltimaConsulta] = useState<ConsultaResumen | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/pacientes?id=${id}`);
-        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || "No se pudo cargar el paciente");
-        const data = await res.json();
+        const [resPaciente, resConsultas] = await Promise.all([
+          fetch(`/api/pacientes?id=${id}`),
+          fetch(`/api/consultas?paciente_id=${id}`),
+        ]);
+
+        if (!resPaciente.ok) throw new Error((await resPaciente.json().catch(() => ({}))).message || "No se pudo cargar el paciente");
+        if (!resConsultas.ok) throw new Error((await resConsultas.json().catch(() => ({}))).message || "No se pudieron cargar las consultas");
+
+        const data = await resPaciente.json();
+        const consultas = (await resConsultas.json()) as ConsultaResumen[];
+
         if (!cancelled) {
           setPatient(data);
+          setUltimaConsulta(Array.isArray(consultas) && consultas.length > 0 ? consultas[0] : null);
           setError(null);
         }
       } catch (err: any) {
@@ -107,6 +123,8 @@ export default function PacienteDetalle() {
       <span className="text-sm text-white">{value ?? "—"}</span>
     </div>
   );
+
+  const enProcesoColegiado = (ultimaConsulta?.colegiado ?? 0) === 1;
 
   // Calcular factor de riesgo basado en los datos del paciente
   const resultadoRiesgo = useMemo(() => {
@@ -227,12 +245,6 @@ export default function PacienteDetalle() {
             >
               ← Dashboard
             </Link>
-            <Link
-              href={`/pacientes/${id}/editar`}
-              className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 text-sm text-emerald-100 hover:border-emerald-300/70"
-            >
-              Editar
-            </Link>
           </div>
         </div>
 
@@ -244,6 +256,14 @@ export default function PacienteDetalle() {
           <p className="text-sm text-slate-200/80">Paciente no encontrado.</p>
         ) : (
           <div className="space-y-6">
+            {enProcesoColegiado && (
+              <section className="rounded-2xl border border-amber-400/50 bg-amber-500/15 px-4 py-3">
+                <p className="text-sm font-medium text-amber-100">
+                  ⚠️ Este caso está en proceso de colegiado por el módulo estatal{ultimaConsulta?.fecha_colegiado ? ` · Fecha: ${formatDate(ultimaConsulta.fecha_colegiado)}` : ""}.
+                </p>
+              </section>
+            )}
+
             {/* DATOS GENERALES */}
             <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
               <div className="flex items-center justify-between">

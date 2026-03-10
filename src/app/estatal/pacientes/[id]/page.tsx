@@ -63,11 +63,15 @@ type Consulta = {
   frecuencia_respiratoria: number | null;
   temperatura: number | null;
   indice_choque: number | null;
-  reclasificacion_ro: number | null;
+  estado_conciencia: "alteraciones" | "conciente" | null;
+  hemorragia: "visible o abundante" | "no visible o moderada" | "no visible o escasa" | null;
+  respiracion: "alterada" | "normal" | null;
+  color_piel: "cianotica" | "palida" | "normal" | null;
   puntaje_consulta_parametros: number | null;
   puntaje_total_consulta: number | null;
   riesgo_25_plus: 0 | 1;
-  alarma_obstetrica: string | null;
+  colegiado?: 0 | 1;
+  fecha_colegiado?: string | null;
   diagnostico: string | null;
   plan: string | null;
   notas: string | null;
@@ -169,6 +173,8 @@ export default function DetallePacienteEstatalPage() {
   const [error, setError] = useState<string | null>(null);
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [consultas, setConsultas] = useState<Consulta[]>([]);
+  const [colegiando, setColegiando] = useState(false);
+  const [colegiadoError, setColegiadoError] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("maro:user");
@@ -227,6 +233,48 @@ export default function DetallePacienteEstatalPage() {
   }, [authChecked, pacienteId]);
 
   const ultimaConsulta = consultas[0] || null;
+  const yaColegiado = consultas.some((consulta) => (consulta?.colegiado ?? 0) === 1);
+
+  const handleColegiarCaso = async () => {
+    if (!ultimaConsulta || colegiando || yaColegiado) return;
+
+    setColegiando(true);
+    setColegiadoError(null);
+
+    try {
+      const res = await fetch("/api/estatal/colegiados", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consulta_id: ultimaConsulta.id, paciente_id: paciente?.id }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || "No se pudo colegiar el caso");
+      }
+
+      setConsultas((prev) => {
+        if (!prev.length) return prev;
+        const updated = [...prev];
+        updated[0] = {
+          ...updated[0],
+          colegiado: 1,
+          fecha_colegiado: new Date().toISOString(),
+        };
+        return updated;
+      });
+
+      const syncStamp = String(Date.now());
+      localStorage.setItem("maro:colegiado-updated", syncStamp);
+      window.dispatchEvent(new CustomEvent("maro:colegiado-updated", { detail: syncStamp }));
+
+      router.push("/colegiados");
+    } catch (err: any) {
+      setColegiadoError(err?.message || "Error al colegiar caso");
+    } finally {
+      setColegiando(false);
+    }
+  };
 
   const puntajeTotalActual = useMemo(() => {
     if (ultimaConsulta?.puntaje_total_consulta !== null && ultimaConsulta?.puntaje_total_consulta !== undefined) {
@@ -310,26 +358,63 @@ export default function DetallePacienteEstatalPage() {
     [ultimaConsulta]
   );
 
+  const estatalBackgroundStyle = {
+    backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(15,118,110,0.6)), url(/maro_back_estatal.png)",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat" as const,
+  };
+
   if (!authChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100">
-        Validando acceso estatal...
-      </div>
+      <main className="min-h-screen relative text-slate-100" style={estatalBackgroundStyle}>
+        <div className="absolute inset-0 bg-black/45" aria-hidden />
+        <div className="relative min-h-screen flex items-center justify-center">
+          Validando acceso estatal...
+        </div>
+      </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-6 lg:p-10">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <main
+      className="min-h-screen relative text-slate-100"
+      style={estatalBackgroundStyle}
+    >
+      <div className="absolute inset-0 bg-black/45" aria-hidden />
+
+      <div className="relative max-w-7xl mx-auto space-y-6 p-6 lg:p-10">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-cyan-300/80">Detalle estatal</p>
             <h1 className="text-3xl font-bold">Paciente {paciente?.folio ? `· ${paciente.folio}` : ""}</h1>
           </div>
-          <Link href="/estatal" className="text-sm px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400">
-            Volver a módulo estatal
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleColegiarCaso}
+              disabled={!ultimaConsulta || colegiando || yaColegiado}
+              className="text-sm px-3 py-1.5 rounded-full border border-emerald-500/50 text-emerald-200 hover:border-emerald-300 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {colegiando ? "Colegiando..." : yaColegiado ? "Caso ya colegiado" : "Colegiar caso"}
+            </button>
+            <Link href="/estatal" className="text-sm px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400">
+              Volver a módulo estatal
+            </Link>
+          </div>
         </header>
+
+        {colegiadoError && (
+          <section className="rounded-2xl border border-red-500/40 bg-red-900/20 p-3 text-sm text-red-200">
+            {colegiadoError}
+          </section>
+        )}
+
+        {!loading && yaColegiado && (
+          <section className="rounded-2xl border border-emerald-500/40 bg-emerald-900/20 p-3 text-sm text-emerald-200">
+            Caso colegiado y enviado al módulo de Colegiados.
+          </section>
+        )}
 
         {loading ? (
           <section className="rounded-2xl border border-slate-700 bg-slate-900/60 p-6">
@@ -355,9 +440,7 @@ export default function DetallePacienteEstatalPage() {
             <section className="rounded-3xl border border-slate-700/80 bg-slate-900/70 p-5 shadow-lg space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">Identificación y ubicación</h2>
-                <span className="text-xs text-slate-300 bg-slate-800/80 border border-slate-600 rounded-full px-2.5 py-1">
-                  Sección fija
-                </span>
+
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-3">
                 <Info label="Nombre" value={paciente.nombre_completo} size="wide" />
@@ -586,11 +669,13 @@ export default function DetallePacienteEstatalPage() {
                     size="compact"
                     toneClass={scoreToneClass(ultimaConsultaScores?.indiceChoque ?? 0)}
                   />
-                  <Info label="Reclasificación RO" value={ultimaConsulta.reclasificacion_ro} size="compact" />
+                  <Info label="Estado de conciencia" value={ultimaConsulta.estado_conciencia} size="normal" />
+                  <Info label="Hemorragia" value={ultimaConsulta.hemorragia} size="normal" />
+                  <Info label="Respiración" value={ultimaConsulta.respiracion} size="compact" />
+                  <Info label="Color de piel" value={ultimaConsulta.color_piel} size="compact" />
                   <Info label="Puntaje consulta" value={ultimaConsulta.puntaje_consulta_parametros} size="compact" />
                   <Info label="Puntaje total" value={ultimaConsulta.puntaje_total_consulta} size="compact" />
                   <Info label="Riesgo ≥25" value={ultimaConsulta.riesgo_25_plus ? "Sí" : "No"} size="compact" />
-                  <Info label="Alarma obstétrica" value={ultimaConsulta.alarma_obstetrica} size="normal" />
                   <Info label="Diagnóstico" value={ultimaConsulta.diagnostico} size="wide" />
                   <Info label="Plan" value={ultimaConsulta.plan} size="wide" />
                   <Info label="Notas" value={ultimaConsulta.notas} size="full" />

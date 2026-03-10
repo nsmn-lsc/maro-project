@@ -16,11 +16,13 @@ interface Consulta {
   temperatura: number | null;
   fondo_uterino_acorde_sdg: 0 | 1;
   ivu_repeticion: 0 | 1;
-  reclasificacion_ro: number | null;
+  estado_conciencia: "alteraciones" | "conciente" | null;
+  hemorragia: "visible o abundante" | "no visible o moderada" | "no visible o escasa" | null;
+  respiracion: "alterada" | "normal" | null;
+  color_piel: "cianotica" | "palida" | "normal" | null;
   puntaje_consulta_parametros: number | null;
   puntaje_total_consulta: number | null;
   riesgo_25_plus: 0 | 1;
-  alarma_obstetrica: string | null;
   diagnostico: string | null;
   plan: string | null;
   fecha_referencia: string | null;
@@ -39,8 +41,10 @@ const initialForm = {
   temperatura: "",
   fondo_uterino_acorde_sdg: false,
   ivu_repeticion: false,
-  reclasificacion_ro: "",
-  alarma_obstetrica: "",
+  estado_conciencia: "",
+  hemorragia: "",
+  respiracion: "",
+  color_piel: "",
   diagnostico: "",
   plan: "",
   fecha_referencia: "",
@@ -56,6 +60,7 @@ export default function ConsultasPaciente() {
   const [consultas, setConsultas] = useState<Consulta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [alertaRiesgoEstatal, setAlertaRiesgoEstatal] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [showPuerperioModal, setShowPuerperioModal] = useState(false);
@@ -68,6 +73,18 @@ export default function ConsultasPaciente() {
   }>({ factor_riesgo_antecedentes: 0, factor_riesgo_tamizajes: 0, semanas_gestacion: 0 });
   const [minimizarRiesgo, setMinimizarRiesgo] = useState(false);
   const [minimizarConsulta, setMinimizarConsulta] = useState(false);
+
+  useEffect(() => {
+    if (!alertaRiesgoEstatal) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setAlertaRiesgoEstatal(null);
+    }, 12000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [alertaRiesgoEstatal]);
 
   // Validaciones de signos vitales - ROJAS (críticas)
   const taSistolicaNumber = form.ta_sistolica === "" ? null : Number(form.ta_sistolica);
@@ -166,7 +183,6 @@ export default function ConsultasPaciente() {
     },
   ].filter((item) => item.puntos > 0);
 
-  const reclasificacionRoNumber = form.reclasificacion_ro === "" ? 0 : Number(form.reclasificacion_ro);
   const puntajeRiesgoTotal =
     (pacienteData.factor_riesgo_antecedentes || 0) +
     (pacienteData.factor_riesgo_tamizajes || 0) +
@@ -247,6 +263,7 @@ export default function ConsultasPaciente() {
     e.preventDefault();
     setSaving(true);
     setError(null);
+    setAlertaRiesgoEstatal(null);
     try {
       const numOrNull = (val: string) => (val === "" ? null : Number(val));
       const payload = {
@@ -260,8 +277,10 @@ export default function ConsultasPaciente() {
         temperatura: numOrNull(form.temperatura),
         fondo_uterino_acorde_sdg: form.fondo_uterino_acorde_sdg,
         ivu_repeticion: form.ivu_repeticion,
-        reclasificacion_ro: form.reclasificacion_ro === "" ? null : Number(form.reclasificacion_ro),
-        alarma_obstetrica: form.alarma_obstetrica || null,
+        estado_conciencia: form.estado_conciencia || null,
+        hemorragia: form.hemorragia || null,
+        respiracion: form.respiracion || null,
+        color_piel: form.color_piel || null,
         diagnostico: form.diagnostico || null,
         plan: form.plan || null,
         fecha_referencia: form.fecha_referencia || null,
@@ -280,6 +299,16 @@ export default function ConsultasPaciente() {
       if (!res.ok) {
         const message = (await res.json().catch(() => ({}))).message || "No se pudo guardar";
         throw new Error(message);
+      }
+
+      const savedConsulta = await res.json().catch(() => null);
+      const puntajeGuardado = Number(savedConsulta?.puntaje_total_consulta ?? puntajeRiesgoTotal);
+      const riesgo25 = Number(savedConsulta?.riesgo_25_plus ?? 0) === 1 || puntajeGuardado >= 25;
+
+      if (riesgo25) {
+        setAlertaRiesgoEstatal(
+          "Caso en riesgo alto: el puntaje total es mayor o igual a 25. Este caso pasó automáticamente a nivel estatal y está pendiente la determinación de colegiarse."
+        );
       }
 
       // Si el diagnóstico es puerperio, mostrar modal y preparar redirección
@@ -359,7 +388,6 @@ export default function ConsultasPaciente() {
         </div>
 
         {error && <p className="text-sm text-red-200 bg-red-500/10 border border-red-500/40 rounded-lg px-3 py-2">{error}</p>}
-
         <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
           {/* Formulario principal */}
           <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
@@ -486,24 +514,54 @@ export default function ConsultasPaciente() {
               </div>
 
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Reclasificación de RO (ALTO 4-9, MUY ALTO ≥10)</span>
-                <input
-                  type="number"
+                <span className="text-slate-100">Estado de conciencia</span>
+                <select
                   className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-                  value={form.reclasificacion_ro}
-                  onChange={(e) => handleChange("reclasificacion_ro", e.target.value)}
-                  placeholder="Ej. 6"
-                />
+                  value={form.estado_conciencia}
+                  onChange={(e) => handleChange("estado_conciencia", e.target.value)}
+                >
+                  <option value="">Seleccione</option>
+                  <option value="alteraciones">Alteraciones</option>
+                  <option value="conciente">Conciente</option>
+                </select>
               </label>
-              <label className="space-y-1 text-sm lg:col-span-2">
-                <span className="text-slate-100">Presenta datos de alarma obstétrica (Si / menciónelos)</span>
-                <textarea
-                  rows={2}
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-100">Hemorragia</span>
+                <select
                   className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-                  value={form.alarma_obstetrica}
-                  onChange={(e) => handleChange("alarma_obstetrica", e.target.value)}
-                  placeholder="Describir signos de alarma"
-                />
+                  value={form.hemorragia}
+                  onChange={(e) => handleChange("hemorragia", e.target.value)}
+                >
+                  <option value="">Seleccione</option>
+                  <option value="visible o abundante">Visible o abundante</option>
+                  <option value="no visible o moderada">No visible o moderada</option>
+                  <option value="no visible o escasa">No visible o escasa</option>
+                </select>
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-100">Respiración</span>
+                <select
+                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  value={form.respiracion}
+                  onChange={(e) => handleChange("respiracion", e.target.value)}
+                >
+                  <option value="">Seleccione</option>
+                  <option value="alterada">Alterada</option>
+                  <option value="normal">Normal</option>
+                </select>
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-100">Color de piel</span>
+                <select
+                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  value={form.color_piel}
+                  onChange={(e) => handleChange("color_piel", e.target.value)}
+                >
+                  <option value="">Seleccione</option>
+                  <option value="cianotica">Cianótica</option>
+                  <option value="palida">Pálida</option>
+                  <option value="normal">Normal</option>
+                </select>
               </label>
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Diagnóstico</span>
@@ -699,10 +757,6 @@ export default function ConsultasPaciente() {
                 <span>Consulta (Parámetros):</span>
                 <span>{puntajeConsultaParametros} pts</span>
               </div>
-              <div className="flex justify-between gap-6">
-                <span>Reclasificación RO:</span>
-                <span>{Number.isNaN(reclasificacionRoNumber) ? 0 : reclasificacionRoNumber} pts</span>
-              </div>
             </div>
 
             <div className="mt-3 flex justify-end">
@@ -741,8 +795,10 @@ export default function ConsultasPaciente() {
                     <th className="py-2 pr-4">FR</th>
                     <th className="py-2 pr-4">Temp</th>
                     <th className="py-2 pr-4">Puntaje Total</th>
-                    <th className="py-2 pr-4">RO</th>
-                    <th className="py-2 pr-4">Alarma</th>
+                    <th className="py-2 pr-4">Estado de conciencia</th>
+                    <th className="py-2 pr-4">Hemorragia</th>
+                    <th className="py-2 pr-4">Respiración</th>
+                    <th className="py-2 pr-4">Color de piel</th>
                     <th className="py-2 pr-4">Diagnóstico</th>
                     <th className="py-2 pr-4">Plan</th>
                     <th className="py-2 pr-4">Referencia</th>
@@ -771,8 +827,10 @@ export default function ConsultasPaciente() {
                           {c.puntaje_total_consulta ?? 0} pts
                         </span>
                       </td>
-                      <td className="py-2 pr-4 text-slate-100/80">{c.reclasificacion_ro ?? "—"}</td>
-                      <td className="py-2 pr-4 text-slate-100/80">{c.alarma_obstetrica || "—"}</td>
+                      <td className="py-2 pr-4 text-slate-100/80">{c.estado_conciencia || "—"}</td>
+                      <td className="py-2 pr-4 text-slate-100/80">{c.hemorragia || "—"}</td>
+                      <td className="py-2 pr-4 text-slate-100/80">{c.respiracion || "—"}</td>
+                      <td className="py-2 pr-4 text-slate-100/80">{c.color_piel || "—"}</td>
                       <td className="py-2 pr-4 text-slate-100/80">{formatDiagnostico(c.diagnostico)}</td>
                       <td className="py-2 pr-4 text-slate-100/80">{c.plan || "—"}</td>
                       <td className="py-2 pr-4 text-slate-100/80">
@@ -831,6 +889,42 @@ export default function ConsultasPaciente() {
                 Continuar →
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de alerta de riesgo alto para escalamiento estatal */}
+      {alertaRiesgoEstatal && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/65 backdrop-blur-md">
+          <div className="w-full max-w-2xl rounded-2xl border-2 border-red-400/70 bg-gradient-to-br from-red-900/95 to-red-800/95 p-6 shadow-2xl shadow-red-900/70" role="alert" aria-live="assertive">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-red-500 text-white text-2xl animate-pulse">!</span>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-red-100/90">Alerta prioritaria</p>
+                  <h3 className="text-xl font-bold text-white">Escalamiento automático a nivel estatal</h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAlertaRiesgoEstatal(null)}
+                className="rounded-lg border border-white/25 px-3 py-1.5 text-sm text-white hover:bg-white/10"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <p className="mt-4 text-base font-semibold text-red-50 leading-relaxed">
+              {alertaRiesgoEstatal}
+            </p>
+
+            <p className="mt-3 text-sm text-red-100/85">
+              Nota (feature en desarrollo): se planea un disparador para informar vía Telegram al personal seleccionado por nivel estatal.
+            </p>
+
+            <p className="mt-4 text-xs text-red-100/70">
+              Este aviso se cerrará automáticamente en 12 segundos.
+            </p>
           </div>
         </div>
       )}
