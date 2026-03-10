@@ -46,18 +46,27 @@ export function formatRiesgoTelegramMessage(input: {
   fecha?: Date;
 }): string {
   const fecha = input.fecha || new Date();
-  const dd = String(fecha.getDate()).padStart(2, "0");
-  const mm = String(fecha.getMonth() + 1).padStart(2, "0");
-  const yyyy = fecha.getFullYear();
-  const hh = String(fecha.getHours()).padStart(2, "0");
-  const min = String(fecha.getMinutes()).padStart(2, "0");
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("es-GT", {
+      timeZone: "America/Mexico_City",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(fecha)
+      .map(({ type, value }) => [type, value])
+  );
+  const fechaStr = `${p.day}-${p.month}-${p.year} ${p.hour}:${p.minute}`;
 
   return [
     "ALERTA OBSTETRICA ESTATAL",
     `Folio: ${input.folio || "SIN_FOLIO"}`,
     `Unidad: ${input.unidad || "SIN_UNIDAD"}`,
     `Puntaje total: ${Number(input.puntajeTotal) || 0}`,
-    `Fecha: ${dd}-${mm}-${yyyy} ${hh}:${min}`,
+    `Fecha: ${fechaStr}`,
   ].join("\n");
 }
 
