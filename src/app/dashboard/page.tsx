@@ -32,7 +32,13 @@ export default function Dashboard() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [patientsError, setPatientsError] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState({ total: 0, alto_riesgo: 0, semana_actual: 0 });
+  const [metrics, setMetrics] = useState({
+    total: 0,
+    alto_riesgo: 0,
+    semana_actual: 0,
+    semana_ingreso: 0,
+    semana_sistema: 0,
+  });
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [metricsError, setMetricsError] = useState<string | null>(null);
 
@@ -53,7 +59,7 @@ export default function Dashboard() {
       try {
         const params = new URLSearchParams({ limit: "8" });
         if (user?.clues) params.set("clues_id", user.clues);
-        if (user?.region) params.set("region", user.region);
+        if (!user?.clues && user?.region) params.set("region", user.region);
 
         const res = await fetch(`/api/pacientes?${params.toString()}`);
         if (!res.ok) throw new Error("Error al obtener pacientes");
@@ -82,7 +88,7 @@ export default function Dashboard() {
       try {
         const params = new URLSearchParams({ summary: "metrics" });
         if (user?.clues) params.set("clues_id", user.clues);
-        if (user?.region) params.set("region", user.region);
+        if (!user?.clues && user?.region) params.set("region", user.region);
 
         const fetchMetrics = async (qs: string) => {
           const res = await fetch(`/api/pacientes?${qs}`);
@@ -97,6 +103,8 @@ export default function Dashboard() {
             total: Number(data.total) || 0,
             alto_riesgo: Number(data.alto_riesgo) || 0,
             semana_actual: Number(data.semana_actual) || 0,
+            semana_ingreso: Number(data.semana_ingreso) || 0,
+            semana_sistema: Number(data.semana_sistema) || 0,
           });
           setMetricsError(null);
         }
@@ -215,14 +223,14 @@ export default function Dashboard() {
                 },
                 {
                   title: "Alto riesgo (≥25)",
-                  value: "--",
+                  value: metrics.alto_riesgo,
                   accent: "bg-amber-500/20 text-amber-100",
-                  note: "Sumatoria en construcción",
                 },
                 {
                   title: "Ingresos últimos 7 días",
                   value: metrics.semana_actual,
                   accent: "bg-cyan-500/20 text-cyan-100",
+                  note: `Ingreso: ${metrics.semana_ingreso} | Sistema: ${metrics.semana_sistema}`,
                 },
               ].map((card) => (
                 <div

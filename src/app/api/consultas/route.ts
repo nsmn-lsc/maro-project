@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { dispatchPendingTelegramAlerts } from "@/lib/telegramDispatch";
 import { isTelegramAlertsEnabled } from "@/lib/telegramAlerts";
 
 const TELEGRAM_RIESGO_TIPO = "RIESGO_25_PLUS";
@@ -132,7 +133,8 @@ export async function POST(request: Request) {
     });
 
     const pacienteRows: any = await query(
-      `SELECT factor_riesgo_antecedentes, factor_riesgo_tamizajes, folio, unidad
+      `SELECT factor_riesgo_antecedentes, factor_riesgo_tamizajes, folio, unidad, edad,
+              factor_cardiopatia, factor_nefropatia, factor_hepatopatia, factor_coagulopatias
          FROM cat_pacientes
         WHERE id = ?
         LIMIT 1`,
@@ -146,7 +148,19 @@ export async function POST(request: Request) {
 
     const puntajeAntecedentes = Number(paciente.factor_riesgo_antecedentes) || 0;
     const puntajeTamizajes = Number(paciente.factor_riesgo_tamizajes) || 0;
-    const puntajeTotalConsulta = puntajeAntecedentes + puntajeTamizajes + puntajeConsultaParametros;
+    const tieneAntecedenteRiesgoMayor = [
+      paciente.factor_cardiopatia,
+      paciente.factor_nefropatia,
+      paciente.factor_hepatopatia,
+      paciente.factor_coagulopatias,
+    ].some((value) => Number(value) === 1);
+    const edadPaciente = Number(paciente.edad);
+    const tieneEdadCritica = Number.isFinite(edadPaciente) && edadPaciente >= 10 && edadPaciente <= 14;
+
+    const puntajeCalculado = puntajeAntecedentes + puntajeTamizajes + puntajeConsultaParametros;
+    const puntajeTotalConsulta = (tieneAntecedenteRiesgoMayor || tieneEdadCritica)
+      ? Math.max(25, puntajeCalculado)
+      : puntajeCalculado;
     const riesgo25Plus = puntajeTotalConsulta >= 25 ? 1 : 0;
 
     const payload = {
@@ -210,6 +224,17 @@ export async function POST(request: Request) {
             JSON.stringify({ folio, unidad, puntaje_total: puntajeTotal }),
           ]
         );
+
+        // Dispara un intento inmediato para reducir la latencia respecto al cron.
+        setTimeout(() => {
+          void dispatchPendingTelegramAlerts(1).catch((dispatchError: unknown) => {
+            console.error("No se pudo despachar alerta Telegram inmediatamente", {
+              consultaId,
+              pacienteId,
+              error: dispatchError instanceof Error ? dispatchError.message : String(dispatchError),
+            });
+          });
+        }, 0);
       } catch (enqueueError: any) {
         // El guardado clinico no debe fallar por problemas de la cola de alertas.
         console.error("No se pudo encolar alerta Telegram", {

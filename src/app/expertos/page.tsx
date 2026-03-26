@@ -23,7 +23,7 @@ export default function ExpertosClinicosMARO() {
     try {
       const session = JSON.parse(stored) as { nivel?: number };
       if ((session.nivel ?? 0) < 3) {
-        router.replace("/dashboard");
+        router.replace((session.nivel ?? 0) >= 2 ? "/region" : "/dashboard");
         return;
       }
       setAuthChecked(true);

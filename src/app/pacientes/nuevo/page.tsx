@@ -6,6 +6,7 @@ import ContadorRiesgo from "@/app/components/ContadorRiesgo";
 import { useSaveFactorRiesgoPaciente } from "@/lib/hooks/useSaveFactorRiesgoPaciente";
 
 type SessionInfo = {
+  nivel?: number;
   clues?: string;
   unidad?: string;
   region?: string;
@@ -24,6 +25,9 @@ export default function NuevoPaciente() {
   const [mostrarFactoresEpid, setMostrarFactoresEpid] = useState(false);
   const [puntajeFactorAntecedentes, setPuntajeFactorAntecedentes] = useState(0);
   const [puntajeFactorTamizajes, setPuntajeFactorTamizajes] = useState(0);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showEdadAlertaModal, setShowEdadAlertaModal] = useState(false);
+  const [edadAlertaConfirmada, setEdadAlertaConfirmada] = useState(false);
 
   const [form, setForm] = useState({
     // Identidad
@@ -56,7 +60,6 @@ export default function NuevoPaciente() {
     fpp: "",
     semanas_gestacion: "",
     sdg_ingreso: "",
-    riesgo_obstetrico_ingreso: "",
     tipo_riesgo_social: "Bajo",
     factores_riesgo_epid: "ninguno",
     imc_inicial: "",
@@ -99,25 +102,39 @@ export default function NuevoPaciente() {
 
   useEffect(() => {
     const stored = localStorage.getItem("maro:user");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setSession(parsed);
-        setForm((prev) => ({
-          ...prev,
-          clues_id: parsed.clues || prev.clues_id,
-          unidad: parsed.unidad || prev.unidad,
-          municipio: parsed.municipio || prev.municipio,
-          region: parsed.region || prev.region,
-        }));
-        
-        // Generar folio automáticamente basado en CLUES
-        if (parsed.clues) {
-          generarFolio(parsed.clues);
-        }
-      } catch (_) {
-        // ignore
+    if (!stored) {
+      router.replace("/inicial");
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as SessionInfo;
+      const nivel = parsed.nivel ?? 0;
+
+      if (nivel >= 3) {
+        router.replace("/estatal");
+        return;
       }
+      if (nivel >= 2) {
+        router.replace("/region");
+        return;
+      }
+
+      setSession(parsed);
+      setForm((prev) => ({
+        ...prev,
+        clues_id: parsed.clues || prev.clues_id,
+        unidad: parsed.unidad || prev.unidad,
+        municipio: parsed.municipio || prev.municipio,
+        region: parsed.region || prev.region,
+      }));
+
+      // Generar folio automáticamente basado en CLUES
+      if (parsed.clues) {
+        generarFolio(parsed.clues);
+      }
+    } catch {
+      router.replace("/inicial");
     }
   }, []);
 
@@ -140,11 +157,33 @@ export default function NuevoPaciente() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const computeFppFromFum = (fumValue: string) => {
-    const base = new Date(fumValue);
-    if (Number.isNaN(base.getTime())) return "";
-    base.setDate(base.getDate() + 280);
-    return base.toISOString().slice(0, 10);
+  const computeGestacionDataFromFum = (fumValue: string) => {
+    if (!fumValue) {
+      return {
+        fpp: "",
+        semanas_gestacion: "",
+      };
+    }
+
+    const base = new Date(`${fumValue}T00:00:00Z`);
+    if (Number.isNaN(base.getTime())) {
+      return {
+        fpp: "",
+        semanas_gestacion: "",
+      };
+    }
+
+    const fppDate = new Date(base);
+    fppDate.setUTCDate(fppDate.getUTCDate() + 280);
+
+    const now = new Date();
+    const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const diffInWeeks = Math.max(0, (todayUtc.getTime() - base.getTime()) / (1000 * 60 * 60 * 24 * 7));
+
+    return {
+      fpp: fppDate.toISOString().slice(0, 10),
+      semanas_gestacion: diffInWeeks.toFixed(1),
+    };
   };
 
   const handleToggle = (field: string) => {
@@ -157,22 +196,49 @@ export default function NuevoPaciente() {
     return Number.isNaN(num) ? null : num;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const edadNumero = Number(form.edad);
+  const edadEnRangoAlerta = Number.isFinite(edadNumero) && edadNumero >= 10 && edadNumero <= 14;
+
+  useEffect(() => {
+    if (edadEnRangoAlerta && !edadAlertaConfirmada) {
+      setShowEdadAlertaModal(true);
+      return;
+    }
+
+    if (!edadEnRangoAlerta) {
+      setShowEdadAlertaModal(false);
+      setEdadAlertaConfirmada(false);
+    }
+  }, [edadEnRangoAlerta, edadAlertaConfirmada]);
+
+  // Validar y abrir modal de confirmación
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError(null);
-    setSuccess(null);
+
+    if (edadEnRangoAlerta && !edadAlertaConfirmada) {
+      setShowEdadAlertaModal(true);
+      return;
+    }
 
     if (!form.nombre_completo.trim()) {
       setError("El nombre es obligatorio");
-      setSaving(false);
       return;
     }
     if (!form.clues_id.trim()) {
       setError("La CLUES es obligatoria");
-      setSaving(false);
       return;
     }
+
+    setShowConfirmModal(true);
+  };
+
+  // Ejecutar el guardado real tras confirmación
+  const executeSave = async () => {
+    setShowConfirmModal(false);
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
 
     try {
       const res = await fetch("/api/pacientes", {
@@ -181,9 +247,7 @@ export default function NuevoPaciente() {
         body: JSON.stringify({
           ...form,
           edad: toNumberOrNull(form.edad),
-          semanas_gestacion: toNumberOrNull(form.semanas_gestacion),
           sdg_ingreso: toNumberOrNull(form.sdg_ingreso),
-          riesgo_obstetrico_ingreso: toNumberOrNull(form.riesgo_obstetrico_ingreso),
           menarca: toNumberOrNull(form.menarca),
           gestas: toNumberOrNull(form.gestas),
           partos: toNumberOrNull(form.partos),
@@ -243,8 +307,8 @@ export default function NuevoPaciente() {
       setTimeout(() => {
         router.push("/dashboard");
       }, 800);
-    } catch (err: any) {
-      setError(err.message || "Error desconocido");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
       setSaving(false);
     }
   };
@@ -450,8 +514,13 @@ export default function NuevoPaciente() {
                   value={form.fum}
                   onChange={(e) => {
                     const value = e.target.value;
-                    const fpp = computeFppFromFum(value);
-                    setForm((prev) => ({ ...prev, fum: value, fpp }));
+                    const gestacionData = computeGestacionDataFromFum(value);
+                    setForm((prev) => ({
+                      ...prev,
+                      fum: value,
+                      fpp: gestacionData.fpp,
+                      semanas_gestacion: gestacionData.semanas_gestacion,
+                    }));
                   }}
                 />
               </label>
@@ -463,8 +532,8 @@ export default function NuevoPaciente() {
                   min={0}
                   className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
                   value={form.semanas_gestacion}
-                  onChange={(e) => handleChange("semanas_gestacion", e.target.value)}
-                  placeholder="ej. 30.5"
+                  readOnly
+                  placeholder="Se calcula desde la FUM"
                 />
               </label>
               <label className="space-y-1 text-sm">
@@ -473,7 +542,7 @@ export default function NuevoPaciente() {
                   type="date"
                   className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
                   value={form.fpp}
-                  onChange={(e) => handleChange("fpp", e.target.value)}
+                  readOnly
                 />
               </label>
 
@@ -485,16 +554,6 @@ export default function NuevoPaciente() {
                   className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
                   value={form.sdg_ingreso}
                   onChange={(e) => handleChange("sdg_ingreso", e.target.value)}
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Riesgo obstétrico ingreso</span>
-                <input
-                  type="number"
-                  min={0}
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-                  value={form.riesgo_obstetrico_ingreso}
-                  onChange={(e) => handleChange("riesgo_obstetrico_ingreso", e.target.value)}
                 />
               </label>
               <label className="space-y-1 text-sm">
@@ -875,6 +934,147 @@ export default function NuevoPaciente() {
           setPuntajeFactorTamizajes(puntosTamizajes);
         }}
       />
+
+      {/* MODAL DE CONFIRMACIÓN */}
+      {showConfirmModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-modal-title"
+        >
+          <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-slate-900/95 shadow-2xl backdrop-blur-sm">
+            {/* Encabezado */}
+            <div className="border-b border-white/10 px-6 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80 mb-1">Confirmación</p>
+              <h2 id="confirm-modal-title" className="text-lg font-semibold text-white">
+                ¿Confirmar registro de paciente?
+              </h2>
+              <p className="text-sm text-slate-300/70 mt-0.5">
+                Revisa los datos antes de guardar. Esta acción creará el expediente.
+              </p>
+            </div>
+
+            {/* Resumen de datos */}
+            <div className="px-6 py-4 space-y-3">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <div className="col-span-2">
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Nombre completo</dt>
+                  <dd className="text-white font-medium mt-0.5">{form.nombre_completo || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">CURP</dt>
+                  <dd className="text-white font-mono mt-0.5">{form.curp || "No capturado"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Folio</dt>
+                  <dd className="text-emerald-300 font-medium mt-0.5">{form.folio || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Unidad / CLUES</dt>
+                  <dd className="text-white mt-0.5">{form.unidad || "—"} / {form.clues_id || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Edad</dt>
+                  <dd className="text-white mt-0.5">{form.edad ? `${form.edad} años` : "No capturada"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">FUM</dt>
+                  <dd className="text-white mt-0.5">{form.fum || "No capturada"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Semanas gestación</dt>
+                  <dd className="text-white mt-0.5">{form.semanas_gestacion ? `${form.semanas_gestacion} sdg` : "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Fecha ingreso CPN</dt>
+                  <dd className="text-white mt-0.5">{form.fecha_ingreso_cpn || "No capturada"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Riesgo social</dt>
+                  <dd className="text-white mt-0.5">{form.tipo_riesgo_social}</dd>
+                </div>
+              </dl>
+
+              {(puntajeFactorAntecedentes + puntajeFactorTamizajes) > 0 && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                  <p className="text-xs text-amber-200/80 uppercase tracking-wide">Factor de riesgo</p>
+                  <p className="text-sm text-amber-100 mt-0.5">
+                    Puntaje antecedentes: <strong>{puntajeFactorAntecedentes}</strong> ·
+                    Tamizajes: <strong>{puntajeFactorTamizajes}</strong>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3 border-t border-white/10 px-6 py-4">
+              <button
+                type="button"
+                onClick={executeSave}
+                className="flex-1 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-emerald-400 transition-colors"
+              >
+                Confirmar y guardar
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 rounded-lg border border-white/20 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+              >
+                Revisar captura
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ALERTA POR EDAD 10-14 */}
+      {showEdadAlertaModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="edad-alerta-modal-title"
+        >
+          <div className="w-full max-w-lg rounded-2xl border-2 border-rose-400/60 bg-gradient-to-br from-rose-900/95 to-rose-800/95 shadow-2xl">
+            <div className="border-b border-white/15 px-6 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-rose-100/90">Alerta prioritaria</p>
+              <h2 id="edad-alerta-modal-title" className="mt-1 text-xl font-semibold text-white">
+                Paciente de 10 a 14 años
+              </h2>
+            </div>
+
+            <div className="px-6 py-5 space-y-3 text-rose-50">
+              <p className="text-sm text-rose-100/90">
+                Se detectó edad de <strong>{form.edad || "—"} años</strong>. Considera las siguientes acciones:
+              </p>
+
+              <ul className="space-y-2 text-sm">
+                <li className="rounded-lg border border-rose-300/35 bg-rose-950/35 px-3 py-2">Aviso al MP</li>
+                <li className="rounded-lg border border-rose-300/35 bg-rose-950/35 px-3 py-2">Ofrecer Aborto Seguro</li>
+                <li className="rounded-lg border border-rose-300/35 bg-rose-950/35 px-3 py-2">Enviar a Segundo nivel</li>
+              </ul>
+
+              <p className="rounded-lg border border-amber-400/50 bg-amber-900/40 px-3 py-2 text-xs text-amber-200 font-medium">
+                ⚠️ Este caso se considerará de alto riesgo al capturar la <strong>primera consulta</strong> y, con ese registro, se enviará automáticamente al panel estatal.
+              </p>
+            </div>
+
+            <div className="border-t border-white/15 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setEdadAlertaConfirmada(true);
+                  setShowEdadAlertaModal(false);
+                }}
+                className="w-full rounded-lg bg-rose-300 px-4 py-2.5 text-sm font-semibold text-rose-950 hover:bg-rose-200 transition-colors"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

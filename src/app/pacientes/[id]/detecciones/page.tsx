@@ -31,6 +31,7 @@ export default function DeteccionesPage() {
   const params = useParams();
   const router = useRouter();
   const pacienteId = params?.id as string;
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [detecciones, setDetecciones] = useState<Detecciones | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,6 +41,32 @@ export default function DeteccionesPage() {
   const [pacienteFolio, setPacienteFolio] = useState<string | null>(null);
 
   useEffect(() => {
+    const stored = localStorage.getItem("maro:user");
+    if (!stored) {
+      router.replace("/inicial");
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as { nivel?: number };
+      const nivel = parsed.nivel ?? 0;
+      if (nivel >= 3) {
+        router.replace(`/estatal/pacientes/${pacienteId}`);
+        return;
+      }
+      if (nivel >= 2) {
+        router.replace(`/region/pacientes/${pacienteId}`);
+        return;
+      }
+      setAuthChecked(true);
+    } catch {
+      router.replace("/inicial");
+    }
+  }, [pacienteId, router]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+
     const loadPaciente = async () => {
       try {
         const res = await fetch(`/api/pacientes?id=${pacienteId}`);
@@ -52,7 +79,7 @@ export default function DeteccionesPage() {
       }
     };
     if (pacienteId) loadPaciente();
-  }, [pacienteId]);
+  }, [authChecked, pacienteId]);
 
   const load = async () => {
     setLoading(true);
@@ -79,9 +106,18 @@ export default function DeteccionesPage() {
   };
 
   useEffect(() => {
+    if (!authChecked) return;
     if (pacienteId) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pacienteId]);
+  }, [authChecked, pacienteId]);
+
+  if (!authChecked) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        Validando acceso...
+      </main>
+    );
+  }
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));

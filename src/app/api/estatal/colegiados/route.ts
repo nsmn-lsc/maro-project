@@ -38,7 +38,12 @@ export async function GET() {
           c.fecha_consulta,
           c.puntaje_total_consulta,
           c.riesgo_25_plus,
-          ${fechaColegiadoExpr} AS fecha_colegiado
+           ${fechaColegiadoExpr} AS fecha_colegiado,
+           plan.id AS plan_id,
+           COALESCE(plan.estatus, 'borrador') AS plan_estatus,
+           COALESCE(actions.total_acciones, 0) AS acciones_total,
+           COALESCE(actions.acciones_cumplidas, 0) AS acciones_cumplidas,
+           plan.updated_at AS plan_actualizado_en
        FROM consultas_prenatales c
        INNER JOIN cat_pacientes cp ON cp.id = c.paciente_id
          INNER JOIN (
@@ -47,6 +52,15 @@ export async function GET() {
           WHERE COALESCE(colegiado, 0) = 1
           GROUP BY paciente_id
          ) last_c ON last_c.last_consulta_id = c.id
+         LEFT JOIN colegiados_planes plan ON plan.consulta_id = c.id
+         LEFT JOIN (
+           SELECT
+            plan_id,
+            COUNT(*) AS total_acciones,
+            SUM(CASE WHEN COALESCE(cumplido, 0) = 1 THEN 1 ELSE 0 END) AS acciones_cumplidas
+           FROM colegiados_acciones
+           GROUP BY plan_id
+         ) actions ON actions.plan_id = plan.id
        WHERE COALESCE(c.colegiado, 0) = 1
        ORDER BY fecha_colegiado DESC, c.id DESC
        LIMIT 1000`

@@ -30,8 +30,11 @@ export default function AccesoInicial() {
 
     try {
       const usuarioNormalizado = usuario.trim();
-      const esIntentoEstatal = usuarioNormalizado.toLowerCase().includes("estatal");
+      const usuarioLower = usuarioNormalizado.toLowerCase();
+      const esIntentoEstatal = usuarioLower.includes("estatal");
+      const esIntentoRegional = usuarioLower.includes("regional");
 
+      // ── Nivel 3: Estatal ─────────────────────────────────────────
       const authEstatalRes = await fetch("/api/auth/estatal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,6 +53,26 @@ export default function AccesoInicial() {
         throw new Error(authError?.message || "Credenciales estatales inválidas");
       }
 
+      // ── Nivel 2: Regional ─────────────────────────────────────────
+      const authRegionalRes = await fetch("/api/auth/regional", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario: usuarioNormalizado, password }),
+      });
+
+      if (authRegionalRes.ok) {
+        const regionalSession = await authRegionalRes.json();
+        localStorage.setItem("maro:user", JSON.stringify(regionalSession));
+        router.push("/region");
+        return;
+      }
+
+      if (esIntentoRegional) {
+        const authError = await authRegionalRes.json().catch(() => null);
+        throw new Error(authError?.message || "Credenciales regionales inválidas");
+      }
+
+      // ── Nivel 1: Unidad (CLUES en catálogo) ──────────────────────
       const res = await fetch(`/api/unidades/${encodeURIComponent(usuarioNormalizado)}`);
       if (!res.ok) {
         if (res.status >= 500) {
@@ -69,10 +92,11 @@ export default function AccesoInicial() {
       };
 
       localStorage.setItem("maro:user", JSON.stringify(session));
+      // CLUES con NIVEL>=2 en catálogo también van a /region como fallback
       const destino = data.NIVEL >= 2 ? "/region" : "/dashboard";
       router.push(destino);
-    } catch (err: any) {
-      setError(err?.message || "Error al validar acceso");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al validar acceso");
     } finally {
       setIsSubmitting(false);
     }

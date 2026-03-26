@@ -14,10 +14,12 @@ type Paciente = {
   id: number;
   folio: string | null;
   nombre_completo: string | null;
+  edad?: number | null;
   clues_id: string;
   unidad: string | null;
   municipio: string | null;
   region: string | null;
+  edad?: number | null;
   fecha_ingreso_cpn: string | null;
   sdg_ingreso: number | null;
   telefono: string | null;
@@ -186,7 +188,7 @@ export default function DetallePacienteEstatalPage() {
     try {
       const session = JSON.parse(stored) as SessionInfo;
       if ((session.nivel ?? 0) < 3) {
-        router.replace("/dashboard");
+        router.replace((session.nivel ?? 0) >= 2 ? "/region" : "/dashboard");
         return;
       }
       setAuthChecked(true);
@@ -266,9 +268,11 @@ export default function DetallePacienteEstatalPage() {
 
       const syncStamp = String(Date.now());
       localStorage.setItem("maro:colegiado-updated", syncStamp);
+      localStorage.setItem("maro:estatal-riesgo-updated", syncStamp);
       window.dispatchEvent(new CustomEvent("maro:colegiado-updated", { detail: syncStamp }));
+      window.dispatchEvent(new CustomEvent("maro:estatal-riesgo-updated", { detail: syncStamp }));
 
-      router.push("/colegiados");
+      router.push(`/colegiados/${ultimaConsulta.id}`);
     } catch (err: any) {
       setColegiadoError(err?.message || "Error al colegiar caso");
     } finally {
@@ -412,7 +416,17 @@ export default function DetallePacienteEstatalPage() {
 
         {!loading && yaColegiado && (
           <section className="rounded-2xl border border-emerald-500/40 bg-emerald-900/20 p-3 text-sm text-emerald-200">
-            Caso colegiado y enviado al módulo de Colegiados.
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>Caso colegiado y enviado al módulo de Colegiados.</span>
+              {ultimaConsulta?.id ? (
+                <Link
+                  href={`/colegiados/${ultimaConsulta.id}`}
+                  className="rounded-full border border-emerald-400/40 px-3 py-1 text-xs text-emerald-100 hover:border-emerald-300"
+                >
+                  Capturar acciones
+                </Link>
+              ) : null}
+            </div>
           </section>
         )}
 
@@ -445,6 +459,16 @@ export default function DetallePacienteEstatalPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-3">
                 <Info label="Nombre" value={paciente.nombre_completo} size="wide" />
                 <Info label="Folio" value={paciente.folio} size="compact" />
+                <Info
+                  label="Edad"
+                  value={paciente.edad !== null && paciente.edad !== undefined ? `${paciente.edad} años` : null}
+                  size="compact"
+                  toneClass={
+                    Number(paciente.edad) >= 10 && Number(paciente.edad) <= 14
+                      ? "border-red-500/50 bg-red-900/30 text-red-200"
+                      : undefined
+                  }
+                />
                 <Info label="CLUES" value={paciente.clues_id} size="compact" />
                 <Info label="Región" value={paciente.region} size="compact" />
                 <Info label="Municipio" value={paciente.municipio} size="compact" />

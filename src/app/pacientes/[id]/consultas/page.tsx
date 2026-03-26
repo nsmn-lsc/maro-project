@@ -56,11 +56,13 @@ export default function ConsultasPaciente() {
   const params = useParams();
   const router = useRouter();
   const pacienteId = params?.id as string;
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [consultas, setConsultas] = useState<Consulta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [alertaRiesgoEstatal, setAlertaRiesgoEstatal] = useState<string | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [showPuerperioModal, setShowPuerperioModal] = useState(false);
@@ -70,9 +72,47 @@ export default function ConsultasPaciente() {
     factor_riesgo_antecedentes: number;
     factor_riesgo_tamizajes: number;
     semanas_gestacion: number;
-  }>({ factor_riesgo_antecedentes: 0, factor_riesgo_tamizajes: 0, semanas_gestacion: 0 });
+    edad: number | null;
+    factor_cardiopatia: number;
+    factor_nefropatia: number;
+    factor_hepatopatia: number;
+    factor_coagulopatias: number;
+  }>({
+    factor_riesgo_antecedentes: 0,
+    factor_riesgo_tamizajes: 0,
+    semanas_gestacion: 0,
+    edad: null,
+    factor_cardiopatia: 0,
+    factor_nefropatia: 0,
+    factor_hepatopatia: 0,
+    factor_coagulopatias: 0,
+  });
   const [minimizarRiesgo, setMinimizarRiesgo] = useState(false);
   const [minimizarConsulta, setMinimizarConsulta] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("maro:user");
+    if (!stored) {
+      router.replace("/inicial");
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as { nivel?: number };
+      const nivel = parsed.nivel ?? 0;
+      if (nivel >= 3) {
+        router.replace(`/estatal/pacientes/${pacienteId}`);
+        return;
+      }
+      if (nivel >= 2) {
+        router.replace(`/region/pacientes/${pacienteId}`);
+        return;
+      }
+      setAuthChecked(true);
+    } catch {
+      router.replace("/inicial");
+    }
+  }, [pacienteId, router]);
 
   useEffect(() => {
     if (!alertaRiesgoEstatal) return;
@@ -85,6 +125,14 @@ export default function ConsultasPaciente() {
       window.clearTimeout(timeoutId);
     };
   }, [alertaRiesgoEstatal]);
+
+  useEffect(() => {
+    if (alertaRiesgoEstatal) return;
+    if (!pendingPuerperioRedirect) return;
+    if (showPuerperioModal) return;
+
+    setShowPuerperioModal(true);
+  }, [alertaRiesgoEstatal, pendingPuerperioRedirect, showPuerperioModal]);
 
   // Validaciones de signos vitales - ROJAS (críticas)
   const taSistolicaNumber = form.ta_sistolica === "" ? null : Number(form.ta_sistolica);
@@ -188,6 +236,32 @@ export default function ConsultasPaciente() {
     (pacienteData.factor_riesgo_tamizajes || 0) +
     puntajeConsultaParametros;
 
+  const tieneAntecedenteRiesgoMayor = [
+    pacienteData.factor_cardiopatia,
+    pacienteData.factor_nefropatia,
+    pacienteData.factor_hepatopatia,
+    pacienteData.factor_coagulopatias,
+  ].some((value) => Number(value) === 1);
+
+  const factoresRiesgoMayorActivos = [
+    { activo: Number(pacienteData.factor_cardiopatia) === 1, label: "Cardiopatía" },
+    { activo: Number(pacienteData.factor_nefropatia) === 1, label: "Nefropatía" },
+    { activo: Number(pacienteData.factor_hepatopatia) === 1, label: "Hepatopatía" },
+    { activo: Number(pacienteData.factor_coagulopatias) === 1, label: "Coagulopatías" },
+  ]
+    .filter((item) => item.activo)
+    .map((item) => item.label);
+
+  const edadPaciente = Number(pacienteData.edad);
+  const tieneEdadCritica = Number.isFinite(edadPaciente) && edadPaciente >= 10 && edadPaciente <= 14;
+
+  const criteriosEscalamientoActivos = [
+    ...(tieneEdadCritica ? [`Edad crítica (${edadPaciente} años)`] : []),
+    ...factoresRiesgoMayorActivos,
+  ];
+
+  const tieneEscalamientoForzado = criteriosEscalamientoActivos.length > 0;
+
   // Validaciones AMARILLAS (advertencia) - solo si no está en rojo
   const taSistolicaAdvertencia = taSistolicaNumber !== null && !taSistolicaAlerta && (taSistolicaNumber >= 140 && taSistolicaNumber <= 159);
   const taDiastolicaAdvertencia = taDiastolicaNumber !== null && !taDiastolicaAlerta && (taDiastolicaNumber >= 90 && taDiastolicaNumber <= 109);
@@ -195,6 +269,8 @@ export default function ConsultasPaciente() {
   const temperaturaAdvertencia = temperaturaNumber !== null && !temperaturaAlerta && (temperaturaNumber >= 37.5 && temperaturaNumber <= 38.9);
 
   useEffect(() => {
+    if (!authChecked) return;
+
     const loadPaciente = async () => {
       try {
         const res = await fetch(`/api/pacientes?id=${pacienteId}`);
@@ -207,6 +283,11 @@ export default function ConsultasPaciente() {
             factor_riesgo_antecedentes: data.factor_riesgo_antecedentes || 0,
             factor_riesgo_tamizajes: data.factor_riesgo_tamizajes || 0,
             semanas_gestacion: data.semanas_gestacion || 0,
+            edad: data.edad === null || data.edad === undefined || data.edad === "" ? null : Number(data.edad),
+            factor_cardiopatia: data.factor_cardiopatia || 0,
+            factor_nefropatia: data.factor_nefropatia || 0,
+            factor_hepatopatia: data.factor_hepatopatia || 0,
+            factor_coagulopatias: data.factor_coagulopatias || 0,
           });
         }
       } catch (err) {
@@ -214,7 +295,7 @@ export default function ConsultasPaciente() {
       }
     };
     if (pacienteId) loadPaciente();
-  }, [pacienteId]);
+  }, [authChecked, pacienteId]);
 
   const loadConsultas = async () => {
     setLoading(true);
@@ -232,9 +313,18 @@ export default function ConsultasPaciente() {
   };
 
   useEffect(() => {
+    if (!authChecked) return;
     if (pacienteId) loadConsultas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pacienteId]);
+  }, [authChecked, pacienteId]);
+
+  if (!authChecked) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        Validando acceso...
+      </main>
+    );
+  }
 
   const formatDate = (value: string | null) => {
     if (!value) return "—";
@@ -259,11 +349,20 @@ export default function ConsultasPaciente() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setAlertaRiesgoEstatal(null);
+
+    setShowConfirmModal(true);
+  };
+
+  const executeSave = async () => {
+    setShowConfirmModal(false);
     setSaving(true);
     setError(null);
     setAlertaRiesgoEstatal(null);
+
     try {
       const numOrNull = (val: string) => (val === "" ? null : Number(val));
       const payload = {
@@ -306,12 +405,17 @@ export default function ConsultasPaciente() {
       const riesgo25 = Number(savedConsulta?.riesgo_25_plus ?? 0) === 1 || puntajeGuardado >= 25;
 
       if (riesgo25) {
+        const syncStamp = String(Date.now());
+        localStorage.setItem("maro:estatal-riesgo-updated", syncStamp);
+        window.dispatchEvent(new CustomEvent("maro:estatal-riesgo-updated", { detail: syncStamp }));
+
         setAlertaRiesgoEstatal(
           "Caso en riesgo alto: el puntaje total es mayor o igual a 25. Este caso pasó automáticamente a nivel estatal y está pendiente la determinación de colegiarse."
         );
       }
 
-      // Si el diagnóstico es puerperio, mostrar modal y preparar redirección
+      // Si el diagnóstico es puerperio, preparar redirección.
+      // Cuando hay riesgo >=25, primero se muestra la alerta estatal y luego este modal.
       if (form.diagnostico === "puerperio") {
         // Obtener el folio del paciente actual
         const pacienteRes = await fetch(`/api/pacientes?id=${pacienteId}`);
@@ -322,14 +426,17 @@ export default function ConsultasPaciente() {
         } else {
           setPendingPuerperioRedirect(`/puerperio/nuevo?paciente_id=${pacienteId}`);
         }
-        setShowPuerperioModal(true);
+
+        if (!riesgo25) {
+          setShowPuerperioModal(true);
+        }
         return;
       }
 
       setForm(initialForm);
       await loadConsultas();
-    } catch (err: any) {
-      setError(err.message || "Error desconocido");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setSaving(false);
     }
@@ -378,6 +485,12 @@ export default function ConsultasPaciente() {
             <p className="text-slate-200/80 max-w-3xl mt-2">Captura de consultas prenatales y seguimiento clínico.</p>
           </div>
           <div className="flex gap-2">
+            <Link
+              href="/dashboard"
+              className="rounded-full border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10"
+            >
+              ← Dashboard
+            </Link>
             <Link
               href={`/pacientes/${pacienteId}`}
               className="rounded-full border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10"
@@ -612,6 +725,12 @@ export default function ConsultasPaciente() {
                 />
               </label>
             </div>
+
+            {tieneEscalamientoForzado && (
+              <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                Aviso de escalamiento: criterios activos <strong>{criteriosEscalamientoActivos.join(", ")}</strong>. Al guardar esta consulta se clasificará como riesgo alto y se notificará al nivel estatal.
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button
@@ -893,6 +1012,84 @@ export default function ConsultasPaciente() {
         </div>
       )}
 
+      {/* Modal de confirmación de guardado */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-2xl border border-emerald-300/30 bg-slate-900/95 shadow-2xl">
+            <div className="border-b border-white/10 px-6 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/85">Confirmación</p>
+              <h3 className="mt-1 text-xl font-semibold text-white">¿Guardar esta consulta?</h3>
+              <p className="mt-1 text-sm text-slate-300/80">
+                Revisa los datos clave antes de continuar.
+              </p>
+            </div>
+
+            <div className="px-6 py-4">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Folio</dt>
+                  <dd className="text-white mt-0.5">{pacienteFolio || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Fecha consulta</dt>
+                  <dd className="text-white mt-0.5">{form.fecha_consulta || "No capturada"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">T/A</dt>
+                  <dd className="text-white mt-0.5">{form.ta_sistolica || "—"}/{form.ta_diastolica || "—"} mmHg</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Frecuencia cardiaca</dt>
+                  <dd className="text-white mt-0.5">{form.frecuencia_cardiaca || "—"} lpm</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Índice choque</dt>
+                  <dd className="text-white mt-0.5">{form.indice_choque || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Temperatura</dt>
+                  <dd className="text-white mt-0.5">{form.temperatura || "—"} °C</dd>
+                </div>
+                <div className="col-span-2 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2">
+                  <dt className="text-amber-200 text-xs uppercase tracking-wide">Riesgo MARO estimado</dt>
+                  <dd className="text-amber-100 mt-0.5">
+                    Total estimado: <strong>{puntajeRiesgoTotal}</strong> puntos
+                    {puntajeRiesgoTotal >= 25 ? " (posible alerta estatal)" : ""}
+                  </dd>
+                </div>
+                {tieneEscalamientoForzado && (
+                  <div className="col-span-2 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2">
+                    <dt className="text-red-200 text-xs uppercase tracking-wide">Advertencia de escalamiento</dt>
+                    <dd className="text-red-100 mt-0.5">
+                      Criterios activos: <strong>{criteriosEscalamientoActivos.join(", ")}</strong>. Este caso será enviado a nivel estatal al guardar la consulta.
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+
+            <div className="flex gap-3 border-t border-white/10 px-6 py-4">
+              <button
+                type="button"
+                onClick={executeSave}
+                className="flex-1 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-emerald-400"
+                disabled={saving}
+              >
+                {saving ? "Guardando..." : "Guardar consulta"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 rounded-lg border border-white/20 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+                disabled={saving}
+              >
+                Revisar captura
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de alerta de riesgo alto para escalamiento estatal */}
       {alertaRiesgoEstatal && (
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/65 backdrop-blur-md">
@@ -908,7 +1105,7 @@ export default function ConsultasPaciente() {
               <button
                 type="button"
                 onClick={() => setAlertaRiesgoEstatal(null)}
-                className="rounded-lg border border-white/25 px-3 py-1.5 text-sm text-white hover:bg-white/10"
+                className="rounded-lg border border-white/25 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10"
               >
                 Cerrar
               </button>
@@ -918,8 +1115,17 @@ export default function ConsultasPaciente() {
               {alertaRiesgoEstatal}
             </p>
 
+            {tieneEscalamientoForzado && (
+              <div className="mt-3 rounded-lg border border-red-300/35 bg-red-950/35 px-3 py-2">
+                <p className="text-xs uppercase tracking-[0.18em] text-red-100/80">Criterios activos</p>
+                <p className="mt-1 text-sm text-red-50">
+                  {criteriosEscalamientoActivos.join(", ")}
+                </p>
+              </div>
+            )}
+
             <p className="mt-3 text-sm text-red-100/85">
-              Nota (feature en desarrollo): se planea un disparador para informar vía Telegram al personal seleccionado por nivel estatal.
+              Por favor, contacte al equipo regional de salud correspondiente para seguimiento.
             </p>
 
             <p className="mt-4 text-xs text-red-100/70">

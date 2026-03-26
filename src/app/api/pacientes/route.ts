@@ -1,6 +1,49 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
+function parseDateOnly(dateValue: string): Date | null {
+  if (!dateValue) return null;
+
+  const [year, month, day] = dateValue.split("-").map(Number);
+  if (!year || !month || !day) return null;
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateOnly(dateValue: Date): string {
+  return dateValue.toISOString().slice(0, 10);
+}
+
+function roundToSingleDecimal(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function computeGestacionDesdeFum(fum: string | null | undefined) {
+  const fumDate = parseDateOnly(String(fum || "").trim());
+  if (!fumDate) {
+    return {
+      fum: null,
+      fpp: null,
+      semanasGestacion: null,
+    };
+  }
+
+  const fppDate = new Date(fumDate);
+  fppDate.setUTCDate(fppDate.getUTCDate() + 280);
+
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const diffInMs = todayUtc.getTime() - fumDate.getTime();
+  const diffInWeeks = Math.max(0, diffInMs / (1000 * 60 * 60 * 24 * 7));
+
+  return {
+    fum: formatDateOnly(fumDate),
+    fpp: formatDateOnly(fppDate),
+    semanasGestacion: roundToSingleDecimal(diffInWeeks),
+  };
+}
+
 /**
  * Genera el siguiente folio consecutivo para un CLUES
  * Formato: CLUES-001, CLUES-002, etc.
@@ -57,12 +100,15 @@ export async function GET(request: Request) {
       const params: any[] = [];
 
       if (cluesFilter) {
-        where.push("clues_id = ?");
+        where.push("p.clues_id = ?");
         params.push(cluesFilter);
       }
       if (regionFilter) {
-        where.push("region = ?");
+        where.push("p.region = ?");
         params.push(regionFilter);
+        if (!cluesFilter) {
+          where.push("c.paciente_id IS NOT NULL");
+        }
       }
 
       const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -70,17 +116,47 @@ export async function GET(request: Request) {
       const rows: any = await query(
         `SELECT 
             COUNT(*) AS total,
-            SUM(CASE WHEN riesgo_obstetrico_ingreso >= 3 THEN 1 ELSE 0 END) AS alto_riesgo,
-            SUM(CASE WHEN DATE(fecha_ingreso_cpn) BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE() THEN 1 ELSE 0 END) AS semana_actual
-         FROM cat_pacientes
+            SUM(
+              CASE WHEN COALESCE(
+                c.puntaje_total_consulta,
+                COALESCE(p.factor_riesgo_antecedentes, 0) + COALESCE(p.factor_riesgo_tamizajes, 0) + COALESCE(c.puntaje_consulta_parametros, 0)
+              ) >= 25 THEN 1 ELSE 0 END
+            ) AS alto_riesgo,
+            SUM(CASE WHEN DATE(p.fecha_ingreso_cpn) BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE() THEN 1 ELSE 0 END) AS semana_ingreso,
+            SUM(CASE WHEN DATE(p.created_at) BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE() THEN 1 ELSE 0 END) AS semana_sistema,
+            SUM(
+              CASE
+                WHEN DATE(p.fecha_ingreso_cpn) BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE()
+                  OR DATE(p.created_at) BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE()
+                THEN 1 ELSE 0
+              END
+            ) AS semana_actual
+         FROM cat_pacientes p
+         LEFT JOIN (
+             SELECT c1.id AS last_consulta_id, c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta
+           FROM consultas_prenatales c1
+           INNER JOIN (
+             SELECT paciente_id, MAX(id) AS last_consulta_id
+             FROM consultas_prenatales
+             GROUP BY paciente_id
+           ) last_c ON last_c.last_consulta_id = c1.id
+         ) c ON c.paciente_id = p.id
          ${whereClause}`,
         params
       );
 
-      const metrics = rows?.[0] || { total: 0, alto_riesgo: 0, semana_actual: 0 };
+      const metrics = rows?.[0] || {
+        total: 0,
+        alto_riesgo: 0,
+        semana_ingreso: 0,
+        semana_sistema: 0,
+        semana_actual: 0,
+      };
       return NextResponse.json({
         total: Number(metrics.total) || 0,
         alto_riesgo: Number(metrics.alto_riesgo) || 0,
+        semana_ingreso: Number(metrics.semana_ingreso) || 0,
+        semana_sistema: Number(metrics.semana_sistema) || 0,
         semana_actual: Number(metrics.semana_actual) || 0,
         clues_id: cluesFilter || null,
         region: regionFilter || null,
@@ -106,6 +182,9 @@ export async function GET(request: Request) {
     if (regionFilter) {
       where.push("p.region = ?");
       params.push(regionFilter);
+      if (!cluesFilter) {
+        where.push("c.paciente_id IS NOT NULL");
+      }
     }
 
     const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -113,6 +192,7 @@ export async function GET(request: Request) {
     // SELECT más completo cuando se consulta por ID (para detalle del paciente)
     const selectFields = idFilter ? `
       p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.region, p.fecha_ingreso_cpn, 
+      p.edad,
       p.fum, p.fpp, p.semanas_gestacion, p.sdg_ingreso, p.riesgo_obstetrico_ingreso, 
       p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes, p.telefono, p.direccion,
       p.gestas, p.partos, p.cesareas, p.abortos,
@@ -123,8 +203,11 @@ export async function GET(request: Request) {
       p.factores_riesgo_epid,
       d.prueba_vih, d.prueba_vdrl, d.prueba_hepatitis_c, d.diabetes_glicemia, d.violencia
     ` : `
-      p.id, p.folio, p.nombre_completo, p.clues_id, p.municipio, p.fecha_ingreso_cpn, 
+      p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.fecha_ingreso_cpn, 
+      p.edad,
       p.sdg_ingreso, p.semanas_gestacion, p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes,
+      p.factor_cardiopatia, p.factor_hepatopatia, p.factor_coagulopatias, p.factor_nefropatia,
+        c.last_consulta_id AS ultima_consulta_id,
       COALESCE(c.puntaje_consulta_parametros, 0) AS puntaje_ultima_consulta,
       COALESCE(
         c.puntaje_total_consulta,
@@ -138,7 +221,7 @@ export async function GET(request: Request) {
     ` : `
       FROM cat_pacientes p
       LEFT JOIN (
-        SELECT c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta
+          SELECT c1.id AS last_consulta_id, c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta
         FROM consultas_prenatales c1
         INNER JOIN (
           SELECT paciente_id, MAX(id) AS last_consulta_id
@@ -174,6 +257,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const gestacionCalculada = computeGestacionDesdeFum(body.fum);
 
     const nombre = (body.nombre_completo || "").trim();
     const clues = String(body.clues_id || "").trim().toUpperCase();
@@ -230,9 +314,9 @@ export async function POST(request: Request) {
       ant_sepsis: body.ant_sepsis ? 1 : 0,
       ant_bajo_peso_macrosomia: body.ant_bajo_peso_macrosomia ? 1 : 0,
       ant_muerte_perinatal: body.ant_muerte_perinatal ? 1 : 0,
-      fum: body.fum || null,
-      fpp: body.fpp || null,
-      semanas_gestacion: body.semanas_gestacion || null,
+      fum: gestacionCalculada.fum,
+      fpp: gestacionCalculada.fpp,
+      semanas_gestacion: gestacionCalculada.semanasGestacion,
       sdg_ingreso: body.sdg_ingreso || null,
       factores_riesgo_epid: body.factores_riesgo_epid || 'ninguno',
       imc_inicial: body.imc_inicial || null,

@@ -62,7 +62,7 @@ export function formatRiesgoTelegramMessage(input: {
   const fechaStr = `${p.day}-${p.month}-${p.year} ${p.hour}:${p.minute}`;
 
   return [
-    "ALERTA OBSTETRICA ESTATAL",
+    "ALERTA OBSTETRICA ESTATAL-PRUEBAS_dev_1.02_edad_modificado",
     `Folio: ${input.folio || "SIN_FOLIO"}`,
     `Unidad: ${input.unidad || "SIN_UNIDAD"}`,
     `Puntaje total: ${Number(input.puntajeTotal) || 0}`,
@@ -119,11 +119,23 @@ export async function sendTelegramMessage(text: string): Promise<TelegramSendRes
     }
   }
 
-  if (failures.length > 0) {
+  // Solo reintentar si TODOS los destinos fallaron.
+  // Si al menos uno recibió el mensaje, marcamos como enviado para evitar duplicados
+  // en los canales que ya recibieron la alerta.
+  if (failures.length === chatIds.length) {
     return {
       ok: false,
       status: firstStatus,
-      description: `Fallos en ${failures.length}/${chatIds.length} destinos: ${failures.join(" | ")}`,
+      description: `Todos los destinos fallaron (${failures.length}): ${failures.join(" | ")}`,
+    };
+  }
+
+  if (failures.length > 0) {
+    // Éxito parcial: al menos un destino recibió el mensaje.
+    return {
+      ok: true,
+      status: 200,
+      description: `Envío parcial — ${chatIds.length - failures.length}/${chatIds.length} ok. Fallos sin reintento: ${failures.join(" | ")}`,
     };
   }
 

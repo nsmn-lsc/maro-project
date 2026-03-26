@@ -129,7 +129,7 @@ export default function CoordinacionEstatalMAROPage() {
     try {
       const session = JSON.parse(stored) as { nivel?: number };
       if ((session.nivel ?? 0) < 3) {
-        router.replace("/dashboard");
+        router.replace((session.nivel ?? 0) >= 2 ? "/region" : "/dashboard");
         return;
       }
       setAuthChecked(true);
@@ -152,14 +152,6 @@ export default function CoordinacionEstatalMAROPage() {
     setSelectedFolio(seed[0]?.folio ?? null);
     persistencia.save(seed);
   }, [authChecked]);
-
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 text-slate-700">
-        Validando acceso...
-      </div>
-    );
-  }
 
   // Persistencia
   useEffect(() => {
@@ -274,6 +266,14 @@ export default function CoordinacionEstatalMAROPage() {
       hayFallaProceso,
     };
   }, [selected, umbralMin]);
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 text-slate-700">
+        Validando acceso...
+      </div>
+    );
+  }
 
   function agregarIntervencion(tipo: IntervencionEstatal["tipo"]) {
     if (!selected || !selectedDerived) return;

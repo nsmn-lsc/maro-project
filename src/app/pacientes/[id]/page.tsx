@@ -62,6 +62,10 @@ type ConsultaResumen = {
   fecha_colegiado?: string | null;
 };
 
+type SessionInfo = {
+  nivel?: number;
+};
+
 export default function PacienteDetalle() {
   const params = useParams();
   const router = useRouter();
@@ -73,8 +77,35 @@ export default function PacienteDetalle() {
   const [expandidoRiesgo, setExpandidoRiesgo] = useState(false);
   const [expandidoTamizajes, setExpandidoTamizajes] = useState(false);
   const [ultimaConsulta, setUltimaConsulta] = useState<ConsultaResumen | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
+    const stored = localStorage.getItem("maro:user");
+    if (!stored) {
+      router.replace("/inicial");
+      return;
+    }
+
+    try {
+      const session = JSON.parse(stored) as SessionInfo;
+      const nivel = session.nivel ?? 0;
+      if (nivel >= 3) {
+        router.replace(`/estatal/pacientes/${id}`);
+        return;
+      }
+      if (nivel >= 2) {
+        router.replace(`/region/pacientes/${id}`);
+        return;
+      }
+      setAuthChecked(true);
+    } catch {
+      router.replace("/inicial");
+    }
+  }, [id, router]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+
     let cancelled = false;
     const load = async () => {
       setLoading(true);
@@ -105,7 +136,7 @@ export default function PacienteDetalle() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [authChecked, id]);
 
   const formatDate = (value: string | null) => {
     if (!value) return "—";
@@ -219,6 +250,14 @@ export default function PacienteDetalle() {
       icon: '⚠️',
     },
   };
+
+  if (!authChecked) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+        Validando acceso...
+      </main>
+    );
+  }
 
   return (
     <main
