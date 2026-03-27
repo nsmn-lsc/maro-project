@@ -193,6 +193,7 @@ export async function GET(request: Request) {
     const selectFields = idFilter ? `
       p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.region, p.fecha_ingreso_cpn, 
       p.edad,
+      p.imc_inicial,
       p.fum, p.fpp, p.semanas_gestacion, p.sdg_ingreso, p.riesgo_obstetrico_ingreso, 
       p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes, p.telefono, p.direccion,
       p.gestas, p.partos, p.cesareas, p.abortos,
@@ -205,6 +206,7 @@ export async function GET(request: Request) {
     ` : `
       p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.fecha_ingreso_cpn, 
       p.edad,
+      p.imc_inicial,
       p.sdg_ingreso, p.semanas_gestacion, p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes,
       p.factor_cardiopatia, p.factor_hepatopatia, p.factor_coagulopatias, p.factor_nefropatia,
         c.last_consulta_id AS ultima_consulta_id,

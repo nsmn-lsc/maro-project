@@ -26,6 +26,7 @@ type Paciente = {
   factor_riesgo_antecedentes: number | null;
   factor_riesgo_tamizajes: number | null;
   edad?: number | null;
+  imc_inicial?: number | null;
   factor_cardiopatia?: number | null;
   factor_hepatopatia?: number | null;
   factor_coagulopatias?: number | null;
@@ -76,20 +77,24 @@ function riesgoBadge(puntaje: number | null) {
 function esAlertaPorCriterioClinico(paciente: Paciente): boolean {
   const puntajeGeneral = Number(paciente.puntaje_total_actual) || 0;
   const edad = Number(paciente.edad);
+  const imc = Number(paciente.imc_inicial);
   const porEdad = Number.isFinite(edad) && edad >= 10 && edad <= 14;
+  const porImc = Number.isFinite(imc) && imc >= 31;
   const porPadecimientoMayor = [
     paciente.factor_cardiopatia,
     paciente.factor_hepatopatia,
     paciente.factor_coagulopatias,
     paciente.factor_nefropatia,
   ].some((value) => Number(value) === 1);
-  return (porEdad || porPadecimientoMayor) && puntajeGeneral <= 25;
+  return (porEdad || porImc || porPadecimientoMayor) && puntajeGeneral <= 25;
 }
 
 function motivoClinico(paciente: Paciente): string {
   const motivos: string[] = [];
   const edad = Number(paciente.edad);
+  const imc = Number(paciente.imc_inicial);
   if (Number.isFinite(edad) && edad >= 10 && edad <= 14) motivos.push("Edad 10-14");
+  if (Number.isFinite(imc) && imc >= 31) motivos.push(`IMC >=31 (${imc.toFixed(1)})`);
   if (Number(paciente.factor_cardiopatia) === 1) motivos.push("Cardiopatia");
   if (Number(paciente.factor_hepatopatia) === 1) motivos.push("Hepatopatia");
   if (Number(paciente.factor_coagulopatias) === 1) motivos.push("Coagulopatia");

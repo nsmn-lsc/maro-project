@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 
 type Patient = {
@@ -28,6 +29,7 @@ type SessionInfo = {
 };
 
 export default function Dashboard() {
+  const router = useRouter();
   const [user, setUser] = useState<SessionInfo | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(true);
@@ -178,6 +180,11 @@ export default function Dashboard() {
     XLSX.writeFile(wb, filename);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("maro:user");
+    router.push("/inicial");
+  };
+
   return (
     <main
       className="min-h-screen relative text-white"
@@ -201,6 +208,15 @@ export default function Dashboard() {
           <p className="text-slate-200/80 max-w-2xl">
             Bienvenido. Desde este panel puedes ver un resumen de los pacientes registrados en tu unidad y acceder a las funciones principales del sistema.
           </p>
+          <div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-sm text-white/80 border border-white/25 rounded-lg px-3 py-1.5 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </header>
 
         <section className="grid gap-6 lg:grid-cols-3">

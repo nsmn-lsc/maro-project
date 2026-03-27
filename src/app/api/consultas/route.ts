@@ -134,7 +134,7 @@ export async function POST(request: Request) {
 
     const pacienteRows: any = await query(
       `SELECT factor_riesgo_antecedentes, factor_riesgo_tamizajes, folio, unidad, edad,
-              factor_cardiopatia, factor_nefropatia, factor_hepatopatia, factor_coagulopatias
+              imc_inicial, factor_cardiopatia, factor_nefropatia, factor_hepatopatia, factor_coagulopatias
          FROM cat_pacientes
         WHERE id = ?
         LIMIT 1`,
@@ -156,9 +156,11 @@ export async function POST(request: Request) {
     ].some((value) => Number(value) === 1);
     const edadPaciente = Number(paciente.edad);
     const tieneEdadCritica = Number.isFinite(edadPaciente) && edadPaciente >= 10 && edadPaciente <= 14;
+    const imcPaciente = Number(paciente.imc_inicial);
+    const tieneImcCritico = Number.isFinite(imcPaciente) && imcPaciente >= 31;
 
     const puntajeCalculado = puntajeAntecedentes + puntajeTamizajes + puntajeConsultaParametros;
-    const puntajeTotalConsulta = (tieneAntecedenteRiesgoMayor || tieneEdadCritica)
+    const puntajeTotalConsulta = (tieneAntecedenteRiesgoMayor || tieneEdadCritica || tieneImcCritico)
       ? Math.max(25, puntajeCalculado)
       : puntajeCalculado;
     const riesgo25Plus = puntajeTotalConsulta >= 25 ? 1 : 0;

@@ -186,6 +186,20 @@ export default function NuevoPaciente() {
     };
   };
 
+  const computeGananciaPonderalMaxFromImc = (imcValue: string) => {
+    if (!imcValue) return "";
+
+    const imc = Number(imcValue);
+    if (!Number.isFinite(imc)) return "";
+
+    if (imc < 18.5) return "18.0";
+    if (imc < 25) return "15.89";
+    if (imc < 30) return "11.35";
+    if (imc < 35) return "9.0";
+    if (imc < 40) return "9.0";
+    return "9.0";
+  };
+
   const handleToggle = (field: string) => {
     setForm((prev) => ({ ...prev, [field]: !prev[field as keyof typeof prev] }));
   };
@@ -576,17 +590,26 @@ export default function NuevoPaciente() {
                   step="0.1"
                   className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
                   value={form.imc_inicial}
-                  onChange={(e) => handleChange("imc_inicial", e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const gananciaPonderalMax = computeGananciaPonderalMaxFromImc(value);
+                    setForm((prev) => ({
+                      ...prev,
+                      imc_inicial: value,
+                      ganancia_ponderal_max: gananciaPonderalMax,
+                    }));
+                  }}
                 />
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Ganancia ponderal máx.</span>
+                <span className="text-slate-100">Ganancia ponderal máx Kg.</span>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
                   value={form.ganancia_ponderal_max}
-                  onChange={(e) => handleChange("ganancia_ponderal_max", e.target.value)}
+                  readOnly
+                  placeholder="Se calcula desde IMC inicial"
                 />
               </label>
               <label className="space-y-1 text-sm">

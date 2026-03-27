@@ -24,6 +24,7 @@ export async function GET(request: Request) {
       hasAntecedentes,
       hasTamizajes,
       hasRiesgoIngreso,
+      hasImcInicial,
       hasCardiopatia,
       hasNefropatia,
       hasHepatopatia,
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
       hasColumn("cat_pacientes", "factor_riesgo_antecedentes"),
       hasColumn("cat_pacientes", "factor_riesgo_tamizajes"),
       hasColumn("cat_pacientes", "riesgo_obstetrico_ingreso"),
+      hasColumn("cat_pacientes", "imc_inicial"),
       hasColumn("cat_pacientes", "factor_cardiopatia"),
       hasColumn("cat_pacientes", "factor_nefropatia"),
       hasColumn("cat_pacientes", "factor_hepatopatia"),
@@ -68,10 +70,12 @@ export async function GET(request: Request) {
     const nefropatiaExpr = hasNefropatia ? "COALESCE(cp.factor_nefropatia, 0)" : "0";
     const hepatopatiaExpr = hasHepatopatia ? "COALESCE(cp.factor_hepatopatia, 0)" : "0";
     const coagulopatiaExpr = hasCoagulopatia ? "COALESCE(cp.factor_coagulopatias, 0)" : "0";
+    const imcCriticoExpr = hasImcInicial ? "CASE WHEN COALESCE(cp.imc_inicial, 0) >= 31 THEN 1 ELSE 0 END" : "0";
     const edadCriticaExpr = "CASE WHEN COALESCE(cp.edad, 0) BETWEEN 10 AND 14 THEN 1 ELSE 0 END";
     const criterioClinicoExpr = `CASE
       WHEN (
         ${edadCriticaExpr} = 1
+        OR ${imcCriticoExpr} = 1
         OR ${cardiopatiaExpr} = 1
         OR ${nefropatiaExpr} = 1
         OR ${hepatopatiaExpr} = 1
@@ -82,6 +86,7 @@ export async function GET(request: Request) {
     const motivoAlertaExpr = `CASE
       WHEN ${criterioClinicoExpr} = 1 THEN TRIM(BOTH ', ' FROM CONCAT(
         CASE WHEN ${edadCriticaExpr} = 1 THEN 'Edad 10-14, ' ELSE '' END,
+        CASE WHEN ${imcCriticoExpr} = 1 THEN CONCAT('IMC >=31 (', ROUND(COALESCE(cp.imc_inicial, 0), 1), '), ') ELSE '' END,
         CASE WHEN ${cardiopatiaExpr} = 1 THEN 'Cardiopatia, ' ELSE '' END,
         CASE WHEN ${hepatopatiaExpr} = 1 THEN 'Hepatopatia, ' ELSE '' END,
         CASE WHEN ${coagulopatiaExpr} = 1 THEN 'Coagulopatia, ' ELSE '' END,
@@ -165,6 +170,7 @@ export async function GET(request: Request) {
             CASE
               WHEN (
                 COALESCE(cp.edad, 0) BETWEEN 10 AND 14
+                OR COALESCE(cp.imc_inicial, 0) >= 31
                 OR COALESCE(cp.factor_cardiopatia, 0) = 1
                 OR COALESCE(cp.factor_hepatopatia, 0) = 1
                 OR COALESCE(cp.factor_coagulopatias, 0) = 1
@@ -180,6 +186,7 @@ export async function GET(request: Request) {
             CASE
               WHEN (
                 COALESCE(cp.edad, 0) BETWEEN 10 AND 14
+                OR COALESCE(cp.imc_inicial, 0) >= 31
                 OR COALESCE(cp.factor_cardiopatia, 0) = 1
                 OR COALESCE(cp.factor_hepatopatia, 0) = 1
                 OR COALESCE(cp.factor_coagulopatias, 0) = 1
@@ -192,6 +199,7 @@ export async function GET(request: Request) {
               ) <= 25
               THEN TRIM(BOTH ', ' FROM CONCAT(
                 CASE WHEN COALESCE(cp.edad, 0) BETWEEN 10 AND 14 THEN 'Edad 10-14, ' ELSE '' END,
+                CASE WHEN COALESCE(cp.imc_inicial, 0) >= 31 THEN CONCAT('IMC >=31 (', ROUND(COALESCE(cp.imc_inicial, 0), 1), '), ') ELSE '' END,
                 CASE WHEN COALESCE(cp.factor_cardiopatia, 0) = 1 THEN 'Cardiopatia, ' ELSE '' END,
                 CASE WHEN COALESCE(cp.factor_hepatopatia, 0) = 1 THEN 'Hepatopatia, ' ELSE '' END,
                 CASE WHEN COALESCE(cp.factor_coagulopatias, 0) = 1 THEN 'Coagulopatia, ' ELSE '' END,

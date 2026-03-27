@@ -73,6 +73,7 @@ export default function ConsultasPaciente() {
     factor_riesgo_tamizajes: number;
     semanas_gestacion: number;
     edad: number | null;
+    imc_inicial: number | null;
     factor_cardiopatia: number;
     factor_nefropatia: number;
     factor_hepatopatia: number;
@@ -82,6 +83,7 @@ export default function ConsultasPaciente() {
     factor_riesgo_tamizajes: 0,
     semanas_gestacion: 0,
     edad: null,
+    imc_inicial: null,
     factor_cardiopatia: 0,
     factor_nefropatia: 0,
     factor_hepatopatia: 0,
@@ -254,9 +256,12 @@ export default function ConsultasPaciente() {
 
   const edadPaciente = Number(pacienteData.edad);
   const tieneEdadCritica = Number.isFinite(edadPaciente) && edadPaciente >= 10 && edadPaciente <= 14;
+  const imcPaciente = Number(pacienteData.imc_inicial);
+  const tieneImcCritico = Number.isFinite(imcPaciente) && imcPaciente >= 31;
 
   const criteriosEscalamientoActivos = [
     ...(tieneEdadCritica ? [`Edad crítica (${edadPaciente} años)`] : []),
+    ...(tieneImcCritico ? [`IMC crítico (${imcPaciente.toFixed(1)})`] : []),
     ...factoresRiesgoMayorActivos,
   ];
 
@@ -284,6 +289,7 @@ export default function ConsultasPaciente() {
             factor_riesgo_tamizajes: data.factor_riesgo_tamizajes || 0,
             semanas_gestacion: data.semanas_gestacion || 0,
             edad: data.edad === null || data.edad === undefined || data.edad === "" ? null : Number(data.edad),
+            imc_inicial: data.imc_inicial === null || data.imc_inicial === undefined || data.imc_inicial === "" ? null : Number(data.imc_inicial),
             factor_cardiopatia: data.factor_cardiopatia || 0,
             factor_nefropatia: data.factor_nefropatia || 0,
             factor_hepatopatia: data.factor_hepatopatia || 0,

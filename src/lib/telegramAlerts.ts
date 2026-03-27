@@ -62,7 +62,7 @@ export function formatRiesgoTelegramMessage(input: {
   const fechaStr = `${p.day}-${p.month}-${p.year} ${p.hour}:${p.minute}`;
 
   return [
-    "ALERTA OBSTETRICA ESTATAL-PRUEBAS_dev_1.02_edad_modificado",
+    "ALERTA OBSTETRICA ESTATAL-PRUEBAS_dev_1.03_IMC",
     `Folio: ${input.folio || "SIN_FOLIO"}`,
     `Unidad: ${input.unidad || "SIN_UNIDAD"}`,
     `Puntaje total: ${Number(input.puntajeTotal) || 0}`,
