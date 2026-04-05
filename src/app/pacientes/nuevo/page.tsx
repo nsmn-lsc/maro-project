@@ -561,16 +561,6 @@ export default function NuevoPaciente() {
               </label>
 
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">SDG ingreso</span>
-                <input
-                  type="number"
-                  min={0}
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-                  value={form.sdg_ingreso}
-                  onChange={(e) => handleChange("sdg_ingreso", e.target.value)}
-                />
-              </label>
-              <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Tipo de riesgo social</span>
                 <select
                   className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
@@ -710,7 +700,7 @@ export default function NuevoPaciente() {
               {mostrarFactoresEpid && (
                 <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
                   <p className="text-xs text-slate-200/70 px-1">
-                    Portadora o contacto de enfermedad sujeta a vigilancia epidemiológica
+                    Portadora o contacto de enfermedad sujeta a vigilancia epidemiológica (Tuberculosis, VIH, Sifilis, Chagas. )
                   </p>
                   
                   <div className="flex flex-col gap-2">

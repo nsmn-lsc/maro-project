@@ -11,6 +11,7 @@
     "db:test": "tsx scripts/test-database.ts"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "mysql2": "^3.16.0",
     "next": "^16.1.6",
     "pdf-lib": "^1.17.1",

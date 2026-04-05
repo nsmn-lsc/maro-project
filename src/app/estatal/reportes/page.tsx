@@ -259,6 +259,13 @@ export default function ReportesEstatalesPage() {
   const [registros, setRegistros] = useState<RegistroRiesgo[]>([]);
   const [regionFilter, setRegionFilter] = useState("");
   const [unidadFilter, setUnidadFilter] = useState("");
+  const [colegiadoFilter, setColegiadoFilter] = useState<"todos" | "colegiados" | "no_colegiados">("todos");
+  const [origenFilter, setOrigenFilter] = useState<"todos" | "puntaje" | "criterio">("todos");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const loadReportes = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -375,6 +382,237 @@ export default function ReportesEstatalesPage() {
       return matchRegion && matchUnidad;
     });
   }, [registros, regionFilter, unidadFilter]);
+
+  const registrosReporte = useMemo(() => {
+    return registrosFiltrados.filter((r) => {
+      const esCriterio = Number(r.alerta_por_criterio_clinico) === 1;
+      const fecha = dateKey(r.fecha_consulta || r.consulta_creada || null);
+
+      const matchColegiado =
+        colegiadoFilter === "todos" ||
+        (colegiadoFilter === "colegiados" && Number(r.colegiado) === 1) ||
+        (colegiadoFilter === "no_colegiados" && Number(r.colegiado) !== 1);
+
+      const matchOrigen =
+        origenFilter === "todos" ||
+        (origenFilter === "criterio" && esCriterio) ||
+        (origenFilter === "puntaje" && !esCriterio);
+
+      const matchDesde = !fechaDesde || (fecha !== "" && fecha >= fechaDesde);
+      const matchHasta = !fechaHasta || (fecha !== "" && fecha <= fechaHasta);
+
+      return matchColegiado && matchOrigen && matchDesde && matchHasta;
+    });
+  }, [registrosFiltrados, colegiadoFilter, origenFilter, fechaDesde, fechaHasta]);
+
+  const previewLimit = 20;
+  const registrosPreview = useMemo(
+    () => registrosReporte.slice(0, previewLimit),
+    [registrosReporte]
+  );
+
+  const descargarExcel = async () => {
+    setExportingExcel(true);
+    try {
+      if (registrosReporte.length === 0) {
+        throw new Error("No hay casos para exportar con los filtros seleccionados");
+      }
+
+      const res = await fetch("/api/estatal/reportes/excel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rows: registrosReporte,
+          region: regionFilter || undefined,
+          unidad: unidadFilter || undefined,
+          colegiadoFilter,
+          origenFilter,
+          fechaDesde: fechaDesde || undefined,
+          fechaHasta: fechaHasta || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Error al generar el reporte Excel");
+      }
+
+      const blob = await res.blob();
+      const stamp = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-estatal-casos-${stamp}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setError(null);
+    } catch (err: any) {
+      setError(err?.message || "No se pudo generar el reporte Excel");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  const descargarPdf = async () => {
+    setExportingPdf(true);
+    try {
+      if (registrosReporte.length === 0) {
+        throw new Error("No hay casos para exportar con los filtros seleccionados");
+      }
+
+      const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+      const pdfDoc = await PDFDocument.create();
+      const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+      const pageWidth = 841.89;
+      const pageHeight = 595.28;
+      const margin = 24;
+      const contentWidth = pageWidth - margin * 2;
+
+      const teal = rgb(0.06, 0.28, 0.22);
+      const tealLight = rgb(0.83, 0.92, 0.88);
+      const amber = rgb(0.72, 0.48, 0.04);
+      const border = rgb(0.30, 0.42, 0.38);
+      const textDark = rgb(0.10, 0.12, 0.16);
+      const white = rgb(1, 1, 1);
+      const rowAlt = rgb(0.96, 0.97, 0.96);
+
+      let logoImage: any = null;
+      try {
+        const logoRes = await fetch("/logo_maro_re.png");
+        if (logoRes.ok) {
+          const logoBuffer = await logoRes.arrayBuffer();
+          logoImage = await pdfDoc.embedPng(logoBuffer);
+        }
+      } catch {
+      }
+
+      const fitText = (text: string, maxWidth: number, size: number, font = regular) => {
+        const raw = String(text || "—");
+        if (font.widthOfTextAtSize(raw, size) <= maxWidth) return raw;
+        let out = raw;
+        while (out.length > 1 && font.widthOfTextAtSize(`${out}...`, size) > maxWidth) {
+          out = out.slice(0, -1);
+        }
+        return `${out}...`;
+      };
+
+      let page = pdfDoc.addPage([pageWidth, pageHeight]);
+      let y = pageHeight - margin;
+
+      const drawHeader = () => {
+        const logoH = 48;
+        if (logoImage) {
+          const logoW = Math.round(logoH * (logoImage.width / logoImage.height));
+          page.drawImage(logoImage, { x: margin, y: y - logoH, width: logoW, height: logoH });
+        }
+
+        const title = "REPORTE ESTATAL DE CASOS";
+        const titleSize = 18;
+        const titleW = bold.widthOfTextAtSize(title, titleSize);
+        page.drawText(title, { x: pageWidth - margin - titleW, y: y - 16, size: titleSize, font: bold, color: amber });
+
+        const subtitle = `Casos seleccionados: ${registrosReporte.length}`;
+        const subW = regular.widthOfTextAtSize(subtitle, 9);
+        page.drawText(subtitle, { x: pageWidth - margin - subW, y: y - 31, size: 9, font: regular, color: textDark });
+
+        const filtros = `Filtros: Region=${regionFilter || "Todas"} | Unidad=${unidadFilter || "Todas"} | Colegiado=${colegiadoFilter} | Origen=${origenFilter} | Desde=${fechaDesde || "—"} | Hasta=${fechaHasta || "—"}`;
+        page.drawText(fitText(filtros, contentWidth, 7), { x: margin, y: y - 58, size: 7, font: regular, color: textDark });
+
+        const lineY = y - 64;
+        page.drawLine({ start: { x: margin, y: lineY }, end: { x: pageWidth - margin, y: lineY }, thickness: 0.8, color: border });
+        y = lineY - 10;
+      };
+
+      drawHeader();
+
+      const cols = [
+        { key: "folio", label: "Folio", w: 100 },
+        { key: "paciente", label: "Paciente", w: 150 },
+        { key: "region", label: "Region", w: 70 },
+        { key: "unidad", label: "Unidad", w: 115 },
+        { key: "fecha", label: "Fecha", w: 62 },
+        { key: "origen", label: "Origen", w: 64 },
+        { key: "motivo", label: "Motivo", w: 78 },
+        { key: "puntaje", label: "Puntaje", w: 48 },
+        { key: "colegiado", label: "Colegiado", w: 54 },
+      ];
+
+      const headerH = 20;
+      const rowH = 17;
+
+      const drawTableHeader = () => {
+        let x = margin;
+        for (const col of cols) {
+          page.drawRectangle({ x, y: y - headerH, width: col.w, height: headerH, color: teal, borderColor: border, borderWidth: 0.8 });
+          page.drawText(col.label, { x: x + 4, y: y - 13, size: 7.5, font: bold, color: white });
+          x += col.w;
+        }
+        y -= headerH;
+      };
+
+      drawTableHeader();
+
+      registrosReporte.forEach((r, idx) => {
+        if (y - rowH < margin) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          y = pageHeight - margin;
+          drawHeader();
+          drawTableHeader();
+        }
+
+        const esCriterio = Number(r.alerta_por_criterio_clinico) === 1;
+        const values: Record<string, string> = {
+          folio: r.folio || "—",
+          paciente: r.nombre_completo || "Sin nombre",
+          region: r.region || "—",
+          unidad: r.unidad || "—",
+          fecha: formatDate(r.fecha_consulta || r.consulta_creada),
+          origen: esCriterio ? "Criterio" : "Puntaje",
+          motivo: r.motivo_alerta || (esCriterio ? "Edad/Padecimiento" : "—"),
+          puntaje: esCriterio ? "—" : String(Number(r.puntaje_total_consulta) || 0),
+          colegiado: Number(r.colegiado) === 1 ? "Si" : "No",
+        };
+
+        let x = margin;
+        for (const col of cols) {
+          page.drawRectangle({
+            x,
+            y: y - rowH,
+            width: col.w,
+            height: rowH,
+            color: idx % 2 === 0 ? white : rowAlt,
+            borderColor: border,
+            borderWidth: 0.5,
+          });
+          const txt = fitText(values[col.key], col.w - 8, 7);
+          page.drawText(txt, { x: x + 4, y: y - 11.5, size: 7, font: regular, color: textDark });
+          x += col.w;
+        }
+        y -= rowH;
+      });
+
+      const pdfBytes = await pdfDoc.save();
+      const pdfBuffer = new ArrayBuffer(pdfBytes.byteLength);
+      new Uint8Array(pdfBuffer).set(pdfBytes);
+      const blob = new Blob([pdfBuffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-estatal-casos-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+      setError(null);
+    } catch (err: any) {
+      setError(err?.message || "No se pudo generar el reporte PDF");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   const kpis = useMemo(() => {
     const total = registrosFiltrados.length;
@@ -540,12 +778,74 @@ export default function ReportesEstatalesPage() {
               onClick={() => {
                 setRegionFilter("");
                 setUnidadFilter("");
+                setColegiadoFilter("todos");
+                setOrigenFilter("todos");
+                setFechaDesde("");
+                setFechaHasta("");
               }}
               className="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:border-slate-400"
             >
               Limpiar filtros
             </button>
           </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-4">
+            <select
+              value={colegiadoFilter}
+              onChange={(e) => setColegiadoFilter(e.target.value as "todos" | "colegiados" | "no_colegiados")}
+              className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
+            >
+              <option value="todos">Todos los casos</option>
+              <option value="colegiados">Solo colegiados</option>
+              <option value="no_colegiados">Solo no colegiados</option>
+            </select>
+            <select
+              value={origenFilter}
+              onChange={(e) => setOrigenFilter(e.target.value as "todos" | "puntaje" | "criterio")}
+              className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
+            >
+              <option value="todos">Todos los orígenes</option>
+              <option value="puntaje">Alerta por puntaje</option>
+              <option value="criterio">Alerta por criterio clínico</option>
+            </select>
+            <input
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => setFechaDesde(e.target.value)}
+              className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
+            />
+            <input
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => setFechaHasta(e.target.value)}
+              className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
+            />
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-slate-300">
+              Casos seleccionados para reporte: <span className="font-semibold text-cyan-200">{registrosReporte.length}</span>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={descargarExcel}
+                disabled={exportingExcel}
+                className="rounded-lg border border-emerald-500/60 px-3 py-2 text-sm text-emerald-200 hover:border-emerald-300 disabled:opacity-60"
+              >
+                {exportingExcel ? "Generando Excel..." : "Descargar Excel"}
+              </button>
+              <button
+                type="button"
+                onClick={descargarPdf}
+                disabled={exportingPdf}
+                className="rounded-lg border border-amber-500/60 px-3 py-2 text-sm text-amber-200 hover:border-amber-300 disabled:opacity-60"
+              >
+                {exportingPdf ? "Generando PDF..." : "Descargar PDF"}
+              </button>
+            </div>
+          </div>
+
           <p className="mt-3 text-xs text-slate-400">
             Registros considerados: {registrosFiltrados.length} de {registros.length}
             {ultimoRegistro ? ` · Ultimo registro: ${formatDate(ultimoRegistro.fecha_consulta || ultimoRegistro.consulta_creada)}` : ""}
@@ -562,6 +862,80 @@ export default function ReportesEstatalesPage() {
           </section>
         ) : (
           <>
+            <section className="rounded-2xl border border-slate-700 bg-slate-900/60 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setPreviewOpen((o) => !o)}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-800/40 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-semibold text-slate-100">Vista previa de casos a exportar</span>
+                  <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300">{registrosReporte.length}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {previewOpen && (
+                    <span className="text-xs text-slate-400">
+                      Mostrando {registrosPreview.length} de {registrosReporte.length}
+                    </span>
+                  )}
+                  <svg
+                    className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${previewOpen ? "rotate-180" : ""}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+
+              {previewOpen && (
+                <div className="border-t border-slate-700 p-4">
+                  {registrosReporte.length === 0 ? (
+                    <p className="text-sm text-slate-400">No hay casos con los filtros actuales.</p>
+                  ) : (
+                    <div className="overflow-x-auto max-h-80 overflow-y-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="sticky top-0 bg-slate-900">
+                          <tr className="border-b border-slate-700 text-left text-slate-300">
+                            <th className="py-2 pr-4">Folio</th>
+                            <th className="py-2 pr-4">Paciente</th>
+                            <th className="py-2 pr-4">Región</th>
+                            <th className="py-2 pr-4">Unidad</th>
+                            <th className="py-2 pr-4">Fecha</th>
+                            <th className="py-2 pr-4">Origen</th>
+                            <th className="py-2 pr-4">Motivo</th>
+                            <th className="py-2 pr-4">Puntaje</th>
+                            <th className="py-2 pr-0">Colegiado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800">
+                          {registrosPreview.map((row) => {
+                            const esCriterio = Number(row.alerta_por_criterio_clinico) === 1;
+                            return (
+                              <tr key={`${row.consulta_id}-${row.paciente_id}`} className="hover:bg-slate-800/40">
+                                <td className="py-2 pr-4">{row.folio || "—"}</td>
+                                <td className="py-2 pr-4">{row.nombre_completo || "Sin nombre"}</td>
+                                <td className="py-2 pr-4">{row.region || "—"}</td>
+                                <td className="py-2 pr-4">{row.unidad || "—"}</td>
+                                <td className="py-2 pr-4">{formatDate(row.fecha_consulta || row.consulta_creada)}</td>
+                                <td className="py-2 pr-4">
+                                  <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold border ${esCriterio ? "bg-amber-500/20 text-amber-200 border-amber-500/40" : "bg-red-500/20 text-red-200 border-red-500/40"}`}>
+                                    {esCriterio ? "Criterio clínico" : "Puntaje"}
+                                  </span>
+                                </td>
+                                <td className="py-2 pr-4 text-xs text-slate-300">{row.motivo_alerta || (esCriterio ? "Edad/Padecimiento" : "—")}</td>
+                                <td className="py-2 pr-4">{esCriterio ? "—" : `${Number(row.puntaje_total_consulta) || 0} pts`}</td>
+                                <td className="py-2 pr-0">{Number(row.colegiado) === 1 ? "Sí" : "No"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
             <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
               <Card title="Casos alto riesgo" value={String(kpis.total)} />
               <Card title="Colegiados" value={String(kpis.colegiados)} />
