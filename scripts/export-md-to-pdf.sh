@@ -40,12 +40,68 @@ else
   exit 1
 fi
 
-TMP_HTML="$(mktemp /tmp/md-export-XXXXXX.html)"
-TMP_HEAD="$(mktemp /tmp/md-head-XXXXXX.html)"
-trap 'rm -f "$TMP_HTML" "$TMP_HEAD"' EXIT
+TMP_HTML="$(mktemp ./.md-export-XXXXXX.html)"
+TMP_HEAD="$(mktemp ./.md-head-XXXXXX.html)"
 
-# Carga Font Awesome para que se rendericen iconos como los de la firma.
-cat > "$TMP_HEAD" <<'EOF'
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+FA_BRANDS_WOFF2="$SCRIPT_DIR/assets/fontawesome/fa-brands-400.woff2"
+
+# Limpieza segura: mantenemos el HTML temporal hasta el final para evitar
+# condiciones de carrera con Chromium en modo headless.
+cleanup() {
+  rm -f "$TMP_HTML" "$TMP_HEAD"
+}
+trap cleanup EXIT
+
+# Carga Font Awesome (local preferido) para renderizar iconos en exportación PDF.
+if [[ -f "$FA_BRANDS_WOFF2" ]]; then
+  FA_BRANDS_WOFF2_ABS="$(realpath "$FA_BRANDS_WOFF2")"
+  cat > "$TMP_HEAD" <<EOF
+<style>
+  @font-face {
+    font-family: "FA6Brands";
+    src: url("file://$FA_BRANDS_WOFF2_ABS") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+  }
+
+  .fa-brands,
+  .fab {
+    font-family: "FA6Brands";
+    font-weight: 400;
+    font-style: normal;
+    display: inline-block;
+    line-height: 1;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .fa-brands.fa-linux::before,
+  .fab.fa-linux::before {
+    content: "\f17c";
+  }
+
+  .fa-brands.fa-fedora::before,
+  .fab.fa-fedora::before {
+    content: "\f798";
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.45;
+    margin: 24px;
+  }
+
+  .signature-mark {
+    margin-top: 10px;
+    font-size: 0.95rem;
+    opacity: 0.9;
+  }
+</style>
+EOF
+else
+  cat > "$TMP_HEAD" <<'EOF'
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <style>
   body {
@@ -60,6 +116,7 @@ cat > "$TMP_HEAD" <<'EOF'
   }
 </style>
 EOF
+fi
 
 pandoc "$INPUT_MD" \
   -f gfm+raw_html \
@@ -69,11 +126,14 @@ pandoc "$INPUT_MD" \
   -H "$TMP_HEAD" \
   -o "$TMP_HTML"
 
+TMP_HTML_ABS="$(realpath "$TMP_HTML")"
+
 "$BROWSER" \
   --headless \
   --disable-gpu \
+  --no-pdf-header-footer \
   --print-to-pdf="$OUTPUT_PDF" \
-  "$TMP_HTML" >/dev/null 2>&1
+  "file://$TMP_HTML_ABS" >/dev/null 2>&1
 
 if [[ -f "$OUTPUT_PDF" ]]; then
   echo "OK: PDF generado en $OUTPUT_PDF"

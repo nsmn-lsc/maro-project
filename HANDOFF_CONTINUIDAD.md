@@ -16,10 +16,11 @@
 13. [Advertencias de código legacy y decisiones históricas](#13-advertencias-de-código-legacy-y-decisiones-históricas)
 14. [Plan sugerido de continuidad (7-10 días)](#14-plan-sugerido-de-continuidad-7-10-días)
 15. [Nota sobre documentación histórica](#15-nota-sobre-documentación-histórica)
-16. [Glosario](#16-glosario)
+16. [Contacto técnico para continuidad](#16-contacto-técnico-para-continuidad)
+17. [Glosario](#17-glosario)
 
 ## 1) Objetivo de este documento
-Este archivo resume el estado técnico actual del proyecto para que otro desarrollador pueda continuar sin perder contexto.
+Este archivo resume el estado técnico actual del proyecto.
 Incluye:
 - Arquitectura y módulos críticos
 - Cambios funcionales recientes
@@ -441,7 +442,22 @@ sequenceDiagram
 - Esta carpeta está ignorada por git actualmente.
 - Este archivo se deja en raíz a propósito para continuidad operativa inmediata.
 
-## 16) Glosario
+## 16) Contacto técnico para continuidad
+Este handoff es el documento técnico principal para continuidad operativa, mantenimiento y transferencia de conocimiento del sistema MARO HUB.
+
+Para consultas técnicas, aclaraciones sobre arquitectura, reglas de negocio, despliegue, migraciones o diagnóstico de incidencias, se deja el siguiente canal de contacto:
+
+📧 marohub_legacy@filenode.dev
+
+Uso recomendado de este canal:
+- Dudas sobre arquitectura original y decisiones históricas del proyecto.
+- Validación de comportamiento esperado en flujos de riesgo, colegiación y alertas.
+- Aclaraciones sobre migraciones, variables de entorno y operación de base de datos privada.
+- Seguimiento de incidentes detectados durante la transición al nuevo equipo responsable.
+
+Este canal busca facilitar una transición ordenada hacia el equipo que la institución designe para la continuidad técnica del proyecto.
+
+## 17) Glosario
 - **CPN (Control Prenatal):** Consulta periódica de seguimiento clínico durante el embarazo.
 - **Consulta prenatal:** Registro clínico puntual en `consultas_prenatales` con signos, puntajes y estado de riesgo.
 - **Riesgo 25+:** Bandera de riesgo crítico cuando `puntaje_total_consulta >= 25`.
