@@ -449,13 +449,6 @@ Para consultas técnicas, aclaraciones sobre arquitectura, reglas de negocio, de
 
 📧 marohub_legacy@filenode.dev
 
-Uso recomendado de este canal:
-- Dudas sobre arquitectura original y decisiones históricas del proyecto.
-- Validación de comportamiento esperado en flujos de riesgo, colegiación y alertas.
-- Aclaraciones sobre migraciones, variables de entorno y operación de base de datos privada.
-- Seguimiento de incidentes detectados durante la transición al nuevo equipo responsable.
-
-Este canal busca facilitar una transición ordenada hacia el equipo que la institución designe para la continuidad técnica del proyecto.
 
 ## 17) Glosario
 - **CPN (Control Prenatal):** Consulta periódica de seguimiento clínico durante el embarazo.

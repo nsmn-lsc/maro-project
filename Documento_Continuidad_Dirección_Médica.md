@@ -415,6 +415,5 @@ Para mantener una comunicación clara y ordenada respecto al sistema MARO HUB, c
 
 📧 marohub_legacy@filenode.dev
 
-Este canal nos permitirá dar seguimiento adecuado a las solicitudes y facilitar la transición hacia el equipo que la institución designe para la continuidad del proyecto.  
+Este canal nos permitirá dar seguimiento adecuado a las solicitudes y facilitar la transición hacia el despliegue del proyecto.  
 
-Agradezco la oportunidad de permitirme haber colaborado en esta etapa y quedo disponible para aclaraciones puntuales a través del canal mencionado.
