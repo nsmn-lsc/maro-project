@@ -40,6 +40,22 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
       iconoBg: 'bg-red-100',
       iconoColor: 'text-red-600',
     },
+    MUY_ALTO: {
+      bg: 'bg-red-100',
+      border: 'border-red-500',
+      text: 'text-red-900',
+      badge: 'bg-red-200 text-red-900',
+      iconoBg: 'bg-red-200',
+      iconoColor: 'text-red-700',
+    },
+    CRITICO: {
+      bg: 'bg-purple-50',
+      border: 'border-purple-500',
+      text: 'text-purple-900',
+      badge: 'bg-purple-100 text-purple-900',
+      iconoBg: 'bg-purple-100',
+      iconoColor: 'text-purple-700',
+    },
   };
 
   const color = colorMap[resultado.nivel];
@@ -47,6 +63,8 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
     BAJO: '✅',
     MODERADO: '⚠️',
     ALTO: '🔴',
+    MUY_ALTO: '🚨',
+    CRITICO: '🆘',
   }[resultado.nivel];
 
   // ============================================================

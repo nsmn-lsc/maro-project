@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:setup": "mysql -u root -p < database/schema.sql",
-    "db:test": "tsx scripts/test-database.ts"
+    "db:test": "tsx scripts/test-database.ts",
+    "db:seed-unidades-usuarios": "tsx scripts/seed-unidades-usuarios.ts"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
