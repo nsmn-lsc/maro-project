@@ -46,3 +46,5 @@ next-env.d.ts
 
 #pdf files
 *.pdf
+# Credenciales bootstrap — nunca versionar
+credenciales-bootstrap.csv

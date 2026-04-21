@@ -1,8 +1,11 @@
 import fs from "fs";
 import path from "path";
-import { createHash } from "crypto";
+import { randomBytes } from "crypto";
+import bcrypt from "bcrypt";
 import { config } from "dotenv";
 import { getPool } from "../src/lib/db";
+
+const BCRYPT_ROUNDS = 12;
 
 interface UnidadRow {
   clues: string;
@@ -12,8 +15,17 @@ interface UnidadRow {
   nivel: number;
 }
 
-function hashPassword(base: string) {
-  return createHash("sha256").update(base).digest("hex");
+/** Genera una contraseña bootstrap aleatoria de 20 caracteres */
+function generatePassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*";
+  const bytes = randomBytes(20);
+  return Array.from(bytes)
+    .map((b) => chars[b % chars.length])
+    .join("");
+}
+
+async function hashPassword(plain: string): Promise<string> {
+  return bcrypt.hash(plain, BCRYPT_ROUNDS);
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -25,6 +37,8 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 async function ensureTables() {
+  // Las tablas cat_unidades y usuarios ya se crean con npm run db:setup (database/schema.sql)
+  // Este bloque queda como fallback de seguridad al ejecutar el seed de forma independiente
   const pool = getPool();
   await pool.query(`
     CREATE TABLE IF NOT EXISTS cat_unidades (
@@ -41,22 +55,24 @@ async function ensureTables() {
     CREATE TABLE IF NOT EXISTS usuarios (
       id INT AUTO_INCREMENT PRIMARY KEY,
       username VARCHAR(100) NOT NULL UNIQUE,
-      password_hash CHAR(64) NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
       nombre VARCHAR(255),
       nivel ENUM('CLUES','REGION','ESTADO','ADMIN') NOT NULL,
-      clues_id VARCHAR(20),
-      region VARCHAR(100),
+      clues_id VARCHAR(20) NULL,
+      region VARCHAR(100) NULL,
+      activo BOOLEAN NOT NULL DEFAULT TRUE,
+      must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
+      last_login_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      FOREIGN KEY (clues_id) REFERENCES cat_unidades(clues) ON DELETE SET NULL
+      CONSTRAINT fk_usuarios_clues FOREIGN KEY (clues_id) REFERENCES cat_unidades(clues) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
 
-  // Indexes (ignore if already exist)
   try {
     await pool.query(`CREATE INDEX idx_usuarios_nivel_region ON usuarios (nivel, region);`);
   } catch (err: any) {
-    if (err?.errno !== 1061) throw err; // 1061: duplicate key name
+    if (err?.errno !== 1061) throw err;
   }
   try {
     await pool.query(`CREATE INDEX idx_usuarios_nivel_clues ON usuarios (nivel, clues_id);`);
@@ -93,53 +109,71 @@ async function loadUnidades(rows: UnidadRow[]) {
   }
 }
 
-async function seedUsuarios(rows: UnidadRow[]) {
+async function seedUsuarios(rows: UnidadRow[]): Promise<void> {
   const pool = getPool();
-  // CLUES users
-  const cluesValues = rows.map((r) => [
-    r.clues,
-    hashPassword(`Maro-${r.clues}-2026`),
-    r.unidad,
-    "CLUES",
-    r.clues,
-    r.region,
-  ]);
-  for (const batch of chunk(cluesValues, 200)) {
+  const credenciales: string[] = [
+    "# Credenciales bootstrap — ELIMINAR despues de entregar al administrador",
+    "# username,nivel,clues_id,region,password_temporal",
+  ];
+
+  // CLUES users — uno por unidad
+  for (const batch of chunk(rows, 10)) {
+    const values: any[][] = [];
+    for (const r of batch) {
+      const pwd = generatePassword();
+      const hash = await hashPassword(pwd);
+      credenciales.push(`${r.clues},CLUES,${r.clues},${r.region},${pwd}`);
+      values.push([r.clues, hash, r.unidad, "CLUES", r.clues, r.region, true, true]);
+    }
     await pool.query(
-      `INSERT IGNORE INTO usuarios (username, password_hash, nombre, nivel, clues_id, region) VALUES ?`,
-      [batch]
+      `INSERT IGNORE INTO usuarios
+         (username, password_hash, nombre, nivel, clues_id, region, activo, must_change_password)
+       VALUES ?`,
+      [values]
     );
   }
 
   // Region users
   const regiones = Array.from(new Set(rows.map((r) => r.region)));
-  const regionValues = regiones.map((region) => [
-    `REGION-${region}`,
-    hashPassword(`Maro-${region}-2026`),
-    `Usuario región ${region}`,
-    "REGION",
-    region,
-  ]);
-  await pool.query(
-    `INSERT IGNORE INTO usuarios (username, password_hash, nombre, nivel, region) VALUES ?`,
-    [regionValues]
-  );
+  for (const region of regiones) {
+    const pwd = generatePassword();
+    const hash = await hashPassword(pwd);
+    credenciales.push(`REGION-${region},REGION,,${region},${pwd}`);
+    await pool.query(
+      `INSERT IGNORE INTO usuarios
+         (username, password_hash, nombre, nivel, region, activo, must_change_password)
+       VALUES (?, ?, ?, 'REGION', ?, true, true)`,
+      [`REGION-${region}`, hash, `Usuario región ${region}`, region]
+    );
+  }
 
   // Estado
+  const pwdEstado = generatePassword();
+  const hashEstado = await hashPassword(pwdEstado);
+  credenciales.push(`ESTADO,ESTADO,,,${pwdEstado}`);
   await pool.query(
-    `INSERT IGNORE INTO usuarios (username, password_hash, nombre, nivel) VALUES ?`,
-    [[
-      ["ESTADO", hashPassword("Maro-Estado-2026"), "Usuario estatal", "ESTADO"],
-    ]]
+    `INSERT IGNORE INTO usuarios
+       (username, password_hash, nombre, nivel, activo, must_change_password)
+     VALUES (?, ?, 'Usuario estatal', 'ESTADO', true, true)`,
+    ["ESTADO", hashEstado]
   );
 
   // Admin
+  const pwdAdmin = generatePassword();
+  const hashAdmin = await hashPassword(pwdAdmin);
+  credenciales.push(`ADMIN,ADMIN,,,${pwdAdmin}`);
   await pool.query(
-    `INSERT IGNORE INTO usuarios (username, password_hash, nombre, nivel) VALUES ?`,
-    [[
-      ["ADMIN", hashPassword("Maro-Admin-2026"), "Administrador", "ADMIN"],
-    ]]
+    `INSERT IGNORE INTO usuarios
+       (username, password_hash, nombre, nivel, activo, must_change_password)
+     VALUES (?, ?, 'Administrador', 'ADMIN', true, true)`,
+    ["ADMIN", hashAdmin]
   );
+
+  // Escribir archivo de credenciales temporales (no versionado)
+  const outPath = path.resolve(__dirname, "../credenciales-bootstrap.csv");
+  fs.writeFileSync(outPath, credenciales.join("\n") + "\n", "utf8");
+  console.log(`\nCredenciales bootstrap escritas en: ${outPath}`);
+  console.log("ADVERTENCIA: entregar ese archivo por canal seguro y eliminarlo despues.");
 }
 
 async function main() {
@@ -152,17 +186,14 @@ async function main() {
   await loadUnidades(unidades);
   await seedUsuarios(unidades);
 
-  console.log(`Importadas ${unidades.length} unidades`);
+  console.log(`\nImportadas ${unidades.length} unidades`);
   console.log(`Usuarios generados:`);
   console.log(`- CLUES: ${unidades.length}`);
   console.log(`- REGIONES: ${new Set(unidades.map((u) => u.region)).size}`);
   console.log(`- ESTADO: 1`);
   console.log(`- ADMIN: 1`);
-  console.log("Passwords base:");
-  console.log("- CLUES: Maro-<CLUES>-2026");
-  console.log("- REGION: Maro-<REGION>-2026");
-  console.log("- ESTADO: Maro-Estado-2026");
-  console.log("- ADMIN: Maro-Admin-2026");
+  console.log("\nTodos los usuarios quedan con must_change_password = true");
+  console.log("Todos los hashes usan bcrypt (cost 12)");
 }
 
 main().catch((err) => {

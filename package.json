@@ -12,6 +12,7 @@
     "db:seed-unidades-usuarios": "tsx scripts/seed-unidades-usuarios.ts"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "exceljs": "^4.4.0",
     "mysql2": "^3.16.0",
     "next": "^16.1.6",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

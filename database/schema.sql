@@ -4,6 +4,39 @@
 CREATE DATABASE IF NOT EXISTS maro_hub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE maro_hub;
 
+-- Catalogo maestro de unidades por CLUES
+CREATE TABLE IF NOT EXISTS cat_unidades (
+  clues VARCHAR(20) PRIMARY KEY,
+  unidad VARCHAR(255) NOT NULL,
+  region VARCHAR(100) NOT NULL,
+  municipio VARCHAR(150) NOT NULL,
+  nivel TINYINT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_cat_unidades_region (region),
+  INDEX idx_cat_unidades_municipio (municipio),
+  INDEX idx_cat_unidades_nivel (nivel)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de usuarios para autenticacion real
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(100) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  nombre VARCHAR(255),
+  nivel ENUM('CLUES', 'REGION', 'ESTADO', 'ADMIN') NOT NULL,
+  clues_id VARCHAR(20) NULL,
+  region VARCHAR(100) NULL,
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
+  last_login_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_usuarios_clues FOREIGN KEY (clues_id) REFERENCES cat_unidades(clues) ON DELETE SET NULL,
+  INDEX idx_usuarios_nivel_region (nivel, region),
+  INDEX idx_usuarios_nivel_clues (nivel, clues_id),
+  INDEX idx_usuarios_activo (activo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Tabla de sesiones de usuario (datos de acceso)
 CREATE TABLE IF NOT EXISTS sesiones (
   id INT AUTO_INCREMENT PRIMARY KEY,

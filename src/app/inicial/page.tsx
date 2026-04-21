@@ -3,14 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type UnitRecord = {
-  CLUES: string;
-  UNIDAD: string;
-  REGION: string;
-  MUNICIPIO: string;
-  NIVEL: number;
-};
-
 export default function AccesoInicial() {
   const router = useRouter();
 
@@ -30,71 +22,36 @@ export default function AccesoInicial() {
 
     try {
       const usuarioNormalizado = usuario.trim();
-      const usuarioLower = usuarioNormalizado.toLowerCase();
-      const esIntentoEstatal = usuarioLower.includes("estatal");
-      const esIntentoRegional = usuarioLower.includes("regional");
 
-      // ── Nivel 3: Estatal ─────────────────────────────────────────
-      const authEstatalRes = await fetch("/api/auth/estatal", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ usuario: usuarioNormalizado, password }),
       });
 
-      if (authEstatalRes.ok) {
-        const estatalSession = await authEstatalRes.json();
-        localStorage.setItem("maro:user", JSON.stringify(estatalSession));
-        router.push("/estatal");
-        return;
-      }
-
-      if (esIntentoEstatal) {
-        const authError = await authEstatalRes.json().catch(() => null);
-        throw new Error(authError?.message || "Credenciales estatales inválidas");
-      }
-
-      // ── Nivel 2: Regional ─────────────────────────────────────────
-      const authRegionalRes = await fetch("/api/auth/regional", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuario: usuarioNormalizado, password }),
-      });
-
-      if (authRegionalRes.ok) {
-        const regionalSession = await authRegionalRes.json();
-        localStorage.setItem("maro:user", JSON.stringify(regionalSession));
-        router.push("/region");
-        return;
-      }
-
-      if (esIntentoRegional) {
-        const authError = await authRegionalRes.json().catch(() => null);
-        throw new Error(authError?.message || "Credenciales regionales inválidas");
-      }
-
-      // ── Nivel 1: Unidad (CLUES en catálogo) ──────────────────────
-      const res = await fetch(`/api/unidades/${encodeURIComponent(usuarioNormalizado)}`);
       if (!res.ok) {
-        if (res.status >= 500) {
-          throw new Error("Error del servidor al validar CLUES");
-        }
-        throw new Error("No se encontró la CLUES en catálogo");
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message || "Credenciales inválidas");
       }
-      const data: UnitRecord = await res.json();
 
-      const session = {
-        clues: data.CLUES,
-        unidad: data.UNIDAD,
-        region: data.REGION,
-        municipio: data.MUNICIPIO,
-        nivel: data.NIVEL,
-        displayName: data.UNIDAD,
-      };
-
+      const session = await res.json();
       localStorage.setItem("maro:user", JSON.stringify(session));
-      // CLUES con NIVEL>=2 en catálogo también van a /region como fallback
-      const destino = data.NIVEL >= 2 ? "/region" : "/dashboard";
-      router.push(destino);
+
+      if (session.mustChangePassword) {
+        router.push("/cambiar-password");
+        return;
+      }
+
+      const rol: string = session.rol || "";
+      if (rol === "estatal") {
+        router.push("/estatal");
+      } else if (rol === "regional") {
+        router.push("/region");
+      } else {
+        // CLUES: nivel>=2 → /region, nivel=1 → /dashboard
+        const destino = (session.nivel ?? 1) >= 2 ? "/region" : "/dashboard";
+        router.push(destino);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al validar acceso");
     } finally {
