@@ -1,19 +1,17 @@
 -- database/migrations/20260205_add_factor_riesgo_scores.sql
 -- Migración para agregar columnas de puntuación de factores de riesgo
 
-USE maro_hub;
-
 -- Agregar columnas de puntuación a la tabla casos
 ALTER TABLE casos 
-ADD COLUMN IF NOT EXISTS score_factor_riesgo INT DEFAULT NULL COMMENT 'Puntuación numérica de factores de riesgo',
-ADD COLUMN IF NOT EXISTS categoria_riesgo_factor ENUM('BAJO', 'MODERADO', 'ALTO') DEFAULT NULL COMMENT 'Categoría derivada del score de factores',
-ADD COLUMN IF NOT EXISTS fecha_calculo_factor TIMESTAMP NULL COMMENT 'Última fecha de cálculo del factor de riesgo',
+ADD COLUMN score_factor_riesgo INT DEFAULT NULL COMMENT 'Puntuación numérica de factores de riesgo',
+ADD COLUMN categoria_riesgo_factor ENUM('BAJO', 'MODERADO', 'ALTO') DEFAULT NULL COMMENT 'Categoría derivada del score de factores',
+ADD COLUMN fecha_calculo_factor TIMESTAMP NULL COMMENT 'Última fecha de cálculo del factor de riesgo',
 ADD INDEX idx_score_factor (score_factor_riesgo),
 ADD INDEX idx_categoria_factor (categoria_riesgo_factor);
 
 -- Agregar columna para almacenar el detalle de cálculo (JSON)
 ALTER TABLE casos 
-ADD COLUMN IF NOT EXISTS detalle_factor_riesgo JSON DEFAULT NULL COMMENT 'Detalles del cálculo de factor de riesgo en formato JSON';
+ADD COLUMN detalle_factor_riesgo JSON DEFAULT NULL COMMENT 'Detalles del cálculo de factor de riesgo en formato JSON';
 
 -- Crear tabla auxiliar para historial de cálculos de factor de riesgo
 CREATE TABLE IF NOT EXISTS historial_factor_riesgo (
@@ -40,4 +38,4 @@ CREATE TABLE IF NOT EXISTS historial_factor_riesgo (
 
 -- Agregar abortos a tabla casos si no existe
 ALTER TABLE casos 
-ADD COLUMN IF NOT EXISTS abortos INT DEFAULT 0 COMMENT 'Número de abortos previos';
+ADD COLUMN abortos INT DEFAULT 0 COMMENT 'Número de abortos previos';

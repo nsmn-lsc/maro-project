@@ -8,8 +8,6 @@
 --              es_portadora = 6 puntos
 -- ============================================================
 
-USE maro_db;
-
 -- 1. Renombrar campo antiguo como respaldo
 ALTER TABLE cat_pacientes
   CHANGE COLUMN factores_riesgo_epid factores_riesgo_epid_old TEXT NULL 

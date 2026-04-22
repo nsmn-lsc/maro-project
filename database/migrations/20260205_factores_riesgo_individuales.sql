@@ -5,8 +5,6 @@
 --              con puntuaciones específicas para evaluación de riesgo
 -- ============================================================
 
-USE maro_db;
-
 -- 1. Agregar nuevos campos booleanos con sus puntuaciones
 ALTER TABLE cat_pacientes
   ADD COLUMN factor_diabetes BOOLEAN DEFAULT FALSE COMMENT 'Diabetes (4 puntos)',

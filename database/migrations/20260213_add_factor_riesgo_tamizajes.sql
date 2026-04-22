@@ -5,8 +5,6 @@
 --              por tamizajes iniciales para seguimiento y evaluación clínica
 -- ============================================================
 
-USE maro_db;
-
 -- 1. Agregar campo a tabla cat_pacientes
 ALTER TABLE cat_pacientes
   ADD COLUMN factor_riesgo_tamizajes INT DEFAULT 0 

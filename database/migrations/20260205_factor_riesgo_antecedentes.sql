@@ -5,8 +5,6 @@
 --              por antecedentes para seguimiento y evaluación clínica
 -- ============================================================
 
-USE maro_db;
-
 -- 1. Agregar campos a tabla cat_pacientes
 ALTER TABLE cat_pacientes
   ADD COLUMN factor_riesgo_antecedentes INT DEFAULT 0 
