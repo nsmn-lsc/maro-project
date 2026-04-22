@@ -277,14 +277,18 @@ export default function EvaluacionClinicaPage() {
 
     setGuardando(true);
     try {
+      const region = (base.region ?? "").trim();
+      const municipio = (base.municipio ?? "").trim();
+      const unidad = (base.unidad ?? "").trim();
+
       // 1. Crear o actualizar caso
       let casoId = casoIdDB;
       if (!casoId) {
         const resultCaso = await casosAPI.crear({
           folio: idCaso,
-          region: base.region.trim(),
-          municipio: base.municipio.trim(),
-          unidad: base.unidad.trim(),
+          region,
+          municipio,
+          unidad,
           clues: base.clues?.trim(),
           nivelAtencion: 'Primer Nivel',
           pacienteIniciales: iniPaciente.trim(),

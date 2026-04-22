@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         nivel: unidad.nivel,
         displayName: user.nombre || unidad.unidad,
         rol: "clues",
-        mustChangePassword: user.must_change_password,
+        mustChangePassword: Boolean(user.must_change_password),
       });
     }
 
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
         nivel: 2,
         displayName: user.nombre || `Región ${user.region}`,
         rol: "regional",
-        mustChangePassword: user.must_change_password,
+        mustChangePassword: Boolean(user.must_change_password),
       });
     }
 
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
         nivel: 3,
         displayName: user.nombre || "Usuario Estatal",
         rol: "estatal",
-        mustChangePassword: user.must_change_password,
+        mustChangePassword: Boolean(user.must_change_password),
       });
     }
 

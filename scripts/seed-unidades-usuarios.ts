@@ -103,7 +103,12 @@ async function loadUnidades(rows: UnidadRow[]) {
   for (const batch of chunk(rows, 200)) {
     const values = batch.map((r) => [r.clues, r.unidad, r.region, r.municipio, r.nivel]);
     await pool.query(
-      `REPLACE INTO cat_unidades (clues, unidad, region, municipio, nivel) VALUES ?`,
+      `INSERT INTO cat_unidades (clues, unidad, region, municipio, nivel) VALUES ?
+       ON DUPLICATE KEY UPDATE
+         unidad = VALUES(unidad),
+         region = VALUES(region),
+         municipio = VALUES(municipio),
+         nivel = VALUES(nivel)`,
       [values]
     );
   }
@@ -126,9 +131,18 @@ async function seedUsuarios(rows: UnidadRow[]): Promise<void> {
       values.push([r.clues, hash, r.unidad, "CLUES", r.clues, r.region, true, true]);
     }
     await pool.query(
-      `INSERT IGNORE INTO usuarios
+      `INSERT INTO usuarios
          (username, password_hash, nombre, nivel, clues_id, region, activo, must_change_password)
-       VALUES ?`,
+       VALUES ?
+       ON DUPLICATE KEY UPDATE
+         password_hash = VALUES(password_hash),
+         nombre = VALUES(nombre),
+         nivel = VALUES(nivel),
+         clues_id = VALUES(clues_id),
+         region = VALUES(region),
+         activo = VALUES(activo),
+         must_change_password = VALUES(must_change_password),
+         updated_at = CURRENT_TIMESTAMP`,
       [values]
     );
   }
@@ -140,9 +154,17 @@ async function seedUsuarios(rows: UnidadRow[]): Promise<void> {
     const hash = await hashPassword(pwd);
     credenciales.push(`REGION-${region},REGION,,${region},${pwd}`);
     await pool.query(
-      `INSERT IGNORE INTO usuarios
+      `INSERT INTO usuarios
          (username, password_hash, nombre, nivel, region, activo, must_change_password)
-       VALUES (?, ?, ?, 'REGION', ?, true, true)`,
+       VALUES (?, ?, ?, 'REGION', ?, true, true)
+       ON DUPLICATE KEY UPDATE
+         password_hash = VALUES(password_hash),
+         nombre = VALUES(nombre),
+         nivel = VALUES(nivel),
+         region = VALUES(region),
+         activo = VALUES(activo),
+         must_change_password = VALUES(must_change_password),
+         updated_at = CURRENT_TIMESTAMP`,
       [`REGION-${region}`, hash, `Usuario región ${region}`, region]
     );
   }
@@ -152,9 +174,16 @@ async function seedUsuarios(rows: UnidadRow[]): Promise<void> {
   const hashEstado = await hashPassword(pwdEstado);
   credenciales.push(`ESTADO,ESTADO,,,${pwdEstado}`);
   await pool.query(
-    `INSERT IGNORE INTO usuarios
+    `INSERT INTO usuarios
        (username, password_hash, nombre, nivel, activo, must_change_password)
-     VALUES (?, ?, 'Usuario estatal', 'ESTADO', true, true)`,
+     VALUES (?, ?, 'Usuario estatal', 'ESTADO', true, true)
+     ON DUPLICATE KEY UPDATE
+       password_hash = VALUES(password_hash),
+       nombre = VALUES(nombre),
+       nivel = VALUES(nivel),
+       activo = VALUES(activo),
+       must_change_password = VALUES(must_change_password),
+       updated_at = CURRENT_TIMESTAMP`,
     ["ESTADO", hashEstado]
   );
 
@@ -163,9 +192,16 @@ async function seedUsuarios(rows: UnidadRow[]): Promise<void> {
   const hashAdmin = await hashPassword(pwdAdmin);
   credenciales.push(`ADMIN,ADMIN,,,${pwdAdmin}`);
   await pool.query(
-    `INSERT IGNORE INTO usuarios
+    `INSERT INTO usuarios
        (username, password_hash, nombre, nivel, activo, must_change_password)
-     VALUES (?, ?, 'Administrador', 'ADMIN', true, true)`,
+     VALUES (?, ?, 'Administrador', 'ADMIN', true, true)
+     ON DUPLICATE KEY UPDATE
+       password_hash = VALUES(password_hash),
+       nombre = VALUES(nombre),
+       nivel = VALUES(nivel),
+       activo = VALUES(activo),
+       must_change_password = VALUES(must_change_password),
+       updated_at = CURRENT_TIMESTAMP`,
     ["ADMIN", hashAdmin]
   );
 

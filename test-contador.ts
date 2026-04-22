@@ -1,7 +1,7 @@
 // Prueba rápida del sistema de contador
 // Script para validar que todo funciona correctamente
 
-import { evaluarFactoresRiesgo, DatosFactoresPaciente } from './lib/riesgoFactores';
+import { evaluarFactoresRiesgo, DatosFactoresPaciente } from './src/lib/riesgoFactores';
 
 console.log('=== PRUEBAS DEL CONTADOR DE FACTOR DE RIESGO ===\n');
 

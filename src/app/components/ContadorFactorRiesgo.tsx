@@ -24,14 +24,6 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
       iconoBg: 'bg-green-100',
       iconoColor: 'text-green-600',
     },
-    MODERADO: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-300',
-      text: 'text-yellow-900',
-      badge: 'bg-yellow-100 text-yellow-800',
-      iconoBg: 'bg-yellow-100',
-      iconoColor: 'text-yellow-600',
-    },
     ALTO: {
       bg: 'bg-red-50',
       border: 'border-red-300',
@@ -61,7 +53,6 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
   const color = colorMap[resultado.nivel];
   const icono = {
     BAJO: '✅',
-    MODERADO: '⚠️',
     ALTO: '🔴',
     MUY_ALTO: '🚨',
     CRITICO: '🆘',
@@ -125,11 +116,14 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
         {resultado.nivel === 'BAJO' && (
           <span className="text-xs text-green-700">→ Seguimiento normal</span>
         )}
-        {resultado.nivel === 'MODERADO' && (
-          <span className="text-xs text-yellow-700">→ Vigilancia especial recomendada</span>
-        )}
         {resultado.nivel === 'ALTO' && (
           <span className="text-xs text-red-700">→ Requiere evaluación especializada</span>
+        )}
+        {resultado.nivel === 'MUY_ALTO' && (
+          <span className="text-xs text-red-800">→ Requiere coordinación con nivel de atención superior</span>
+        )}
+        {resultado.nivel === 'CRITICO' && (
+          <span className="text-xs text-purple-800">→ Colegiación inmediata y atención urgente</span>
         )}
       </div>
 

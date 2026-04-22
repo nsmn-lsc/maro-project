@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 type SessionInfo = {
@@ -30,7 +30,7 @@ const initialForm = {
   fecha_contrareferencia: "",
 };
 
-export default function NuevoPuerperio() {
+function NuevoPuerperioContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pacienteId = searchParams?.get("paciente_id");
@@ -382,5 +382,19 @@ export default function NuevoPuerperio() {
         </form>
       </div>
     </main>
+  );
+}
+
+export default function NuevoPuerperio() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+          <p className="text-sm text-slate-300">Cargando formulario de puerperio...</p>
+        </main>
+      }
+    >
+      <NuevoPuerperioContent />
+    </Suspense>
   );
 }

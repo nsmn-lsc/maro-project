@@ -19,7 +19,6 @@ type Paciente = {
   unidad: string | null;
   municipio: string | null;
   region: string | null;
-  edad?: number | null;
   fecha_ingreso_cpn: string | null;
   sdg_ingreso: number | null;
   telefono: string | null;
