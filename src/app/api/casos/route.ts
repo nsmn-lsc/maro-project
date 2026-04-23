@@ -1,9 +1,35 @@
 // app/api/casos/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { assertCluesScope, requireApiAuth } from '@/lib/apiAuth';
+
+function normalizeUpper(value: unknown): string {
+  return String(value || '').trim().toUpperCase();
+}
+
+async function canAccessCaso(casoId: number, auth: { nivel: number; cluesId: string | null; region: string | null }) {
+  const rows = await query<Array<{ clues: string | null; region: string | null }>>(
+    `SELECT clues, region FROM casos WHERE id = ? LIMIT 1`,
+    [casoId]
+  );
+
+  if (!rows || rows.length === 0) return false;
+  const row = rows[0];
+
+  if (auth.nivel >= 3) return true;
+  if (auth.nivel === 2) {
+    return !!auth.region && !!row.region && normalizeUpper(auth.region) === normalizeUpper(row.region);
+  }
+
+  return !!auth.cluesId && !!row.clues && normalizeUpper(auth.cluesId) === normalizeUpper(row.clues);
+}
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireApiAuth(request, 1);
+    if (!authResult.ok) return authResult.response;
+    const auth = authResult.auth;
+
     const body = await request.json();
     const {
       folio,
@@ -26,7 +52,39 @@ export async function POST(request: NextRequest) {
       resumenClinico,
     } = body;
 
-    if (!folio || !region || !municipio || !unidad || !pacienteIniciales) {
+    let regionNormalized = normalizeUpper(region);
+    let cluesNormalized = normalizeUpper(clues) || null;
+
+    if (auth.nivel === 1) {
+      if (!auth.cluesId) {
+        return NextResponse.json({ error: 'Usuario CLUES sin alcance asignado' }, { status: 403 });
+      }
+
+      if (cluesNormalized && cluesNormalized !== normalizeUpper(auth.cluesId)) {
+        return NextResponse.json({ error: 'Sin permisos para registrar otro CLUES' }, { status: 403 });
+      }
+
+      cluesNormalized = normalizeUpper(auth.cluesId);
+      if (auth.region) {
+        regionNormalized = normalizeUpper(auth.region);
+      }
+    }
+
+    if (auth.nivel === 2) {
+      if (!auth.region) {
+        return NextResponse.json({ error: 'Usuario regional sin región asignada' }, { status: 403 });
+      }
+
+      regionNormalized = normalizeUpper(auth.region);
+      if (cluesNormalized) {
+        const allowed = await assertCluesScope(cluesNormalized, auth);
+        if (!allowed) {
+          return NextResponse.json({ error: 'Sin permisos para registrar ese CLUES' }, { status: 403 });
+        }
+      }
+    }
+
+    if (!folio || !regionNormalized || !municipio || !unidad || !pacienteIniciales) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos' },
         { status: 400 }
@@ -42,10 +100,10 @@ export async function POST(request: NextRequest) {
       [
         folio,
         sesionId || null,
-        region,
+        regionNormalized,
         municipio,
         unidad,
-        clues || null,
+        cluesNormalized,
         nivelAtencion || 'Primer Nivel',
         pacienteIniciales,
         edad || null,
@@ -77,14 +135,41 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireApiAuth(request, 1);
+    if (!authResult.ok) return authResult.response;
+    const auth = authResult.auth;
+
     const searchParams = request.nextUrl.searchParams;
     const id = searchParams.get('id');
     const folio = searchParams.get('folio');
 
+    const whereScope: string[] = [];
+    const scopeParams: Array<string | number> = [];
+
+    if (auth.nivel === 1) {
+      if (!auth.cluesId) {
+        return NextResponse.json({ error: 'Usuario CLUES sin alcance asignado' }, { status: 403 });
+      }
+      whereScope.push('UPPER(c.clues) = ?');
+      scopeParams.push(normalizeUpper(auth.cluesId));
+    } else if (auth.nivel === 2) {
+      if (!auth.region) {
+        return NextResponse.json({ error: 'Usuario regional sin región asignada' }, { status: 403 });
+      }
+      whereScope.push('UPPER(c.region) = ?');
+      scopeParams.push(normalizeUpper(auth.region));
+    }
+
     if (id) {
+      const idNum = Number(id);
+      if (!Number.isFinite(idNum) || idNum <= 0) {
+        return NextResponse.json({ error: 'ID de caso inválido' }, { status: 400 });
+      }
+
+      const where = ['c.id = ?', ...whereScope];
       const casos = await query<any[]>(
-        'SELECT * FROM casos WHERE id = ?',
-        [id]
+        `SELECT c.* FROM casos c WHERE ${where.join(' AND ')} LIMIT 1`,
+        [idNum, ...scopeParams]
       );
 
       if (casos.length === 0) {
@@ -98,9 +183,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (folio) {
+      const where = ['c.folio = ?', ...whereScope];
       const casos = await query<any[]>(
-        'SELECT * FROM casos WHERE folio = ?',
-        [folio]
+        `SELECT c.* FROM casos c WHERE ${where.join(' AND ')} LIMIT 1`,
+        [folio, ...scopeParams]
       );
 
       if (casos.length === 0) {
@@ -114,8 +200,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Listar todos los casos
+    const whereClause = whereScope.length ? `WHERE ${whereScope.join(' AND ')}` : '';
     const casos = await query<any[]>(
-      'SELECT * FROM casos ORDER BY created_at DESC LIMIT 100'
+      `SELECT c.* FROM casos c ${whereClause} ORDER BY c.created_at DESC LIMIT 100`,
+      scopeParams
     );
 
     return NextResponse.json({ success: true, data: casos });
@@ -130,6 +218,10 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const authResult = await requireApiAuth(request, 1);
+    if (!authResult.ok) return authResult.response;
+    const auth = authResult.auth;
+
     const body = await request.json();
     const { id, estatus, nivelRiesgo, scoreRiesgo, resumenClinico } = body;
 
@@ -138,6 +230,16 @@ export async function PUT(request: NextRequest) {
         { error: 'ID del caso requerido' },
         { status: 400 }
       );
+    }
+
+    const idNum = Number(id);
+    if (!Number.isFinite(idNum) || idNum <= 0) {
+      return NextResponse.json({ error: 'ID de caso inválido' }, { status: 400 });
+    }
+
+    const allowed = await canAccessCaso(idNum, auth);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Sin permisos para actualizar este caso' }, { status: 403 });
     }
 
     const updates: string[] = [];
@@ -167,7 +269,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    values.push(id);
+    values.push(idNum);
 
     await query(
       `UPDATE casos SET ${updates.join(', ')} WHERE id = ?`,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { assertCluesScope, assertPacienteScope, requireApiAuth } from "@/lib/apiAuth";
 
 /**
  * Genera el siguiente folio consecutivo para puerperio
@@ -28,14 +29,22 @@ async function generarSiguienteFolioPuerperio(cluesId: string): Promise<string> 
 }
 
 export async function GET(request: Request) {
+  const authResult = await requireApiAuth(request, 1);
+  if (!authResult.ok) return authResult.response;
+  const auth = authResult.auth;
+
   const { searchParams } = new URL(request.url);
   const pacienteId = searchParams.get("paciente_id");
   const action = searchParams.get("action");
-  const cluesId = searchParams.get("clues_id");
+  const cluesId = (searchParams.get("clues_id") || "").trim().toUpperCase();
 
   // Acción especial: generar folio para puerperio
   if (action === "generar-folio" && cluesId) {
     try {
+      const allowed = await assertCluesScope(cluesId, auth);
+      if (!allowed) {
+        return NextResponse.json({ message: "Sin permisos para esa CLUES" }, { status: 403 });
+      }
       const folio = await generarSiguienteFolioPuerperio(cluesId);
       return NextResponse.json({ folio });
     } catch (error: any) {
@@ -48,10 +57,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "paciente_id es requerido" }, { status: 400 });
   }
 
+  const pacienteIdNum = Number(pacienteId);
+  if (!Number.isFinite(pacienteIdNum) || pacienteIdNum <= 0) {
+    return NextResponse.json({ message: "paciente_id inválido" }, { status: 400 });
+  }
+
+  const allowed = await assertPacienteScope(pacienteIdNum, auth);
+  if (!allowed) {
+    return NextResponse.json({ message: "Sin permisos para este paciente" }, { status: 403 });
+  }
+
   try {
     const rows = await query(
       `SELECT * FROM puerperio WHERE paciente_id = ? ORDER BY created_at DESC`,
-      [pacienteId]
+      [pacienteIdNum]
     );
 
     return NextResponse.json(rows);
@@ -62,6 +81,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const authResult = await requireApiAuth(request, 1);
+  if (!authResult.ok) return authResult.response;
+  const auth = authResult.auth;
+
   try {
     const body = await request.json();
 
@@ -70,14 +93,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "paciente_id es requerido" }, { status: 400 });
     }
 
+    const pacienteIdNum = Number(pacienteId);
+    if (!Number.isFinite(pacienteIdNum) || pacienteIdNum <= 0) {
+      return NextResponse.json({ message: "paciente_id inválido" }, { status: 400 });
+    }
+
+    const allowedPaciente = await assertPacienteScope(pacienteIdNum, auth);
+    if (!allowedPaciente) {
+      return NextResponse.json({ message: "Sin permisos para este paciente" }, { status: 403 });
+    }
+
+    const cluesBody = String(body.clues_id || "").trim().toUpperCase();
+    if (!cluesBody) {
+      return NextResponse.json({ message: "clues_id es requerido" }, { status: 400 });
+    }
+
+    const allowedClues = await assertCluesScope(cluesBody, auth);
+    if (!allowedClues) {
+      return NextResponse.json({ message: "Sin permisos para esa CLUES" }, { status: 403 });
+    }
+
     // Si no viene folio, generar uno nuevo
     let folio = body.folio;
-    if (!folio && body.clues_id) {
-      folio = await generarSiguienteFolioPuerperio(body.clues_id);
+    if (!folio) {
+      folio = await generarSiguienteFolioPuerperio(cluesBody);
     }
 
     const payload = {
-      paciente_id: pacienteId,
+      paciente_id: pacienteIdNum,
       folio: folio || null,
       complicaciones: body.complicaciones || null,
       MMEG: body.MMEG ? 1 : 0,
@@ -94,8 +137,8 @@ export async function POST(request: Request) {
       usuaria_seguimiento: body.usuaria_seguimiento ? 1 : 0,
       fecha_atencion_sna_tna: body.fecha_atencion_sna_tna || null,
       fecha_contrareferencia: body.fecha_contrareferencia || null,
-      created_by: body.created_by || null,
-      updated_by: body.updated_by || null,
+      created_by: auth.userId,
+      updated_by: auth.userId,
     };
 
     const placeholders = Object.keys(payload).map(() => "?").join(", ");

@@ -37,6 +37,7 @@ function NuevoPuerperioContent() {
   const folioExistente = searchParams?.get("folio");
 
   const [session, setSession] = useState<SessionInfo>({});
+  const [authChecked, setAuthChecked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -45,23 +46,32 @@ function NuevoPuerperioContent() {
 
   useEffect(() => {
     const stored = localStorage.getItem("maro:user");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setSession(parsed);
-
-        // Si viene folio existente (desde consulta), usarlo
-        if (folioExistente) {
-          setForm((prev) => ({ ...prev, folio: folioExistente }));
-        } else if (parsed.clues) {
-          // Si no, generar uno nuevo
-          generarFolio(parsed.clues);
-        }
-      } catch (_) {
-        // ignore
-      }
+    if (!stored) {
+      router.replace("/inicial");
+      return;
     }
-  }, [folioExistente]);
+
+    try {
+      const parsed = JSON.parse(stored);
+      if (!parsed?.clues) {
+        router.replace("/inicial");
+        return;
+      }
+
+      setSession(parsed);
+
+      // Si viene folio existente (desde consulta), usarlo
+      if (folioExistente) {
+        setForm((prev) => ({ ...prev, folio: folioExistente }));
+      } else {
+        // Si no, generar uno nuevo
+        generarFolio(parsed.clues);
+      }
+      setAuthChecked(true);
+    } catch (_) {
+      router.replace("/inicial");
+    }
+  }, [folioExistente, router]);
 
   const generarFolio = async (cluesId: string) => {
     setLoadingFolio(true);
@@ -141,6 +151,14 @@ function NuevoPuerperioContent() {
       setSaving(false);
     }
   };
+
+  if (!authChecked) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <p className="text-sm text-slate-300">Validando sesión...</p>
+      </main>
+    );
+  }
 
   return (
     <main

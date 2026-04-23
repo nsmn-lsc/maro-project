@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { assertCluesScope, requireApiAuth } from "@/lib/apiAuth";
 
 function parseDateOnly(dateValue: string): Date | null {
   if (!dateValue) return null;
@@ -74,18 +75,48 @@ async function generarSiguienteFolio(cluesId: string): Promise<string> {
 }
 
 export async function GET(request: Request) {
+  const authResult = await requireApiAuth(request, 1);
+  if (!authResult.ok) return authResult.response;
+  const auth = authResult.auth;
+
   const { searchParams } = new URL(request.url);
   const parsed = parseInt(searchParams.get("limit") || "8", 10);
   const limit = Number.isNaN(parsed) ? 8 : Math.min(Math.max(parsed, 1), 50);
   const summary = (searchParams.get("summary") || "").toLowerCase();
-  const cluesFilter = (searchParams.get("clues_id") || "").trim();
-  const regionFilter = (searchParams.get("region") || "").trim();
+  let cluesFilter = (searchParams.get("clues_id") || "").trim().toUpperCase();
+  let regionFilter = (searchParams.get("region") || "").trim().toUpperCase();
   const idFilter = searchParams.get("id");
   const action = searchParams.get("action");
+
+  if (auth.nivel === 1) {
+    if (!auth.cluesId) {
+      return NextResponse.json({ message: "Usuario CLUES sin alcance asignado" }, { status: 403 });
+    }
+    cluesFilter = auth.cluesId;
+    regionFilter = "";
+  }
+
+  if (auth.nivel === 2) {
+    if (!auth.region) {
+      return NextResponse.json({ message: "Usuario regional sin región asignada" }, { status: 403 });
+    }
+
+    regionFilter = auth.region;
+    if (cluesFilter) {
+      const allowed = await assertCluesScope(cluesFilter, auth);
+      if (!allowed) {
+        return NextResponse.json({ message: "Sin permisos para esa CLUES" }, { status: 403 });
+      }
+    }
+  }
 
   // Acción especial: generar folio para un CLUES
   if (action === "generar-folio" && cluesFilter) {
     try {
+      const allowed = await assertCluesScope(cluesFilter, auth);
+      if (!allowed) {
+        return NextResponse.json({ message: "Sin permisos para generar folio en esa CLUES" }, { status: 403 });
+      }
       const folio = await generarSiguienteFolio(cluesFilter);
       return NextResponse.json({ folio });
     } catch (error: any) {
@@ -257,6 +288,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const authResult = await requireApiAuth(request, 1);
+  if (!authResult.ok) return authResult.response;
+  const auth = authResult.auth;
+
   try {
     const body = await request.json();
     const gestacionCalculada = computeGestacionDesdeFum(body.fum);
@@ -268,6 +303,11 @@ export async function POST(request: Request) {
     }
     if (!clues) {
       return NextResponse.json({ message: "La CLUES es obligatoria" }, { status: 400 });
+    }
+
+    const canWriteClues = await assertCluesScope(clues, auth);
+    if (!canWriteClues) {
+      return NextResponse.json({ message: "Sin permisos para registrar en esa CLUES" }, { status: 403 });
     }
 
     const unidadRows: any = await query(
@@ -343,8 +383,8 @@ export async function POST(request: Request) {
       factor_alcoholismo: body.factor_alcoholismo ? 1 : 0,
       factor_tabaquismo: body.factor_tabaquismo ? 1 : 0,
       factor_drogas_ilicitas: body.factor_drogas_ilicitas ? 1 : 0,
-      created_by: body.created_by || null,
-      updated_by: body.updated_by || null,
+      created_by: auth.userId,
+      updated_by: auth.userId,
     };
 
     const placeholders = Object.keys(payload)
@@ -385,8 +425,8 @@ export async function POST(request: Request) {
             detecciones.prueba_hepatitis_c,
             detecciones.diabetes_glicemia,
             detecciones.violencia,
-            body.created_by || null,
-            body.updated_by || null,
+            auth.userId,
+            auth.userId,
           ]
         );
         console.log(`✅ Detecciones iniciales guardadas para paciente ${pacienteId}`);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { assertPacienteScope, requireApiAuth } from "@/lib/apiAuth";
 import { dispatchPendingTelegramAlerts } from "@/lib/telegramDispatch";
 import { isTelegramAlertsEnabled } from "@/lib/telegramAlerts";
 
@@ -75,10 +76,24 @@ function calcularPuntajeConsultaParametros(input: {
 }
 
 export async function GET(request: Request) {
+  const authResult = await requireApiAuth(request, 1);
+  if (!authResult.ok) return authResult.response;
+  const auth = authResult.auth;
+
   const { searchParams } = new URL(request.url);
   const pacienteId = searchParams.get("paciente_id");
   if (!pacienteId) {
     return NextResponse.json({ message: "paciente_id es requerido" }, { status: 400 });
+  }
+
+  const pacienteIdNum = Number(pacienteId);
+  if (!Number.isFinite(pacienteIdNum) || pacienteIdNum <= 0) {
+    return NextResponse.json({ message: "paciente_id inválido" }, { status: 400 });
+  }
+
+  const allowed = await assertPacienteScope(pacienteIdNum, auth);
+  if (!allowed) {
+    return NextResponse.json({ message: "Sin permisos para consultar este paciente" }, { status: 403 });
   }
 
   try {
@@ -111,11 +126,25 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const authResult = await requireApiAuth(request, 1);
+  if (!authResult.ok) return authResult.response;
+  const auth = authResult.auth;
+
   try {
     const body = await request.json();
     const pacienteId = body.paciente_id;
     if (!pacienteId) {
       return NextResponse.json({ message: "paciente_id es requerido" }, { status: 400 });
+    }
+
+    const pacienteIdNum = Number(pacienteId);
+    if (!Number.isFinite(pacienteIdNum) || pacienteIdNum <= 0) {
+      return NextResponse.json({ message: "paciente_id inválido" }, { status: 400 });
+    }
+
+    const allowed = await assertPacienteScope(pacienteIdNum, auth);
+    if (!allowed) {
+      return NextResponse.json({ message: "Sin permisos para registrar consulta en este paciente" }, { status: 403 });
     }
 
     const taSistolica = toNumberOrNull(body.ta_sistolica);
@@ -188,8 +217,8 @@ export async function POST(request: Request) {
       fecha_referencia: body.fecha_referencia || null,
       area_referencia: body.area_referencia || null,
       notas: body.notas || null,
-      created_by: body.created_by || null,
-      updated_by: body.updated_by || null,
+      created_by: auth.userId,
+      updated_by: auth.userId,
     };
 
     const placeholders = Object.keys(payload)

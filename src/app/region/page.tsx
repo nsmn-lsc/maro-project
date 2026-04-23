@@ -357,9 +357,15 @@ export default function RegionPage() {
               {session?.displayName}
             </span>
             <button
-              onClick={() => {
-                localStorage.removeItem("maro:user");
-                router.push("/inicial");
+              onClick={async () => {
+                try {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                } catch {
+                  // Ignorar errores de red; se fuerza salida local de todos modos.
+                } finally {
+                  localStorage.removeItem("maro:user");
+                  router.replace("/inicial");
+                }
               }}
               className="text-xs text-white/50 hover:text-white border border-white/20 rounded-lg px-3 py-1.5 transition-colors"
             >

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTelegramWorkerToken } from "@/lib/telegramAlerts";
+import { requireApiAuth } from "@/lib/apiAuth";
 import {
   dispatchPendingTelegramAlerts,
   parseTelegramDispatchLimit,
@@ -17,8 +18,14 @@ function isAuthorized(request: NextRequest): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isAuthorized(request)) {
-      return NextResponse.json({ message: "No autorizado" }, { status: 401 });
+    const configuredToken = getTelegramWorkerToken();
+    if (configuredToken) {
+      if (!isAuthorized(request)) {
+        return NextResponse.json({ message: "No autorizado" }, { status: 401 });
+      }
+    } else {
+      const authResult = await requireApiAuth(request, 3);
+      if (!authResult.ok) return authResult.response;
     }
 
     const { searchParams } = new URL(request.url);

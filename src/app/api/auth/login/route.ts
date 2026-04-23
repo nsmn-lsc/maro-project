@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { getPool } from "@/lib/db";
+import {
+  AUTH_COOKIE_MAX_AGE_SECONDS,
+  AUTH_COOKIE_NAME,
+  createAuthToken,
+  mapNivelToRolAndLevel,
+} from "@/lib/authToken";
 
 type LoginBody = {
   usuario?: string;
@@ -91,7 +97,7 @@ export async function POST(request: Request) {
         );
       }
 
-      return NextResponse.json({
+      const sessionBody = {
         userId: user.id,
         clues: unidad.clues,
         unidad: unidad.unidad,
@@ -101,11 +107,31 @@ export async function POST(request: Request) {
         displayName: user.nombre || unidad.unidad,
         rol: "clues",
         mustChangePassword: Boolean(user.must_change_password),
+      };
+
+      const token = await createAuthToken({
+        userId: user.id,
+        nivel: 1,
+        rol: "clues",
+        mustChangePassword: Boolean(user.must_change_password),
       });
+
+      const response = NextResponse.json(sessionBody);
+      response.cookies.set({
+        name: AUTH_COOKIE_NAME,
+        value: token,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: AUTH_COOKIE_MAX_AGE_SECONDS,
+      });
+
+      return response;
     }
 
     if (user.nivel === "REGION") {
-      return NextResponse.json({
+      const sessionBody = {
         userId: user.id,
         clues: `REGION-${user.region}`,
         unidad: user.nombre || `Región ${user.region}`,
@@ -115,11 +141,31 @@ export async function POST(request: Request) {
         displayName: user.nombre || `Región ${user.region}`,
         rol: "regional",
         mustChangePassword: Boolean(user.must_change_password),
+      };
+
+      const token = await createAuthToken({
+        userId: user.id,
+        nivel: 2,
+        rol: "regional",
+        mustChangePassword: Boolean(user.must_change_password),
       });
+
+      const response = NextResponse.json(sessionBody);
+      response.cookies.set({
+        name: AUTH_COOKIE_NAME,
+        value: token,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: AUTH_COOKIE_MAX_AGE_SECONDS,
+      });
+
+      return response;
     }
 
     if (user.nivel === "ESTADO" || user.nivel === "ADMIN") {
-      return NextResponse.json({
+      const sessionBody = {
         userId: user.id,
         clues: user.nivel,
         unidad: user.nombre || "Coordinación Estatal",
@@ -129,7 +175,28 @@ export async function POST(request: Request) {
         displayName: user.nombre || "Usuario Estatal",
         rol: "estatal",
         mustChangePassword: Boolean(user.must_change_password),
+      };
+
+      const mapped = mapNivelToRolAndLevel(user.nivel);
+      const token = await createAuthToken({
+        userId: user.id,
+        nivel: mapped.nivelNum,
+        rol: mapped.rol,
+        mustChangePassword: Boolean(user.must_change_password),
       });
+
+      const response = NextResponse.json(sessionBody);
+      response.cookies.set({
+        name: AUTH_COOKIE_NAME,
+        value: token,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: AUTH_COOKIE_MAX_AGE_SECONDS,
+      });
+
+      return response;
     }
 
     return NextResponse.json({ message: "Nivel de usuario no reconocido" }, { status: 500 });

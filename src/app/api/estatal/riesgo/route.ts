@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { requireApiAuth } from "@/lib/apiAuth";
 
 async function hasColumn(tableName: "consultas_prenatales" | "cat_pacientes", columnName: string) {
   try {
@@ -11,6 +12,9 @@ async function hasColumn(tableName: "consultas_prenatales" | "cat_pacientes", co
 }
 
 export async function GET(request: Request) {
+  const authResult = await requireApiAuth(request, 3);
+  if (!authResult.ok) return authResult.response;
+
   const { searchParams } = new URL(request.url);
   const parsed = parseInt(searchParams.get("limit") || "200", 10);
   const limit = Number.isNaN(parsed) ? 200 : Math.min(Math.max(parsed, 1), 1000);

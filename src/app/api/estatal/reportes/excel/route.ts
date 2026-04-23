@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
+import { requireApiAuth } from "@/lib/apiAuth";
 
 // ─── Colour palette (MARO brand) ─────────────────────────────────────────────
 const TEAL_DARK = "0F4737" as const;
@@ -71,6 +72,9 @@ function fill(argb: string): ExcelJS.Fill {
 }
 
 export async function POST(request: Request) {
+  const authResult = await requireApiAuth(request, 3);
+  if (!authResult.ok) return authResult.response;
+
   try {
     const body: RequestBody = await request.json();
     const { rows, fechaDesde, fechaHasta, region, unidad, colegiadoFilter, origenFilter } = body;

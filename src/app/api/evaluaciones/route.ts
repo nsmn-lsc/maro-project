@@ -1,9 +1,35 @@
 // app/api/evaluaciones/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { requireApiAuth } from '@/lib/apiAuth';
+
+function normalizeUpper(value: unknown): string {
+  return String(value || '').trim().toUpperCase();
+}
+
+async function canAccessCaso(casoId: number, auth: { nivel: number; cluesId: string | null; region: string | null }) {
+  const rows = await query<Array<{ clues: string | null; region: string | null }>>(
+    `SELECT clues, region FROM casos WHERE id = ? LIMIT 1`,
+    [casoId]
+  );
+
+  if (!rows || rows.length === 0) return false;
+  const row = rows[0];
+
+  if (auth.nivel >= 3) return true;
+  if (auth.nivel === 2) {
+    return !!auth.region && !!row.region && normalizeUpper(auth.region) === normalizeUpper(row.region);
+  }
+
+  return !!auth.cluesId && !!row.clues && normalizeUpper(auth.cluesId) === normalizeUpper(row.clues);
+}
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireApiAuth(request, 1);
+    if (!authResult.ok) return authResult.response;
+    const auth = authResult.auth;
+
     const body = await request.json();
     const { casoId, ...evaluacion } = body;
 
@@ -12,6 +38,16 @@ export async function POST(request: NextRequest) {
         { error: 'ID del caso requerido' },
         { status: 400 }
       );
+    }
+
+    const casoIdNum = Number(casoId);
+    if (!Number.isFinite(casoIdNum) || casoIdNum <= 0) {
+      return NextResponse.json({ error: 'ID del caso inválido' }, { status: 400 });
+    }
+
+    const allowed = await canAccessCaso(casoIdNum, auth);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Sin permisos para registrar evaluación en este caso' }, { status: 403 });
     }
 
     const result = await query<any>(
@@ -26,7 +62,7 @@ export async function POST(request: NextRequest) {
         ast, alt, proteinuria_tira, peso_kg, talla_cm, imc, fondo_uterino_cm
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        casoId,
+        casoIdNum,
         evaluacion.embarazoMultiple || false,
         evaluacion.antecedentePreeclampsia || false,
         evaluacion.antecedenteHemorragia || false,
@@ -82,6 +118,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireApiAuth(request, 1);
+    if (!authResult.ok) return authResult.response;
+    const auth = authResult.auth;
+
     const searchParams = request.nextUrl.searchParams;
     const casoId = searchParams.get('casoId');
 
@@ -92,9 +132,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const casoIdNum = Number(casoId);
+    if (!Number.isFinite(casoIdNum) || casoIdNum <= 0) {
+      return NextResponse.json({ error: 'ID del caso inválido' }, { status: 400 });
+    }
+
+    const allowed = await canAccessCaso(casoIdNum, auth);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Sin permisos para consultar esta evaluación' }, { status: 403 });
+    }
+
     const evaluaciones = await query<any[]>(
       'SELECT * FROM evaluaciones_clinicas WHERE caso_id = ? ORDER BY created_at DESC LIMIT 1',
-      [casoId]
+      [casoIdNum]
     );
 
     if (evaluaciones.length === 0) {

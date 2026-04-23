@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { getPool } from "@/lib/db";
+import { requireApiAuth } from "@/lib/apiAuth";
+import {
+  AUTH_COOKIE_MAX_AGE_SECONDS,
+  AUTH_COOKIE_NAME,
+  createAuthToken,
+  mapNivelToRolAndLevel,
+} from "@/lib/authToken";
 
 const BCRYPT_ROUNDS = 12;
 const MIN_LENGTH = 10;
@@ -13,6 +20,10 @@ type RequestBody = {
 
 export async function PATCH(request: Request) {
   try {
+    const authResult = await requireApiAuth(request, 1);
+    if (!authResult.ok) return authResult.response;
+    const auth = authResult.auth;
+
     const body = (await request.json()) as RequestBody;
     const { userId, currentPassword, newPassword } = body;
 
@@ -20,6 +31,13 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         { message: "Faltan campos requeridos" },
         { status: 400 }
+      );
+    }
+
+    if (Number(userId) !== Number(auth.userId)) {
+      return NextResponse.json(
+        { message: "No autorizado para cambiar esta contraseña" },
+        { status: 403 }
       );
     }
 
@@ -40,7 +58,7 @@ export async function PATCH(request: Request) {
     const pool = getPool();
 
     const [rows] = await pool.query<any[]>(
-      `SELECT id, password_hash FROM usuarios WHERE id = ? AND activo = true LIMIT 1`,
+      `SELECT id, password_hash, nivel FROM usuarios WHERE id = ? AND activo = true LIMIT 1`,
       [userId]
     );
 
@@ -65,7 +83,26 @@ export async function PATCH(request: Request) {
       [newHash, userId]
     );
 
-    return NextResponse.json({ message: "Contraseña actualizada correctamente" });
+    const mapped = mapNivelToRolAndLevel(user.nivel);
+    const token = await createAuthToken({
+      userId,
+      nivel: mapped.nivelNum,
+      rol: mapped.rol,
+      mustChangePassword: false,
+    });
+
+    const response = NextResponse.json({ message: "Contraseña actualizada correctamente" });
+    response.cookies.set({
+      name: AUTH_COOKIE_NAME,
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: AUTH_COOKIE_MAX_AGE_SECONDS,
+    });
+
+    return response;
   } catch (error: any) {
     console.error("Error en PATCH /api/auth/password:", error);
     return NextResponse.json({ message: "Error al actualizar contraseña" }, { status: 500 });

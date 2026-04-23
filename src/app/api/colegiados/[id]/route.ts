@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type mysql from "mysql2/promise";
 import { getPool, query } from "@/lib/db";
+import { requireApiAuth } from "@/lib/apiAuth";
 
 type RouteContext = {
   params: Promise<{
@@ -145,6 +146,9 @@ async function getPlanYAcciones(consultaId: number) {
 
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    const authResult = await requireApiAuth(_request, 3);
+    if (!authResult.ok) return authResult.response;
+
     const params = await context.params;
     const consultaId = parseId(params.id);
 
@@ -193,6 +197,9 @@ export async function PUT(request: Request, context: RouteContext) {
   let connection: mysql.PoolConnection | null = null;
 
   try {
+    const authResult = await requireApiAuth(request, 3);
+    if (!authResult.ok) return authResult.response;
+
     const params = await context.params;
     const consultaId = parseId(params.id);
 

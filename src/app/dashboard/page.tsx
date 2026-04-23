@@ -31,6 +31,7 @@ type SessionInfo = {
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState<SessionInfo | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [patientsError, setPatientsError] = useState<string | null>(null);
@@ -46,16 +47,23 @@ export default function Dashboard() {
 
   useEffect(() => {
     const stored = localStorage.getItem("maro:user");
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch (e) {
-        setUser(null);
-      }
+    if (!stored) {
+      router.replace("/inicial");
+      return;
     }
-  }, []);
+
+    try {
+      setUser(JSON.parse(stored));
+      setAuthChecked(true);
+    } catch {
+      localStorage.removeItem("maro:user");
+      router.replace("/inicial");
+    }
+  }, [router]);
 
   useEffect(() => {
+    if (!authChecked || !user) return;
+
     let cancelled = false;
     const load = async () => {
       try {
@@ -81,9 +89,11 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [authChecked, user]);
 
   useEffect(() => {
+    if (!authChecked || !user) return;
+
     let cancelled = false;
     const loadMetrics = async () => {
       setLoadingMetrics(true);
@@ -121,7 +131,15 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [authChecked, user]);
+
+  if (!authChecked) {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-slate-200 bg-slate-900">
+        Validando acceso...
+      </main>
+    );
+  }
 
   const formatDate = (value: string | null) => {
     if (!value) return "—";
@@ -180,9 +198,15 @@ export default function Dashboard() {
     XLSX.writeFile(wb, filename);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("maro:user");
-    router.push("/inicial");
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Ignorar errores de red; se fuerza salida local de todos modos.
+    } finally {
+      localStorage.removeItem("maro:user");
+      router.replace("/inicial");
+    }
   };
 
   return (

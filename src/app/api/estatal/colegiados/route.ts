@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { requireApiAuth } from "@/lib/apiAuth";
 
 async function hasColumn(columnName: string) {
   try {
@@ -10,7 +11,10 @@ async function hasColumn(columnName: string) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authResult = await requireApiAuth(request, 3);
+  if (!authResult.ok) return authResult.response;
+
   try {
     const [hasColegiado, hasFechaColegiado] = await Promise.all([
       hasColumn("colegiado"),
@@ -77,6 +81,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const authResult = await requireApiAuth(request, 3);
+  if (!authResult.ok) return authResult.response;
+
   try {
     const [hasColegiado, hasFechaColegiado] = await Promise.all([
       hasColumn("colegiado"),

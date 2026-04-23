@@ -263,9 +263,15 @@ export default function ModuloEstatalRiesgoPage() {
     setFolioFilter("");
   };
 
-  const cerrarSesion = () => {
-    localStorage.removeItem("maro:user");
-    router.push("/inicial");
+  const cerrarSesion = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Ignorar errores de red; se fuerza salida local de todos modos.
+    } finally {
+      localStorage.removeItem("maro:user");
+      router.replace("/inicial");
+    }
   };
 
   const formatDate = (value: string | null) => {
