@@ -223,7 +223,7 @@ export async function GET(request: Request) {
     // SELECT más completo cuando se consulta por ID (para detalle del paciente)
     const selectFields = idFilter ? `
       p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.region, p.fecha_ingreso_cpn, 
-      p.edad,
+      p.edad, p.indigena, p.migrante,
       p.imc_inicial,
       p.fum, p.fpp, p.semanas_gestacion, p.sdg_ingreso, p.riesgo_obstetrico_ingreso, 
       p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes, p.telefono, p.direccion,
@@ -235,8 +235,8 @@ export async function GET(request: Request) {
       p.factores_riesgo_epid,
       d.prueba_vih, d.prueba_vdrl, d.prueba_hepatitis_c, d.diabetes_glicemia, d.violencia
     ` : `
-      p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.fecha_ingreso_cpn, 
-      p.edad,
+      p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.localidad, p.fecha_ingreso_cpn, 
+      p.edad, p.fpp,
       p.imc_inicial,
       p.sdg_ingreso, p.semanas_gestacion, p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes,
       p.factor_cardiopatia, p.factor_hepatopatia, p.factor_coagulopatias, p.factor_nefropatia,
@@ -369,6 +369,7 @@ export async function POST(request: Request) {
       curp: body.curp || null,
       edad: body.edad || null,
       indigena: body.indigena ? 1 : 0,
+      migrante: body.migrante ? 1 : 0,
       // Factores de riesgo (comorbilidades y toxicomanías)
       factor_diabetes: body.factor_diabetes ? 1 : 0,
       factor_hipertension: body.factor_hipertension ? 1 : 0,

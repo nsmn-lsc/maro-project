@@ -29,6 +29,10 @@ type RegistroRiesgo = {
   colegiado: number;
   consulta_creada: string;
   edad: number | null;
+  localidad?: string | null;
+  fecha_ingreso_cpn?: string | null;
+  fpp?: string | null;
+  imc_inicial?: number | null;
 };
 
 type AlertaFlotante = {

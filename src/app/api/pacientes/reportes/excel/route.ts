@@ -12,42 +12,32 @@ const AMBER_BG = "FEF3C7" as const;
 const AMBER_TEXT = "92400E" as const;
 const RED_BG = "FEE2E2" as const;
 const RED_TEXT = "991B1B" as const;
-const GREEN_TEXT = "065F46" as const;
 const GRAY_HEADER = "374151" as const;
 const GRAY_ROW_ALT = "F9FAFB" as const;
 const WHITE = "FFFFFF" as const;
 const BORDER_COLOR = "D1D5DB" as const;
 
-type RegistroRow = {
+type PatientRow = {
   folio?: string;
   nombre_completo?: string;
-  region?: string;
-  municipio?: string;
-  unidad?: string;
-  clues_id?: string;
-  fecha_consulta?: string;
-  consulta_creada?: string;
-  origen_alerta?: string;
-  motivo_alerta?: string;
-  puntaje_total_consulta?: number | string;
-  puntaje_real_sin_forzar?: number | string;
-  colegiado?: number | string;
-  alerta_por_criterio_clinico?: number | string;
   edad?: number | string;
+  municipio?: string;
   localidad?: string;
   fecha_ingreso_cpn?: string;
   fpp?: string;
   imc_inicial?: number | string;
+  sdg_ingreso?: number | string;
+  factor_riesgo_antecedentes?: number | string;
+  factor_riesgo_tamizajes?: number | string;
+  puntaje_ultima_consulta?: number | string;
+  puntaje_total_actual?: number | string;
 };
 
 type RequestBody = {
-  rows: RegistroRow[];
-  fechaDesde?: string;
-  fechaHasta?: string;
-  region?: string;
+  rows: PatientRow[];
+  clues?: string;
   unidad?: string;
-  colegiadoFilter?: string;
-  origenFilter?: string;
+  region?: string;
 };
 
 function formatDate(value: string | null | undefined): string {
@@ -79,12 +69,12 @@ function fill(argb: string): ExcelJS.Fill {
 }
 
 export async function POST(request: Request) {
-  const authResult = await requireApiAuth(request, 3);
+  const authResult = await requireApiAuth(request, 1);
   if (!authResult.ok) return authResult.response;
 
   try {
     const body: RequestBody = await request.json();
-    const { rows, fechaDesde, fechaHasta, region, unidad, colegiadoFilter, origenFilter } = body;
+    const { rows, clues, unidad, region } = body;
 
     if (!Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json({ error: "No hay datos para exportar" }, { status: 400 });
@@ -94,7 +84,7 @@ export async function POST(request: Request) {
     wb.creator = "MARO Hub";
     wb.created = new Date();
 
-    const ws = wb.addWorksheet("Casos MARO", {
+    const ws = wb.addWorksheet("Pacientes", {
       pageSetup: {
         orientation: "landscape",
         paperSize: 9, // A4
@@ -104,7 +94,7 @@ export async function POST(request: Request) {
         margins: { left: 0.5, right: 0.5, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 },
       },
       headerFooter: {
-        oddHeader: "&L&\"Calibri,Bold\"&9MARO – Sistema de Monitoreo de Alto Riesgo Obstétrico&R&9Página &P de &N",
+        oddHeader: "&L&\"Calibri,Bold\"&9MARO – Concentrado de Pacientes en la Unidad&R&9Página &P de &N",
         oddFooter: "&C&9Documento generado automáticamente. Uso interno del sistema MARO.",
       },
       views: [{ state: "frozen", xSplit: 0, ySplit: 4 }],
@@ -113,24 +103,20 @@ export async function POST(request: Request) {
 
     // ─── Column definitions ────────────────────────────────────────────────────
     ws.columns = [
-      { key: "num",     width: 5  },
-      { key: "folio",   width: 14 },
-      { key: "nombre",  width: 30 },
-      { key: "edad",    width: 8  },
-      { key: "region",  width: 14 },
-      { key: "municipio", width: 18 },
-      { key: "localidad", width: 18 },
-      { key: "unidad",  width: 22 },
-      { key: "clues",   width: 12 },
+      { key: "num",         width: 5  },
+      { key: "folio",       width: 14 },
+      { key: "nombre",      width: 30 },
+      { key: "edad",        width: 8  },
+      { key: "municipio",   width: 18 },
+      { key: "localidad",   width: 18 },
       { key: "fechaIngreso", width: 15 },
-      { key: "fpp",      width: 12 },
-      { key: "imc",      width: 12 },
-      { key: "fecha",   width: 12 },
-      { key: "origen",  width: 16 },
-      { key: "motivo",  width: 28 },
-      { key: "puntajeTotal", width: 12 },
-      { key: "puntajeReal",  width: 12 },
-      { key: "colegiado",    width: 12 },
+      { key: "fpp",         width: 12 },
+      { key: "imc",         width: 12 },
+      { key: "sdg",         width: 8  },
+      { key: "ant",         width: 22 },
+      { key: "tam",         width: 18 },
+      { key: "consulta",    width: 24 },
+      { key: "total",       width: 20 },
     ];
 
     const totalCols = ws.columns.length;
@@ -156,7 +142,7 @@ export async function POST(request: Request) {
     }
 
     // ─── Row 1: Title ──────────────────────────────────────────────────────────
-    const titleRow = ws.addRow(["MARO · Reporte Estatal — Pacientes en Alto Riesgo Obstétrico"]);
+    const titleRow = ws.addRow(["MARO · Panel de Unidad — Concentrado de Pacientes"]);
     ws.mergeCells(1, 1, 1, totalCols);
     const titleCell = titleRow.getCell(1);
     titleCell.fill = fill(TEAL_DARK);
@@ -165,19 +151,14 @@ export async function POST(request: Request) {
     titleRow.height = 48;
 
     // ─── Row 2: Subtitle / filter info ────────────────────────────────────────
-    const filtros: string[] = [];
-    if (region) filtros.push(`Región: ${region}`);
-    if (unidad) filtros.push(`Unidad: ${unidad}`);
-    if (colegiadoFilter && colegiadoFilter !== "todos")
-      filtros.push(colegiadoFilter === "colegiados" ? "Solo colegiados" : "Sin colegiar");
-    if (origenFilter && origenFilter !== "todos")
-      filtros.push(origenFilter === "criterio" ? "Origen: Criterio clínico" : "Origen: Puntaje");
-    if (fechaDesde) filtros.push(`Desde: ${fechaDesde}`);
-    if (fechaHasta) filtros.push(`Hasta: ${fechaHasta}`);
+    const infoMeta: string[] = [];
+    if (clues) infoMeta.push(`CLUES: ${clues}`);
+    if (unidad) infoMeta.push(`Unidad: ${unidad}`);
+    if (region) infoMeta.push(`Región: ${region}`);
 
     const generadoText =
       `Generado: ${new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}` +
-      (filtros.length ? `   ·   Filtros: ${filtros.join(" | ")}` : "   ·   Sin filtros adicionales");
+      (infoMeta.length ? `   ·   ${infoMeta.join("  |  ")}` : "");
 
     const subtitleRow = ws.addRow([generadoText]);
     ws.mergeCells(2, 1, 2, totalCols);
@@ -189,21 +170,8 @@ export async function POST(request: Request) {
 
     // ─── Row 3: Stats bar ─────────────────────────────────────────────────────
     const total = rows.length;
-    const colegiados = rows.filter((r) => Number(r.colegiado) === 1).length;
-    const criterio = rows.filter((r) => Number(r.alerta_por_criterio_clinico) === 1).length;
-    const puntajeRows = rows.filter((r) => Number(r.alerta_por_criterio_clinico) !== 1);
-    const avgPuntaje =
-      puntajeRows.length > 0
-        ? Math.round(
-            puntajeRows.reduce((s, r) => s + (Number(r.puntaje_real_sin_forzar) || 0), 0) /
-              puntajeRows.length
-          )
-        : 0;
-
-    const statsText =
-      `Total: ${total} casos   ·   Colegiados: ${colegiados}   ·   Sin colegiar: ${total - colegiados}` +
-      `   ·   Por criterio clínico: ${criterio}   ·   Por puntaje: ${total - criterio}` +
-      `   ·   Puntaje promedio (por puntaje): ${avgPuntaje} pts`;
+    const altoRiesgo = rows.filter((r) => (Number(r.puntaje_total_actual) || 0) >= 25).length;
+    const statsText = `Total de pacientes: ${total}   ·   En Alto Riesgo Obstétrico (≥ 25 pts): ${altoRiesgo}   ·   Bajo/Medio Riesgo: ${total - altoRiesgo}`;
 
     const statsRow = ws.addRow([statsText]);
     ws.mergeCells(3, 1, 3, totalCols);
@@ -215,9 +183,8 @@ export async function POST(request: Request) {
 
     // ─── Row 4: Column headers ─────────────────────────────────────────────────
     const headers = [
-      "#", "Folio", "Paciente", "Edad", "Región", "Municipio", "Localidad", "Unidad", "CLUES",
-      "Fecha ingreso", "FPP", "IMC inicial", "Fecha consulta", "Origen alerta", "Motivo alerta",
-      "Puntaje total", "Puntaje real", "Colegiado",
+      "#", "Folio", "Paciente", "Edad", "Municipio", "Localidad", "Fecha ingreso", "FPP", "IMC inicial",
+      "SDG", "Puntaje antecedentes", "Puntaje tamizajes", "Última consulta", "Total actual"
     ];
     const headerRow = ws.addRow(headers);
     headerRow.eachCell((cell) => {
@@ -227,40 +194,34 @@ export async function POST(request: Request) {
       applyBorders(cell);
     });
     headerRow.height = 22;
+
     // ─── Data rows ─────────────────────────────────────────────────────────────
     rows.forEach((r, idx) => {
-      const esCriterio = Number(r.alerta_por_criterio_clinico) === 1;
-      const esColegiado = Number(r.colegiado) === 1;
-      const puntajeTotal = esCriterio ? "—" : (Number(r.puntaje_total_consulta) || 0);
-      const puntajeReal = Number(r.puntaje_real_sin_forzar) || 0;
+      const scoreTotal = Number(r.puntaje_total_actual) || 0;
+      const esAltoRiesgo = scoreTotal >= 25;
 
       const rowData = [
         idx + 1,
         r.folio || "—",
         r.nombre_completo || "Sin nombre",
         r.edad != null ? Number(r.edad) : "—",
-        r.region || "—",
         r.municipio || "—",
         r.localidad || "—",
-        r.unidad || "—",
-        r.clues_id || "—",
         formatDate(r.fecha_ingreso_cpn),
         formatDate(r.fpp),
         r.imc_inicial != null ? Number(r.imc_inicial) : "—",
-        formatDate(r.fecha_consulta || r.consulta_creada),
-        esCriterio ? "Criterio clínico" : "Puntaje",
-        r.motivo_alerta || (esCriterio ? "Edad/Padecimiento" : "—"),
-        puntajeTotal,
-        puntajeReal,
-        esColegiado ? "Sí" : "No",
+        r.sdg_ingreso ?? "—",
+        r.factor_riesgo_antecedentes ?? "—",
+        r.factor_riesgo_tamizajes ?? "—",
+        r.puntaje_ultima_consulta ?? "—",
+        scoreTotal,
       ];
 
       const dataRow = ws.addRow(rowData);
       dataRow.height = 18;
 
-      // Row background
-      const rowFill: ExcelJS.Fill = esCriterio
-        ? fill(AMBER_BG)
+      const rowFill: ExcelJS.Fill = esAltoRiesgo
+        ? fill(RED_BG)
         : idx % 2 === 0
           ? fill(WHITE)
           : fill(GRAY_ROW_ALT);
@@ -272,92 +233,44 @@ export async function POST(request: Request) {
         applyBorders(cell);
 
         // Column-specific formatting
-        // Col 1 (#): center
         if (colNum === 1) {
           cell.alignment = { ...cell.alignment, horizontal: "center" };
           cell.font = { ...cell.font, color: { argb: "FF9CA3AF" }, size: 9 };
         }
-        // Col 4 (Edad): center
-        if (colNum === 4) {
+        if (colNum === 4 || colNum === 10) {
           cell.alignment = { ...cell.alignment, horizontal: "center" };
         }
-        // Col 10, 11, 13 (fechas): center
-        if (colNum === 10 || colNum === 11 || colNum === 13) {
+        if (colNum === 7 || colNum === 8) {
           cell.alignment = { ...cell.alignment, horizontal: "center" };
         }
-        // Col 12 (IMC Inicial): center + decimal format
-        if (colNum === 12) {
+        if (colNum === 9) {
           cell.alignment = { ...cell.alignment, horizontal: "center" };
           if (typeof cell.value === "number") {
             cell.numFmt = "0.0";
           }
         }
-        // Col 14 (Origen): center + colour
-        if (colNum === 14) {
-          cell.alignment = { ...cell.alignment, horizontal: "center" };
-          if (esCriterio) {
-            cell.font = { ...cell.font, bold: true, color: { argb: "FF" + AMBER_TEXT } };
-          } else {
-            cell.font = { ...cell.font, color: { argb: "FF" + RED_TEXT } };
-          }
-        }
-        // Col 16-17 (puntajes): center + number format
-        if (colNum === 16 || colNum === 17) {
+        if (colNum >= 11 && colNum <= 13) {
           cell.alignment = { ...cell.alignment, horizontal: "center" };
           if (typeof cell.value === "number") {
             cell.numFmt = "0";
-            // Colour by severity
-            if (cell.value >= 25) {
+          } else {
+            cell.font = { ...cell.font, color: { argb: "FF9CA3AF" } };
+          }
+        }
+        if (colNum === 14) {
+          cell.alignment = { ...cell.alignment, horizontal: "center" };
+          if (typeof cell.value === "number") {
+            cell.numFmt = "0";
+            if (esAltoRiesgo) {
               cell.font = { ...cell.font, bold: true, color: { argb: "FF" + RED_TEXT } };
             } else if (cell.value >= 15) {
               cell.font = { ...cell.font, color: { argb: "FF" + AMBER_TEXT } };
             }
-          } else {
-            cell.alignment = { ...cell.alignment, horizontal: "center" };
-            cell.font = { ...cell.font, color: { argb: "FF9CA3AF" } };
-          }
-        }
-        // Col 18 (Colegiado): center + colour
-        if (colNum === 18) {
-          cell.alignment = { ...cell.alignment, horizontal: "center" };
-          if (esColegiado) {
-            cell.font = { ...cell.font, bold: true, color: { argb: "FF" + GREEN_TEXT } };
-          } else {
-            cell.font = { ...cell.font, color: { argb: "FF6B7280" } };
           }
         }
       });
     });
 
-    // ─── Empty separator row ───────────────────────────────────────────────────
-    ws.addRow([]);
-
-    // ─── Summary footer rows ───────────────────────────────────────────────────
-    const summaryData: [string, string | number][] = [
-      ["Total de casos en el reporte", total],
-      ["Casos colegiados", colegiados],
-      ["Casos sin colegiar", total - colegiados],
-      ["Alertas por criterio clínico", criterio],
-      ["Alertas por puntaje ≥ 25", total - criterio],
-      ["Puntaje promedio (solo por puntaje)", avgPuntaje],
-    ];
-    summaryData.forEach(([label, value]) => {
-      const sumRow = ws.addRow(["", "", label, "", "", "", "", "", "", "", "", "", "", "", "", value, ""]);
-      sumRow.height = 16;
-      const labelCell = sumRow.getCell(3);
-      labelCell.fill = fill(TEAL_LIGHT);
-      labelCell.font = { name: "Calibri", size: 9, bold: true, color: { argb: "FF" + TEAL_DARK } };
-      labelCell.alignment = { horizontal: "right", vertical: "middle" };
-      ws.mergeCells(sumRow.number, 3, sumRow.number, 15);
-
-      const valCell = sumRow.getCell(16);
-      valCell.fill = fill(TEAL_LIGHT);
-      valCell.font = { name: "Calibri", size: 10, bold: true, color: { argb: "FF" + TEAL_DARK } };
-      valCell.alignment = { horizontal: "center", vertical: "middle" };
-      valCell.numFmt = "0";
-    });
-
-    // ─── Serialize & return ────────────────────────────────────────────────────
     const buffer = await wb.xlsx.writeBuffer();
     const stamp = new Date().toISOString().slice(0, 10);
 
@@ -365,12 +278,12 @@ export async function POST(request: Request) {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="reporte-estatal-casos-${stamp}.xlsx"`,
+        "Content-Disposition": `attachment; filename="reporte-unidad-pacientes-${stamp}.xlsx"`,
         "Cache-Control": "no-store",
       },
     });
   } catch (error: any) {
-    console.error("Error generando Excel:", error);
+    console.error("Error generando Excel de unidad:", error);
     return NextResponse.json({ error: "No se pudo generar el archivo Excel" }, { status: 500 });
   }
 }

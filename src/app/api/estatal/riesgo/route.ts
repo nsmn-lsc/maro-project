@@ -118,6 +118,10 @@ export async function GET(request: Request) {
           cp.nombre_completo,
           cp.region,
           cp.municipio,
+          cp.localidad,
+          cp.fecha_ingreso_cpn,
+          cp.fpp,
+          cp.imc_inicial,
           cp.unidad,
           cp.clues_id,
           c.id AS consulta_id,
@@ -130,7 +134,7 @@ export async function GET(request: Request) {
           ${motivoAlertaExpr} AS motivo_alerta,
           ${colegiadoExpr} AS colegiado,
           c.created_at AS consulta_creada,
-         cp.edad
+          cp.edad
        FROM consultas_prenatales c
        INNER JOIN cat_pacientes cp ON cp.id = c.paciente_id
        INNER JOIN (
@@ -159,6 +163,10 @@ export async function GET(request: Request) {
             cp.nombre_completo,
             cp.region,
             cp.municipio,
+            cp.localidad,
+            cp.fecha_ingreso_cpn,
+            cp.fpp,
+            cp.imc_inicial,
             cp.unidad,
             cp.clues_id,
             c.id AS consulta_id,

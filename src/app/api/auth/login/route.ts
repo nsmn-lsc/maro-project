@@ -103,7 +103,8 @@ export async function POST(request: Request) {
         unidad: unidad.unidad,
         region: unidad.region,
         municipio: unidad.municipio,
-        nivel: unidad.nivel,
+        nivel: 1, // Nivel de autorización (clues)
+        nivelClinico: unidad.nivel, // Nivel clínico de atención médica de la unidad (1, 2, 3)
         displayName: user.nombre || unidad.unidad,
         rol: "clues",
         mustChangePassword: Boolean(user.must_change_password),

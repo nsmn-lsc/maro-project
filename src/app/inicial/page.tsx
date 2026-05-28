@@ -48,9 +48,7 @@ export default function AccesoInicial() {
       } else if (rol === "regional") {
         router.push("/region");
       } else {
-        // CLUES: nivel>=2 → /region, nivel=1 → /dashboard
-        const destino = (session.nivel ?? 1) >= 2 ? "/region" : "/dashboard";
-        router.push(destino);
+        router.push("/dashboard");
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al validar acceso");

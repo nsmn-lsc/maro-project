@@ -132,6 +132,7 @@ CREATE TABLE `cat_pacientes` (
   `curp` char(18) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `edad` tinyint DEFAULT NULL,
   `indigena` tinyint(1) DEFAULT '0',
+  `migrante` tinyint(1) DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `created_by` bigint unsigned DEFAULT NULL,

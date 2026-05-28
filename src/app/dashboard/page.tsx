@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import * as XLSX from "xlsx";
 
 type Patient = {
   id: number;
@@ -11,7 +10,11 @@ type Patient = {
   nombre_completo: string | null;
   clues_id: string;
   municipio: string | null;
+  localidad: string | null;
   fecha_ingreso_cpn: string | null;
+  fpp: string | null;
+  edad: number | null;
+  imc_inicial: number | null;
   sdg_ingreso: number | null;
   factor_riesgo_antecedentes: number | null;
   factor_riesgo_tamizajes: number | null;
@@ -151,51 +154,40 @@ export default function Dashboard() {
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  const handleGenerateExcel = () => {
+  const handleGenerateExcel = async () => {
     if (patients.length === 0) {
       alert("No hay pacientes para generar el reporte");
       return;
     }
 
-    // Preparar datos para Excel
-    const data = patients.map((p) => ({
-      "Folio": p.folio || "—",
-      "Paciente": p.nombre_completo || "Sin nombre",
-      "Ingreso": formatDate(p.fecha_ingreso_cpn),
-      "SDG": p.sdg_ingreso ?? "—",
-      "Puntaje Antecedentes": p.factor_riesgo_antecedentes ?? "—",
-      "Puntaje Tamizajes": p.factor_riesgo_tamizajes ?? "—",
-      "Puntaje Última Consulta": p.puntaje_ultima_consulta ?? "—",
-      "Puntaje Total Actual": p.puntaje_total_actual ?? "—",
-    }));
+    try {
+      const res = await fetch("/api/pacientes/reportes/excel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rows: patients,
+          clues: user?.clues || undefined,
+          unidad: user?.unidad || undefined,
+          region: user?.region || undefined,
+        }),
+      });
 
-    // Crear workbook y worksheet
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Pacientes");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Error al generar el reporte Excel");
+      }
 
-    // Ajustar ancho de columnas
-    const colWidths = [
-      { wch: 12 }, // Folio
-      { wch: 25 }, // Paciente
-      { wch: 12 }, // Ingreso
-      { wch: 6 },  // SDG
-      { wch: 22 }, // Puntaje Antecedentes
-      { wch: 18 }, // Puntaje Tamizajes
-      { wch: 24 }, // Puntaje Última Consulta
-      { wch: 20 }, // Puntaje Total Actual
-    ];
-    ws["!cols"] = colWidths;
-
-    // Generar fecha para el nombre del archivo
-    const now = new Date();
-    const date = `${now.getDate().toString().padStart(2, "0")}-${(now.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}-${now.getFullYear()}`;
-    const filename = `Concentrado_Pacientes_${date}.xlsx`;
-
-    // Descargar
-    XLSX.writeFile(wb, filename);
+      const blob = await res.blob();
+      const stamp = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-unidad-pacientes-${stamp}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err?.message || "No se pudo generar el reporte Excel");
+    }
   };
 
   const handleLogout = async () => {

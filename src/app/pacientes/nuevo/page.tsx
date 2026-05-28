@@ -13,6 +13,48 @@ type SessionInfo = {
   municipio?: string;
 };
 
+function calcularEdadDesdeCurp(curp: string): number | null {
+  const curpRegex = /^[A-Z]{4}(\d{2})(\d{2})(\d{2})[HM][A-Z]{5}([A-Z0-9])\d$/;
+  const match = curp.match(curpRegex);
+  if (!match) return null;
+
+  const year2Dig = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+  const centuryChar = match[4];
+
+  // Determinar el siglo basado en el caracter 17 (letra para 2000+, número para 1900+)
+  let year = year2Dig;
+  if (Number.isNaN(Number(centuryChar))) {
+    year += 2000;
+  } else {
+    year += 1900;
+  }
+
+  // Validar que sea una fecha de nacimiento válida
+  const fechaNacimiento = new Date(year, month - 1, day);
+  if (
+    fechaNacimiento.getFullYear() !== year ||
+    fechaNacimiento.getMonth() !== month - 1 ||
+    fechaNacimiento.getDate() !== day
+  ) {
+    return null;
+  }
+
+  // Calcular la edad actual
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
+  const diferenciaMes = hoy.getMonth() - fechaNacimiento.getMonth();
+  if (
+    diferenciaMes < 0 ||
+    (diferenciaMes === 0 && hoy.getDate() < fechaNacimiento.getDate())
+  ) {
+    edad--;
+  }
+
+  return edad >= 0 ? edad : null;
+}
+
 export default function NuevoPaciente() {
   const router = useRouter();
   const { guardar: guardarFactorRiesgo } = useSaveFactorRiesgoPaciente();
@@ -21,6 +63,7 @@ export default function NuevoPaciente() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loadingFolio, setLoadingFolio] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [mostrarFactoresRiesgo, setMostrarFactoresRiesgo] = useState(false);
   const [mostrarFactoresEpid, setMostrarFactoresEpid] = useState(false);
   const [puntajeFactorAntecedentes, setPuntajeFactorAntecedentes] = useState(0);
@@ -35,6 +78,7 @@ export default function NuevoPaciente() {
     curp: "",
     edad: "",
     indigena: false,
+    migrante: false,
     folio: "",
     region: "",
     clues_id: "",
@@ -154,7 +198,16 @@ export default function NuevoPaciente() {
   };
 
   const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "curp") {
+        const edadCalculada = calcularEdadDesdeCurp(value);
+        if (edadCalculada !== null) {
+          next.edad = String(edadCalculada);
+        }
+      }
+      return next;
+    });
   };
 
   const computeGestacionDataFromFum = (fumValue: string) => {
@@ -229,14 +282,61 @@ export default function NuevoPaciente() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setAttemptedSubmit(true);
 
+    if (!form.nombre_completo.trim()) {
+      setError("El nombre completo es obligatorio");
+      return;
+    }
+    if (!form.edad.trim()) {
+      setError("La edad es obligatoria");
+      return;
+    }
     if (edadEnRangoAlerta && !edadAlertaConfirmada) {
       setShowEdadAlertaModal(true);
       return;
     }
-
-    if (!form.nombre_completo.trim()) {
-      setError("El nombre es obligatorio");
+    if (form.curp && form.curp.trim()) {
+      const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/;
+      if (!curpRegex.test(form.curp)) {
+        setError("El formato de la CURP es inválido");
+        return;
+      }
+    }
+    if (!form.localidad.trim()) {
+      setError("La localidad es obligatoria");
+      return;
+    }
+    if (!form.colonia.trim()) {
+      setError("La colonia es obligatoria");
+      return;
+    }
+    if (!form.direccion.trim()) {
+      setError("La dirección es obligatoria");
+      return;
+    }
+    if (!form.fecha_ingreso_cpn.trim()) {
+      setError("La fecha de ingreso es obligatoria");
+      return;
+    }
+    if (!form.fum.trim()) {
+      setError("La FUM es obligatoria");
+      return;
+    }
+    if (!form.gestas.trim()) {
+      setError("El número de gestaciones (Gestas) es obligatorio");
+      return;
+    }
+    if (!form.partos.trim()) {
+      setError("El número de partos es obligatorio");
+      return;
+    }
+    if (!form.cesareas.trim()) {
+      setError("El número de cesáreas es obligatorio");
+      return;
+    }
+    if (!form.abortos.trim()) {
+      setError("El número de abortos es obligatorio");
       return;
     }
     if (!form.clues_id.trim()) {
@@ -372,11 +472,18 @@ export default function NuevoPaciente() {
               <label className="space-y-1 text-sm lg:col-span-2">
                 <span className="text-slate-100">Nombre completo *</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    attemptedSubmit && !form.nombre_completo.trim()
+                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                      : "border-white/10"
+                  }`}
                   value={form.nombre_completo}
                   onChange={(e) => handleChange("nombre_completo", e.target.value)}
                   required
                 />
+                {attemptedSubmit && !form.nombre_completo.trim() && (
+                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ El nombre es obligatorio</p>
+                )}
               </label>
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Folio {loadingFolio && "(generando...)"}</span>
@@ -393,31 +500,69 @@ export default function NuevoPaciente() {
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">CURP</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    !form.curp
+                      ? "border-white/10"
+                      : form.curp.length === 18 && /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(form.curp)
+                      ? "border-emerald-500/50 focus:border-emerald-500"
+                      : "border-rose-500/50 focus:border-rose-500"
+                  }`}
                   value={form.curp}
                   onChange={(e) => handleChange("curp", e.target.value.toUpperCase())}
                   maxLength={18}
+                  placeholder="18 caracteres"
                 />
+                {form.curp && form.curp.length > 0 && (
+                  <p className={`text-xs mt-1 font-medium ${
+                    form.curp.length === 18 && /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(form.curp)
+                      ? "text-emerald-400"
+                      : "text-rose-400"
+                  }`}>
+                    {form.curp.length < 18
+                      ? `Incompleta: ${form.curp.length}/18 caracteres`
+                      : /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(form.curp)
+                      ? "✓ CURP válida. Edad calculada automáticamente."
+                      : "✗ Formato de CURP inválido"}
+                  </p>
+                )}
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Edad</span>
+                <span className="text-slate-100">Edad *</span>
                 <input
                   type="number"
                   min={10}
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    attemptedSubmit && !form.edad.trim()
+                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                      : "border-white/10"
+                  }`}
                   value={form.edad}
                   onChange={(e) => handleChange("edad", e.target.value)}
                 />
+                {attemptedSubmit && !form.edad.trim() && (
+                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ La edad es obligatoria</p>
+                )}
               </label>
-              <label className="flex items-center gap-2 text-sm pt-6">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-white/40 bg-white/10"
-                  checked={form.indigena}
-                  onChange={() => handleToggle("indigena")}
-                />
-                <span className="text-slate-100">Población indígena</span>
-              </label>
+              <div className="flex flex-wrap items-center gap-6 pt-6">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-white/40 bg-white/10 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900"
+                    checked={form.indigena}
+                    onChange={() => handleToggle("indigena")}
+                  />
+                  <span className="text-slate-100 select-none">Población indígena</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-white/40 bg-white/10 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900"
+                    checked={form.migrante}
+                    onChange={() => handleToggle("migrante")}
+                  />
+                  <span className="text-slate-100 select-none">Población migrante</span>
+                </label>
+              </div>
 
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Región</span>
@@ -434,13 +579,20 @@ export default function NuevoPaciente() {
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">CLUES *</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    attemptedSubmit && !form.clues_id.trim()
+                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                      : "border-white/10"
+                  }`}
                   value={form.clues_id}
                   onChange={(e) => handleChange("clues_id", e.target.value.toUpperCase())}
                   required
                   readOnly
                   disabled
                 />
+                {attemptedSubmit && !form.clues_id.trim() && (
+                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ La CLUES es obligatoria</p>
+                )}
                 <p className="text-xs text-slate-300/70">Controlado por la sesión</p>
               </label>
               <label className="space-y-1 text-sm">
@@ -467,29 +619,50 @@ export default function NuevoPaciente() {
                 <p className="text-xs text-slate-300/70">Controlado por la sesión</p>
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Localidad</span>
+                <span className="text-slate-100">Localidad *</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    attemptedSubmit && !form.localidad.trim()
+                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                      : "border-white/10"
+                  }`}
                   value={form.localidad}
                   onChange={(e) => handleChange("localidad", e.target.value)}
                 />
+                {attemptedSubmit && !form.localidad.trim() && (
+                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ La localidad es obligatoria</p>
+                )}
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Colonia</span>
+                <span className="text-slate-100">Colonia *</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    attemptedSubmit && !form.colonia.trim()
+                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                      : "border-white/10"
+                  }`}
                   value={form.colonia}
                   onChange={(e) => handleChange("colonia", e.target.value)}
                 />
+                {attemptedSubmit && !form.colonia.trim() && (
+                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ La colonia es obligatoria</p>
+                )}
               </label>
 
               <label className="space-y-1 text-sm lg:col-span-2">
-                <span className="text-slate-100">Dirección</span>
+                <span className="text-slate-100">Dirección *</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    attemptedSubmit && !form.direccion.trim()
+                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                      : "border-white/10"
+                  }`}
                   value={form.direccion}
                   onChange={(e) => handleChange("direccion", e.target.value)}
                 />
+                {attemptedSubmit && !form.direccion.trim() && (
+                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ La dirección es obligatoria</p>
+                )}
               </label>
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Teléfono</span>
@@ -512,19 +685,30 @@ export default function NuevoPaciente() {
 
             <div className="grid gap-4 lg:grid-cols-3">
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Fecha ingreso CPN</span>
+                <span className="text-slate-100">Fecha ingreso CPN *</span>
                 <input
                   type="date"
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    attemptedSubmit && !form.fecha_ingreso_cpn.trim()
+                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                      : "border-white/10"
+                  }`}
                   value={form.fecha_ingreso_cpn}
                   onChange={(e) => handleChange("fecha_ingreso_cpn", e.target.value)}
                 />
+                {attemptedSubmit && !form.fecha_ingreso_cpn.trim() && (
+                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ La fecha de ingreso es obligatoria</p>
+                )}
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">FUM</span>
+                <span className="text-slate-100">FUM *</span>
                 <input
                   type="date"
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    attemptedSubmit && !form.fum.trim()
+                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                      : "border-white/10"
+                  }`}
                   value={form.fum}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -537,6 +721,9 @@ export default function NuevoPaciente() {
                     }));
                   }}
                 />
+                {attemptedSubmit && !form.fum.trim() && (
+                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ La FUM es obligatoria</p>
+                )}
               </label>
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Semanas gestación</span>
@@ -756,20 +943,29 @@ export default function NuevoPaciente() {
             <div className="grid gap-4 lg:grid-cols-5">
               {[
                 { key: "menarca", label: "Menarca (años)" },
-                { key: "gestas", label: "Gestas" },
-                { key: "partos", label: "Partos" },
-                { key: "cesareas", label: "Cesáreas" },
-                { key: "abortos", label: "Abortos" },
+                { key: "gestas", label: "Gestas", required: true },
+                { key: "partos", label: "Partos", required: true },
+                { key: "cesareas", label: "Cesáreas", required: true },
+                { key: "abortos", label: "Abortos", required: true },
               ].map((item) => (
                 <label key={item.key} className="space-y-1 text-sm">
-                  <span className="text-slate-100">{item.label}</span>
+                  <span className="text-slate-100">
+                    {item.label} {item.required ? "*" : ""}
+                  </span>
                   <input
                     type="number"
                     min={0}
-                    className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                    className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                      attemptedSubmit && item.required && !(form as any)[item.key].trim()
+                        ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                        : "border-white/10"
+                    }`}
                     value={(form as any)[item.key]}
                     onChange={(e) => handleChange(item.key, e.target.value)}
                   />
+                  {attemptedSubmit && item.required && !(form as any)[item.key].trim() && (
+                    <p className="text-xs text-rose-400 mt-1 font-medium">✗ Requerido</p>
+                  )}
                 </label>
               ))}
             </div>
