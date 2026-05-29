@@ -133,6 +133,7 @@ CREATE TABLE `cat_pacientes` (
   `edad` tinyint DEFAULT NULL,
   `indigena` tinyint(1) DEFAULT '0',
   `migrante` tinyint(1) DEFAULT '0',
+  `derechohabiencia` enum('IMB','IMSS','ISSSTE','Otro') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `created_by` bigint unsigned DEFAULT NULL,

@@ -22,6 +22,7 @@ type Patient = {
   riesgo_obstetrico_ingreso: number | null;
   telefono: string | null;
   direccion: string | null;
+  derechohabiencia?: string | null;
   factor_riesgo_antecedentes: number | null;
   // Campos para evaluación de riesgo
   gestas?: number | null;
@@ -328,6 +329,7 @@ export default function PacienteDetalle() {
                 {infoRow("Riesgo obstétrico", patient.riesgo_obstetrico_ingreso)}
                 {infoRow("Teléfono", patient.telefono)}
                 {infoRow("Dirección", patient.direccion)}
+                {infoRow("Derechohabiencia", patient.derechohabiencia ?? null)}
               </div>
             </section>
 

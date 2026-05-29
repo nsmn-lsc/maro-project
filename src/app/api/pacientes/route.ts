@@ -223,7 +223,7 @@ export async function GET(request: Request) {
     // SELECT más completo cuando se consulta por ID (para detalle del paciente)
     const selectFields = idFilter ? `
       p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.region, p.fecha_ingreso_cpn, 
-      p.edad, p.indigena, p.migrante,
+      p.edad, p.indigena, p.migrante, p.derechohabiencia,
       p.imc_inicial,
       p.fum, p.fpp, p.semanas_gestacion, p.sdg_ingreso, p.riesgo_obstetrico_ingreso, 
       p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes, p.telefono, p.direccion,
@@ -370,6 +370,7 @@ export async function POST(request: Request) {
       edad: body.edad || null,
       indigena: body.indigena ? 1 : 0,
       migrante: body.migrante ? 1 : 0,
+      derechohabiencia: body.derechohabiencia || null,
       // Factores de riesgo (comorbilidades y toxicomanías)
       factor_diabetes: body.factor_diabetes ? 1 : 0,
       factor_hipertension: body.factor_hipertension ? 1 : 0,

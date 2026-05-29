@@ -55,6 +55,27 @@ function calcularEdadDesdeCurp(curp: string): number | null {
   return edad >= 0 ? edad : null;
 }
 
+const HOSPITALES_REFERENCIA = [
+  { clues: "HGIMB000151", nombre: "HOSPITAL GENERAL ACTOPAN" },
+  { clues: "HGIMB000431", nombre: "HOSPITAL INTEGRAL ATLAPEXCO" },
+  { clues: "HGIMB001481", nombre: "HOSPITAL REGIONAL DEL VALLE DEL MEZQUITAL" },
+  { clues: "HGIMB001686", nombre: "HOSPITAL INTEGRAL JACALA" },
+  { clues: "HGIMB002036", nombre: "HOSPITAL INTEGRAL CINTA LARGA" },
+  { clues: "HGIMB002572", nombre: "HOSPITAL REGIONAL OTOMI TEPEHUA" },
+  { clues: "HGIMB004561", nombre: "HOSPITAL ZIMAPÁN" },
+  { clues: "HGIMB004573", nombre: "HOSPITAL MATERNO INFANTIL" },
+  { clues: "HGIMB004795", nombre: "HOSPITAL INTEGRAL DE TLANCHINOL" },
+  { clues: "HGIMB004800", nombre: "HOSPITAL GENERAL DE APAN" },
+  { clues: "HGIMB004812", nombre: "HOSPITAL GENERAL DE LA HUASTECA" },
+  { clues: "HGIMB004824", nombre: "HOSPITAL GENERAL TULA" },
+  { clues: "HGIMB004841", nombre: "HBC HUEHUETLA" },
+  { clues: "HGIMB004952", nombre: "HOSPITAL IMSS BIENESTAR METZTITLÁN" },
+  { clues: "HGIMB005005", nombre: "HOSPITAL GENERAL DE TULANCINGO" },
+  { clues: "HGIMB005034", nombre: "HOSPITAL VILLA OCARANZA" },
+  { clues: "HGIMB002304", nombre: "HOSPITAL GENERAL PACHUCA" },
+  { clues: "HGIMB001394", nombre: "HOSPITAL GENERAL HUICHAPAN" }
+];
+
 export default function NuevoPaciente() {
   const router = useRouter();
   const { guardar: guardarFactorRiesgo } = useSaveFactorRiesgoPaciente();
@@ -72,6 +93,11 @@ export default function NuevoPaciente() {
   const [showEdadAlertaModal, setShowEdadAlertaModal] = useState(false);
   const [edadAlertaConfirmada, setEdadAlertaConfirmada] = useState(false);
 
+  const hospitalesDisponibles = useMemo(() => {
+    if (!session.clues) return HOSPITALES_REFERENCIA;
+    return HOSPITALES_REFERENCIA.filter((h) => h.clues !== session.clues);
+  }, [session.clues]);
+
   const [form, setForm] = useState({
     // Identidad
     nombre_completo: "",
@@ -79,6 +105,7 @@ export default function NuevoPaciente() {
     edad: "",
     indigena: false,
     migrante: false,
+    derechohabiencia: "",
     folio: "",
     region: "",
     clues_id: "",
@@ -290,6 +317,10 @@ export default function NuevoPaciente() {
     }
     if (!form.edad.trim()) {
       setError("La edad es obligatoria");
+      return;
+    }
+    if (!form.derechohabiencia.trim()) {
+      setError("La derechohabiencia es obligatoria");
       return;
     }
     if (edadEnRangoAlerta && !edadAlertaConfirmada) {
@@ -565,6 +596,29 @@ export default function NuevoPaciente() {
               </div>
 
               <label className="space-y-1 text-sm">
+                <span className="text-slate-100">Derechohabiencia *</span>
+                <select
+                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    attemptedSubmit && !form.derechohabiencia.trim()
+                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                      : "border-white/10"
+                  }`}
+                  value={form.derechohabiencia}
+                  onChange={(e) => handleChange("derechohabiencia", e.target.value)}
+                  required
+                >
+                  <option value="" className="bg-slate-900 text-slate-400">Seleccionar...</option>
+                  <option value="IMB" className="bg-slate-900 text-white">IMB</option>
+                  <option value="IMSS" className="bg-slate-900 text-white">IMSS</option>
+                  <option value="ISSSTE" className="bg-slate-900 text-white">ISSSTE</option>
+                  <option value="Otro" className="bg-slate-900 text-white">Otro</option>
+                </select>
+                {attemptedSubmit && !form.derechohabiencia.trim() && (
+                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ La derechohabiencia es obligatoria</p>
+                )}
+              </label>
+
+              <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Región</span>
                 <input
                   className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
@@ -791,11 +845,18 @@ export default function NuevoPaciente() {
               </label>
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Hospital de referencia</span>
-                <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                <select
+                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white transition-all focus:border-emerald-500 focus:ring-emerald-500"
                   value={form.hospital_referencia}
                   onChange={(e) => handleChange("hospital_referencia", e.target.value)}
-                />
+                >
+                  <option value="" className="bg-slate-900 text-slate-400">Seleccionar hospital...</option>
+                  {hospitalesDisponibles.map((hosp) => (
+                    <option key={hosp.clues} value={hosp.nombre} className="bg-slate-900 text-white">
+                      {hosp.nombre}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label className="space-y-1 text-sm">

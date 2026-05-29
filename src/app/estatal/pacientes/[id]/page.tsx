@@ -23,6 +23,7 @@ type Paciente = {
   sdg_ingreso: number | null;
   telefono: string | null;
   direccion: string | null;
+  derechohabiencia?: string | null;
   factor_riesgo_antecedentes: number | null;
   factor_riesgo_tamizajes: number | null;
   gestas?: number | null;
@@ -475,6 +476,7 @@ export default function DetallePacienteEstatalPage() {
                 <Info label="Fecha ingreso CPN" value={formatDate(paciente.fecha_ingreso_cpn)} size="compact" />
                 <Info label="SDG ingreso" value={paciente.sdg_ingreso} size="compact" />
                 <Info label="Teléfono" value={paciente.telefono} size="compact" />
+                <Info label="Derechohabiencia" value={paciente.derechohabiencia} size="compact" />
               </div>
             </section>
 

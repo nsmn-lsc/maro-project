@@ -28,6 +28,7 @@ type Paciente = {
   sdg_ingreso: number | null;
   telefono: string | null;
   direccion: string | null;
+  derechohabiencia?: string | null;
   factor_riesgo_antecedentes: number | null;
   factor_riesgo_tamizajes: number | null;
   gestas?: number | null;
@@ -472,6 +473,7 @@ export default function RegionPacienteResumenPage() {
                 <Info label="FPP" value={formatDate(paciente.fpp)} />
                 <Info label="Semanas gestación" value={paciente.semanas_gestacion} />
                 <Info label="Teléfono" value={paciente.telefono} />
+                <Info label="Derechohabiencia" value={paciente.derechohabiencia} />
               </div>
             </section>
 
