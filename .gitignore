@@ -48,3 +48,7 @@ next-env.d.ts
 *.pdf
 # Credenciales bootstrap — nunca versionar
 credenciales-bootstrap.csv
+
+# tar.gz archives
+*.tar.gz
+

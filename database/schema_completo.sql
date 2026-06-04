@@ -77,6 +77,11 @@ CREATE TABLE `casos` (
   `estatus` enum('BORRADOR','PENDIENTE_COLEGIACION','URGENCIA_REFERENCIA_2N','SOLICITADO_A_COLEGIACION','EN_ESPERA_DE_INFORMACION','RECHAZADO_POR_COORDINACION','ACEPTADO_PARA_COLEGIACION','CON_RECOMENDACION','CERRADO') COLLATE utf8mb4_unicode_ci DEFAULT 'BORRADOR',
   `nivel_riesgo` enum('AMARILLO','NARANJA','ROJO') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `score_riesgo` int DEFAULT NULL,
+  `score_factor_riesgo` int DEFAULT NULL COMMENT 'Puntuación numérica de factores de riesgo',
+  `categoria_riesgo_factor` enum('BAJO','MODERADO','ALTO') COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Categoría derivada del score de factores',
+  `fecha_calculo_factor` timestamp NULL DEFAULT NULL COMMENT 'Última fecha de cálculo del factor de riesgo',
+  `detalle_factor_riesgo` json DEFAULT NULL COMMENT 'Detalles del cálculo de factor de riesgo en formato JSON',
+  `abortos` int DEFAULT '0' COMMENT 'Número de abortos previos',
   `resumen_clinico` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -88,6 +93,8 @@ CREATE TABLE `casos` (
   KEY `idx_estatus` (`estatus`),
   KEY `idx_nivel_riesgo` (`nivel_riesgo`),
   KEY `idx_created` (`created_at`),
+  KEY `idx_score_factor` (`score_factor_riesgo`),
+  KEY `idx_categoria_factor` (`categoria_riesgo_factor`),
   CONSTRAINT `casos_ibfk_1` FOREIGN KEY (`sesion_id`) REFERENCES `sesiones` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `cat_pacientes` (
@@ -330,6 +337,21 @@ CREATE TABLE `evaluaciones_clinicas` (
   PRIMARY KEY (`id`),
   KEY `idx_caso` (`caso_id`),
   CONSTRAINT `evaluaciones_clinicas_ibfk_1` FOREIGN KEY (`caso_id`) REFERENCES `casos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `historial_factor_riesgo` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `caso_id` int NOT NULL,
+  `puntaje_total` int NOT NULL,
+  `categoria` enum('BAJO','MODERADO','ALTO') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `detalles` json NOT NULL COMMENT 'Array de objetos con campo, valor, puntos, criterio',
+  `sugerencias` json DEFAULT NULL COMMENT 'Array de sugerencias recomendadas',
+  `calculado_por` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'SISTEMA',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_caso` (`caso_id`),
+  KEY `idx_fecha` (`created_at`),
+  KEY `idx_categoria` (`categoria`),
+  CONSTRAINT `fk_historial_factor_caso` FOREIGN KEY (`caso_id`) REFERENCES `casos` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `puerperio` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
