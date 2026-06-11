@@ -213,7 +213,7 @@ export async function GET(request: Request) {
     if (regionFilter) {
       where.push("p.region = ?");
       params.push(regionFilter);
-      if (!cluesFilter) {
+      if (!cluesFilter && !idFilter) {
         where.push("c.paciente_id IS NOT NULL");
       }
     }
