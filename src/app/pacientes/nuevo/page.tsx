@@ -14,7 +14,7 @@ type SessionInfo = {
 };
 
 function calcularEdadDesdeCurp(curp: string): number | null {
-  const curpRegex = /^[A-Z]{4}(\d{2})(\d{2})(\d{2})[HM][A-Z]{5}([A-Z0-9])\d$/;
+  const curpRegex = /^[A-ZÑ]{4}(\d{2})(\d{2})(\d{2})[HMX][A-ZÑ]{5}([A-Z0-9])[A-Z0-9]$/;
   const match = curp.match(curpRegex);
   if (!match) return null;
 
@@ -328,7 +328,7 @@ export default function NuevoPaciente() {
       return;
     }
     if (form.curp && form.curp.trim()) {
-      const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/;
+      const curpRegex = /^[A-ZÑ]{4}\d{6}[HMX][A-ZÑ]{5}[A-Z0-9][A-Z0-9]$/;
       if (!curpRegex.test(form.curp)) {
         setError("El formato de la CURP es inválido");
         return;
@@ -534,7 +534,7 @@ export default function NuevoPaciente() {
                   className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
                     !form.curp
                       ? "border-white/10"
-                      : form.curp.length === 18 && /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(form.curp)
+                      : form.curp.length === 18 && /^[A-ZÑ]{4}\d{6}[HMX][A-ZÑ]{5}[A-Z0-9][A-Z0-9]$/.test(form.curp)
                       ? "border-emerald-500/50 focus:border-emerald-500"
                       : "border-rose-500/50 focus:border-rose-500"
                   }`}
@@ -545,13 +545,13 @@ export default function NuevoPaciente() {
                 />
                 {form.curp && form.curp.length > 0 && (
                   <p className={`text-xs mt-1 font-medium ${
-                    form.curp.length === 18 && /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(form.curp)
+                    form.curp.length === 18 && /^[A-ZÑ]{4}\d{6}[HMX][A-ZÑ]{5}[A-Z0-9][A-Z0-9]$/.test(form.curp)
                       ? "text-emerald-400"
                       : "text-rose-400"
                   }`}>
                     {form.curp.length < 18
                       ? `Incompleta: ${form.curp.length}/18 caracteres`
-                      : /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(form.curp)
+                      : /^[A-ZÑ]{4}\d{6}[HMX][A-ZÑ]{5}[A-Z0-9][A-Z0-9]$/.test(form.curp)
                       ? "✓ CURP válida. Edad calculada automáticamente."
                       : "✗ Formato de CURP inválido"}
                   </p>
