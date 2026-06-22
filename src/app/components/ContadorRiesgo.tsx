@@ -19,6 +19,7 @@ interface ContadorRiesgoProps {
 export default function ContadorRiesgo({ formData, onPuntajeChange }: ContadorRiesgoProps) {
   // Convertir datos del formulario al formato esperado por evaluarFactoresRiesgo
   const datosFactores: DatosFactoresPaciente = useMemo(() => ({
+    edad: formData.edad ? parseInt(formData.edad) : undefined,
     gestas: formData.gestas ? parseInt(formData.gestas) : 0,
     cesareas: formData.cesareas ? parseInt(formData.cesareas) : 0,
     abortos: formData.abortos ? parseInt(formData.abortos) : 0,
@@ -43,6 +44,7 @@ export default function ContadorRiesgo({ formData, onPuntajeChange }: ContadorRi
     factor_drogas_ilicitas: formData.factor_drogas_ilicitas === true,
     factores_riesgo_epid: formData.factores_riesgo_epid || 'ninguno',
   }), [
+    formData.edad,
     formData.gestas,
     formData.cesareas,
     formData.abortos,

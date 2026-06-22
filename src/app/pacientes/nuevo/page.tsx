@@ -313,6 +313,7 @@ export default function NuevoPaciente() {
   }, [edadEnRangoAlerta, edadAlertaConfirmada]);
 
   // Validar y abrir modal de confirmación
+  // Validar y abrir modal de confirmación
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -322,10 +323,26 @@ export default function NuevoPaciente() {
       setError("El nombre completo es obligatorio");
       return;
     }
+    
+    // Validación de nombre: Solo letras y espacios
+    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+    if (!nameRegex.test(form.nombre_completo.trim())) {
+      setError("El nombre completo no debe contener números ni caracteres especiales");
+      return;
+    }
+
     if (!form.edad.trim()) {
       setError("La edad es obligatoria");
       return;
     }
+    
+    // Validación de edad
+    const edadNum = Number(form.edad);
+    if (isNaN(edadNum) || edadNum <= 0 || edadNum > 100 || !Number.isInteger(edadNum)) {
+      setError("La edad ingresada no es válida (debe ser un número entero entre 1 y 100)");
+      return;
+    }
+
     if (!form.derechohabiencia.trim()) {
       setError("La derechohabiencia es obligatoria");
       return;
@@ -341,6 +358,29 @@ export default function NuevoPaciente() {
         return;
       }
     }
+    
+    // Validación de teléfono paciente
+    if (form.telefono && form.telefono.trim()) {
+      const telRegex = /^\d{10}$/;
+      if (!telRegex.test(form.telefono.trim())) {
+        setError("El teléfono del paciente debe contener exactamente 10 dígitos numéricos");
+        return;
+      }
+    }
+
+    // Validación de madrina obstétrica
+    if (form.madrina_nombre && form.madrina_nombre.trim() && !nameRegex.test(form.madrina_nombre.trim())) {
+      setError("El nombre de la madrina obstétrica no debe contener números ni caracteres especiales");
+      return;
+    }
+    if (form.madrina_telefono && form.madrina_telefono.trim()) {
+      const telRegex = /^\d{10}$/;
+      if (!telRegex.test(form.madrina_telefono.trim())) {
+        setError("El teléfono de la madrina obstétrica debe contener exactamente 10 dígitos numéricos");
+        return;
+      }
+    }
+
     if (!form.localidad.trim()) {
       setError("La localidad es obligatoria");
       return;
@@ -361,22 +401,46 @@ export default function NuevoPaciente() {
       setError("La FUM es obligatoria");
       return;
     }
-    if (!form.gestas.trim()) {
-      setError("El número de gestaciones (Gestas) es obligatorio");
-      return;
+
+    // Validación numérica de antecedentes gineco-obstétricos
+    const checkInt = (val: string, label: string) => {
+      if (!val.trim()) return `El campo ${label} es obligatorio`;
+      const num = Number(val);
+      if (isNaN(num) || !Number.isInteger(num) || num < 0) {
+        return `El campo ${label} debe ser un número entero válido (0 o mayor)`;
+      }
+      return null;
+    };
+
+    const errGestas = checkInt(form.gestas, "Gestas");
+    if (errGestas) { setError(errGestas); return; }
+    
+    const errPartos = checkInt(form.partos, "Partos");
+    if (errPartos) { setError(errPartos); return; }
+    
+    const errCesareas = checkInt(form.cesareas, "Cesáreas");
+    if (errCesareas) { setError(errCesareas); return; }
+    
+    const errAbortos = checkInt(form.abortos, "Abortos");
+    if (errAbortos) { setError(errAbortos); return; }
+
+    // Validación de medidas (IMC y ganancia)
+    if (form.imc_inicial && form.imc_inicial.trim()) {
+      const val = Number(form.imc_inicial);
+      if (isNaN(val) || val <= 0) {
+        setError("El IMC inicial debe ser un número válido mayor a 0");
+        return;
+      }
     }
-    if (!form.partos.trim()) {
-      setError("El número de partos es obligatorio");
-      return;
+
+    if (form.ganancia_ponderal_max && form.ganancia_ponderal_max.trim()) {
+      const val = Number(form.ganancia_ponderal_max);
+      if (isNaN(val) || val < 0) {
+        setError("La ganancia ponderal debe ser un número válido (0 o mayor)");
+        return;
+      }
     }
-    if (!form.cesareas.trim()) {
-      setError("El número de cesáreas es obligatorio");
-      return;
-    }
-    if (!form.abortos.trim()) {
-      setError("El número de abortos es obligatorio");
-      return;
-    }
+
     if (!form.clues_id.trim()) {
       setError("La CLUES es obligatoria");
       return;

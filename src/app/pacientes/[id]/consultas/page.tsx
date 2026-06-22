@@ -17,7 +17,7 @@ interface Consulta {
   fondo_uterino_acorde_sdg: 0 | 1;
   ivu_repeticion: 0 | 1;
   estado_conciencia: "alteraciones" | "conciente" | null;
-  hemorragia: "visible o abundante" | "no visible o moderada" | "no visible o escasa" | null;
+  hemorragia: "visible o abundante" | "no visible o moderada" | "no visible o escasa" | "sin hemorragia" | null;
   respiracion: "alterada" | "normal" | null;
   color_piel: "cianotica" | "palida" | "normal" | null;
   puntaje_consulta_parametros: number | null;
@@ -193,12 +193,15 @@ export default function ConsultasPaciente() {
         ? 2
         : 0;
 
+  const puntajeFondoUterino = form.fondo_uterino_acorde_sdg ? 4 : 0;
+
   const puntajeConsultaParametros =
     puntajeTaSistolica +
     puntajeTaDiastolica +
     puntajeFrecuenciaCardiaca +
     puntajeIndiceChoque +
-    puntajeTemperatura;
+    puntajeTemperatura +
+    puntajeFondoUterino;
 
   const hallazgosConsulta = [
     {
@@ -230,6 +233,12 @@ export default function ConsultasPaciente() {
       valor: temperaturaNumber,
       puntos: puntajeTemperatura,
       criterio: "<36 o >39 = 4 pts · 37.5-38.9 = 2 pts",
+    },
+    {
+      campo: "Fondo uterino",
+      valor: form.fondo_uterino_acorde_sdg ? "No acorde a SDG" : "Acorde a SDG",
+      puntos: puntajeFondoUterino,
+      criterio: "No acorde = 4 pts",
     },
   ].filter((item) => item.puntos > 0);
 
@@ -281,8 +290,6 @@ export default function ConsultasPaciente() {
         const res = await fetch(`/api/pacientes?id=${pacienteId}`);
         if (res.ok) {
           const data = await res.json();
-          console.log('📊 Datos del paciente desde API:', data);
-          console.log('📊 Factor riesgo antecedentes:', data.factor_riesgo_antecedentes);
           setPacienteFolio(data.folio);
           setPacienteData({
             factor_riesgo_antecedentes: data.factor_riesgo_antecedentes || 0,
@@ -619,7 +626,7 @@ export default function ConsultasPaciente() {
                     checked={form.fondo_uterino_acorde_sdg}
                     onChange={() => handleChange("fondo_uterino_acorde_sdg", !form.fondo_uterino_acorde_sdg)}
                   />
-                  <span className="text-slate-100">Fondo uterino acorde a SDG</span>
+                  <span className="text-slate-100">Fondo uterino no acorde a SDG</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -652,6 +659,7 @@ export default function ConsultasPaciente() {
                   onChange={(e) => handleChange("hemorragia", e.target.value)}
                 >
                   <option value="">Seleccione</option>
+                  <option value="sin hemorragia">Sin hemorragia</option>
                   <option value="visible o abundante">Visible o abundante</option>
                   <option value="no visible o moderada">No visible o moderada</option>
                   <option value="no visible o escasa">No visible o escasa</option>

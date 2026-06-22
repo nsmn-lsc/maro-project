@@ -6,6 +6,7 @@
  */
 
 export interface DatosFactoresPaciente {
+  edad?: number;
   gestas?: number;
   partos?: number;
   cesareas?: number;
@@ -55,6 +56,10 @@ export interface ResultadoFactores {
  */
 
 const CRITERIOS = {
+  edad: [
+    { rango: [0, 19], puntos: 4, razon: "recomendacion" },
+    { rango: [36, 150], puntos: 4, razon: "recomendacion" },
+  ],
   gestas: [
     { rango: [2, 4], puntos: 1, razon: "recomendacion" },
     { rango: [5, 100], puntos: 4, razon: "recomendacion" },
@@ -149,6 +154,23 @@ export function evaluarCampoIndividual(
   }
 
   // Campos numéricos con rango
+  if (campo === "edad" && typeof valor === "number") {
+    for (const criterio of CRITERIOS.edad) {
+      if ("rango" in criterio) {
+        const [min, max] = criterio.rango;
+        if (valor >= min && valor <= max) {
+          return {
+            campo: "Edad de riesgo",
+            valor: `${valor} años`,
+            puntos: criterio.puntos,
+            razon: criterio.razon,
+            tipo: "ANTECEDENTE",
+          };
+        }
+      }
+    }
+  }
+
   if (campo === "gestas" && typeof valor === "number") {
     for (const criterio of CRITERIOS.gestas) {
       if ("rango" in criterio) {

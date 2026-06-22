@@ -254,7 +254,7 @@ export default function Dashboard() {
                   accent: "bg-emerald-500/20 text-emerald-100",
                 },
                 {
-                  title: "Alto riesgo (≥25)",
+                  title: "Muy Alto riesgo (≥25)",
                   value: metrics.alto_riesgo,
                   accent: "bg-amber-500/20 text-amber-100",
                 },
