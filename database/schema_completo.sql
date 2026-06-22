@@ -224,7 +224,7 @@ CREATE TABLE `consultas_prenatales` (
   `fondo_uterino_acorde_sdg` tinyint(1) DEFAULT '0',
   `ivu_repeticion` tinyint(1) DEFAULT '0',
   `estado_conciencia` enum('alteraciones','conciente') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `hemorragia` enum('visible o abundante','no visible o moderada','no visible o escasa') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `hemorragia` enum('visible o abundante','no visible o moderada','no visible o escasa','sin hemorragia') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `respiracion` enum('alterada','normal') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `color_piel` enum('cianotica','palida','normal') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `puntaje_consulta_parametros` int NOT NULL DEFAULT '0',
