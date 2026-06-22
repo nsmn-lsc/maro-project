@@ -16,7 +16,9 @@ type SessionInfo = {
 function calcularEdadDesdeCurp(curp: string): number | null {
   const curpRegex = /^[A-ZÑ]{4}(\d{2})(\d{2})(\d{2})[HMX][A-ZÑ]{5}([A-Z0-9])[A-Z0-9]$/;
   const match = curp.match(curpRegex);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
 
   const year2Dig = parseInt(match[1], 10);
   const month = parseInt(match[2], 10);
@@ -29,6 +31,11 @@ function calcularEdadDesdeCurp(curp: string): number | null {
     year += 2000;
   } else {
     year += 1900;
+  }
+
+  // Fallback para evitar años en el futuro (ej. CURPs atípicas con letra pero año de 1900s)
+  if (year > new Date().getFullYear()) {
+    year -= 100;
   }
 
   // Validar que sea una fecha de nacimiento válida
