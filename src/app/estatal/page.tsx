@@ -343,13 +343,21 @@ export default function ModuloEstatalRiesgoPage() {
             <h1 className="text-3xl font-bold">Pacientes en alto riesgo activo</h1>
             <p className="text-slate-300/80">Vista consolidada de todas las unidades · Sesión: {sessionName}</p>
           </div>
-          <button
-            type="button"
-            onClick={cerrarSesion}
-            className="text-sm px-3 py-1.5 rounded-full border border-slate-500 text-slate-200 hover:border-slate-300 hover:text-white"
-          >
-            Cerrar sesión
-          </button>
+          <div className="flex gap-2">
+            <Link
+              href="/gestion-accesos"
+              className="text-sm px-3 py-1.5 rounded-full border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200 transition-colors"
+            >
+              Gestión de Accesos
+            </Link>
+            <button
+              type="button"
+              onClick={cerrarSesion}
+              className="text-sm px-3 py-1.5 rounded-full border border-slate-500 text-slate-200 hover:border-slate-300 hover:text-white transition-colors"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </header>
 
         <section className="grid gap-4 md:grid-cols-3">
