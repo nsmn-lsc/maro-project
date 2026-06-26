@@ -7,6 +7,7 @@ function parseDateOnly(dateValue: string): Date | null {
 
   const [year, month, day] = dateValue.split("-").map(Number);
   if (!year || !month || !day) return null;
+  if (year < 1900 || year > 9999) return null;
 
   const parsed = new Date(Date.UTC(year, month - 1, day));
   return Number.isNaN(parsed.getTime()) ? null : parsed;
@@ -305,6 +306,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "La CLUES es obligatoria" }, { status: 400 });
     }
 
+    let fechaIngresoCpnValidada = null;
+    if (body.fecha_ingreso_cpn) {
+      const parsedFecha = parseDateOnly(body.fecha_ingreso_cpn);
+      if (!parsedFecha) {
+        return NextResponse.json({ message: "La fecha de ingreso CPN no es válida o está fuera de rango" }, { status: 400 });
+      }
+      fechaIngresoCpnValidada = formatDateOnly(parsedFecha);
+    }
+
     const canWriteClues = await assertCluesScope(clues, auth);
     if (!canWriteClues) {
       return NextResponse.json({ message: "Sin permisos para registrar en esa CLUES" }, { status: 403 });
@@ -333,7 +343,7 @@ export async function POST(request: Request) {
     const payload = {
       folio: folio,
       region: body.region || unidadCatalogo.region || null,
-      fecha_ingreso_cpn: body.fecha_ingreso_cpn || null,
+      fecha_ingreso_cpn: fechaIngresoCpnValidada,
       clues_id: clues,
       unidad: body.unidad || unidadCatalogo.unidad || null,
       tipo_localidad: body.tipo_localidad || null,

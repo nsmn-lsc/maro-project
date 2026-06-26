@@ -554,7 +554,27 @@ export default function NuevoPaciente() {
           </p>
         </header>
 
-        {error && <p className="text-sm text-red-200 bg-red-500/10 border border-red-500/40 rounded-lg px-3 py-2">{error}</p>}
+        {/* Modal de Error */}
+        {error && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md rounded-2xl border border-rose-500/50 bg-slate-900 shadow-2xl p-6">
+              <div className="flex items-center gap-4 text-rose-400 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h2 className="text-xl font-bold">Error en el registro</h2>
+              </div>
+              <p className="text-slate-200 mb-6">{error}</p>
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                className="w-full rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400 transition-colors"
+              >
+                Entendido, cerrar
+              </button>
+            </div>
+          </div>
+        )}
         {success && <p className="text-sm text-emerald-200 bg-emerald-500/10 border border-emerald-500/40 rounded-lg px-3 py-2">{success}</p>}
 
         <form

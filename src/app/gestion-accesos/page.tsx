@@ -22,29 +22,37 @@ export default function GestionAccesosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState("");
   const [resettingId, setResettingId] = useState<number | null>(null);
   const [newPasswordData, setNewPasswordData] = useState<{ username: string, password: string } | null>(null);
+  const [confirmReset, setConfirmReset] = useState<Usuario | null>(null);
+
+  const regionesDisponibles = Array.from(new Set(usuarios.map(u => u.region).filter(Boolean))) as string[];
 
   useEffect(() => {
     fetchUsuarios();
   }, []);
 
   useEffect(() => {
-    if (search.trim() === "") {
-      setFilteredUsuarios(usuarios);
-    } else {
+    let result = usuarios;
+    
+    if (selectedRegion !== "") {
+      result = result.filter(u => u.region === selectedRegion);
+    }
+    
+    if (search.trim() !== "") {
       const s = search.toLowerCase();
-      setFilteredUsuarios(
-        usuarios.filter(
-          (u) =>
-            u.username.toLowerCase().includes(s) ||
-            (u.nombre && u.nombre.toLowerCase().includes(s)) ||
-            (u.clues_id && u.clues_id.toLowerCase().includes(s)) ||
-            (u.region && u.region.toLowerCase().includes(s))
-        )
+      result = result.filter(
+        (u) =>
+          u.username.toLowerCase().includes(s) ||
+          (u.nombre && u.nombre.toLowerCase().includes(s)) ||
+          (u.clues_id && u.clues_id.toLowerCase().includes(s)) ||
+          (u.region && u.region.toLowerCase().includes(s))
       );
     }
-  }, [search, usuarios]);
+    
+    setFilteredUsuarios(result);
+  }, [search, selectedRegion, usuarios]);
 
   const fetchUsuarios = async () => {
     try {
@@ -88,12 +96,16 @@ export default function GestionAccesosPage() {
     }
   };
 
-  const handleResetPassword = async (user: Usuario) => {
-    if (!confirm(`¿Estás seguro de que deseas resetear la contraseña para ${user.username}? Esta acción es irreversible.`)) {
-      return;
-    }
+  const handleResetPasswordClick = (user: Usuario) => {
+    setConfirmReset(user);
+  };
 
+  const executeResetPassword = async () => {
+    if (!confirmReset) return;
+    const user = confirmReset;
+    setConfirmReset(null);
     setResettingId(user.id);
+    setError(null);
     try {
       const res = await fetch("/api/gestion-accesos", {
         method: "POST",
@@ -105,10 +117,34 @@ export default function GestionAccesosPage() {
       
       setNewPasswordData({ username: user.username, password: data.newPassword });
     } catch (err: any) {
-      alert("Error: " + err.message);
+      setError(err.message);
     } finally {
       setResettingId(null);
     }
+  };
+
+  const exportToCSV = () => {
+    const headers = ["Usuario", "Nombre", "Nivel", "Ubicación", "Último Acceso"];
+    const rows = filteredUsuarios.map(u => [
+      u.username,
+      u.nombre || "Sin nombre",
+      u.nivel,
+      u.clues_id || u.region || "N/A",
+      u.last_login_at ? new Date(u.last_login_at).toLocaleString() : "Nunca"
+    ]);
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+    
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `reporte_accesos_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (loading) {
@@ -143,14 +179,35 @@ export default function GestionAccesosPage() {
         )}
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar por CLUES, Región, Usuario o Nombre..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all placeholder:text-slate-600"
-            />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1 flex flex-col sm:flex-row gap-2">
+              <select
+                value={selectedRegion}
+                onChange={(e) => setSelectedRegion(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all min-w-[180px] sm:max-w-[220px]"
+              >
+                <option value="">Todas las regiones</option>
+                {regionesDisponibles.sort().map(region => (
+                  <option key={region} value={region}>{region}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Buscar por CLUES, Usuario o Nombre..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all placeholder:text-slate-600"
+              />
+            </div>
+            <button
+              onClick={exportToCSV}
+              className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition-colors shadow-lg shadow-emerald-900/20 whitespace-nowrap flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Exportar CSV
+            </button>
           </div>
 
           <div className="overflow-x-auto border border-slate-800 rounded-xl">
@@ -167,7 +224,7 @@ export default function GestionAccesosPage() {
               <tbody className="divide-y divide-slate-800">
                 {filteredUsuarios.map((u) => (
                   <tr key={u.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-normal break-words max-w-[150px] md:max-w-[250px]">
                       <div className="font-medium text-white">{u.username}</div>
                       <div className="text-xs text-slate-500">{u.nombre || "Sin nombre"}</div>
                     </td>
@@ -186,7 +243,7 @@ export default function GestionAccesosPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
-                        onClick={() => handleResetPassword(u)}
+                        onClick={() => handleResetPasswordClick(u)}
                         disabled={resettingId === u.id}
                         className="px-3 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
                       >
@@ -207,6 +264,42 @@ export default function GestionAccesosPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Confirmar Reseteo */}
+      {confirmReset && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-6">
+            <div className="flex items-center gap-4 text-rose-400 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h2 className="text-xl font-bold">¿Resetear contraseña?</h2>
+            </div>
+            <p className="text-slate-300">
+              Estás a punto de generar una nueva contraseña temporal para el usuario <strong className="text-white">{confirmReset.username}</strong>.
+            </p>
+            <p className="text-sm text-slate-400">
+              Esta acción es irreversible y el usuario perderá acceso con su contraseña anterior de manera inmediata.
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setConfirmReset(null)}
+                className="flex-1 rounded-lg border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={executeResetPassword}
+                className="flex-1 rounded-lg bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-400 transition-colors"
+              >
+                Sí, resetear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de nueva contraseña */}
       {newPasswordData && (

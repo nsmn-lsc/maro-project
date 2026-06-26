@@ -475,9 +475,15 @@ export default function DetalleColegiadoPage() {
                               value={item.descripcion}
                               onChange={(event) => updateAction(nivel.key, index, { descripcion: event.target.value })}
                               rows={3}
+                              maxLength={500}
                               className="mt-3 w-full rounded-2xl border border-slate-600 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
                               placeholder="Describe la acción a realizar"
                             />
+                            <div className="mt-1 flex justify-end">
+                              <span className={`text-xs ${item.descripcion.length >= 480 ? 'text-rose-400' : 'text-slate-400'}`}>
+                                {item.descripcion.length} / 500
+                              </span>
+                            </div>
 
                             <label className="mt-3 flex items-center gap-3 text-sm text-slate-200">
                               <input
