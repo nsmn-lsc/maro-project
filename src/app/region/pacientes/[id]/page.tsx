@@ -64,6 +64,7 @@ type Paciente = {
 type Consulta = {
   id: number;
   fecha_consulta: string | null;
+  sdg: number | null;
   ta_sistolica: number | null;
   ta_diastolica: number | null;
   frecuencia_cardiaca: number | null;
@@ -587,6 +588,7 @@ export default function RegionPacienteResumenPage() {
                     <thead>
                       <tr className="border-b border-emerald-300/25 text-left text-emerald-100/80">
                         <th className="py-2 pr-4">Fecha</th>
+                        <th className="py-2 pr-4">SDG</th>
                         <th className="py-2 pr-4">T/A</th>
                         <th className="py-2 pr-4">FC</th>
                         <th className="py-2 pr-4">FR</th>
@@ -603,6 +605,7 @@ export default function RegionPacienteResumenPage() {
                         return (
                           <tr key={consulta.id} className="hover:bg-emerald-900/20">
                             <td className="py-2 pr-4">{formatDate(consulta.fecha_consulta)}</td>
+                            <td className="py-2 pr-4 font-semibold text-white">{consulta.sdg ?? "—"}</td>
                             <td className="py-2 pr-4">
                               {formatValue(consulta.ta_sistolica)}/{formatValue(consulta.ta_diastolica)}
                               <span className={`ml-2 inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-semibold ${scoreBadgeClass(scores.taTotal)}`}>

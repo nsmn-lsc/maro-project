@@ -237,9 +237,9 @@ export async function GET(request: Request) {
       d.prueba_vih, d.prueba_vdrl, d.prueba_hepatitis_c, d.diabetes_glicemia, d.violencia
     ` : `
       p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.localidad, p.fecha_ingreso_cpn, 
-      p.edad, p.fpp,
+      p.edad, p.fum, p.fpp,
       p.imc_inicial,
-      p.sdg_ingreso, p.semanas_gestacion, p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes,
+      COALESCE(c.last_consulta_sdg, p.sdg_ingreso) AS sdg_ingreso, p.semanas_gestacion, p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes,
       p.factor_cardiopatia, p.factor_hepatopatia, p.factor_coagulopatias, p.factor_nefropatia,
         c.last_consulta_id AS ultima_consulta_id,
       COALESCE(c.puntaje_consulta_parametros, 0) AS puntaje_ultima_consulta,
@@ -255,7 +255,7 @@ export async function GET(request: Request) {
     ` : `
       FROM cat_pacientes p
       LEFT JOIN (
-          SELECT c1.id AS last_consulta_id, c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta
+          SELECT c1.id AS last_consulta_id, c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta, c1.sdg AS last_consulta_sdg
         FROM consultas_prenatales c1
         INNER JOIN (
           SELECT paciente_id, MAX(id) AS last_consulta_id

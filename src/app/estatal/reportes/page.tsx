@@ -270,6 +270,7 @@ export default function ReportesEstatalesPage() {
   const [fechaHasta, setFechaHasta] = useState("");
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingClinico, setExportingClinico] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const loadReportes = useCallback(async (silent = false) => {
@@ -455,6 +456,43 @@ export default function ReportesEstatalesPage() {
       setError(err?.message || "No se pudo generar el reporte Excel");
     } finally {
       setExportingExcel(false);
+    }
+  };
+
+  const descargarReporteClinico = async () => {
+    setExportingClinico(true);
+    try {
+      const params = new URLSearchParams();
+      if (regionFilter) params.append("region", regionFilter);
+      if (fechaDesde) params.append("fechaDesde", fechaDesde);
+      if (fechaHasta) params.append("fechaHasta", fechaHasta);
+
+      const res = await fetch(`/api/reportes/clinico?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Error al generar el reporte Excel clínico");
+      }
+
+      const blob = await res.blob();
+      const stamp = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const scopeLabel = regionFilter ? regionFilter.toLowerCase() : "estatal";
+      a.download = `reporte-clinico-maro-${scopeLabel}-${stamp}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setError(null);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setError(errMsg || "No se pudo generar el reporte Excel clínico");
+    } finally {
+      setExportingClinico(false);
     }
   };
 
@@ -839,6 +877,14 @@ export default function ReportesEstatalesPage() {
                 className="rounded-lg border border-emerald-500/60 px-3 py-2 text-sm text-emerald-200 hover:border-emerald-300 disabled:opacity-60"
               >
                 {exportingExcel ? "Generando Excel..." : "Descargar Excel"}
+              </button>
+              <button
+                type="button"
+                onClick={descargarReporteClinico}
+                disabled={exportingClinico}
+                className="rounded-lg border border-teal-500/60 px-3 py-2 text-sm text-teal-200 hover:border-teal-300 disabled:opacity-60"
+              >
+                {exportingClinico ? "Generando Clínico..." : "Descargar Excel Clínico Detallado"}
               </button>
               <button
                 type="button"

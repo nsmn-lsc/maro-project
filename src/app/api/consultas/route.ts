@@ -106,7 +106,7 @@ export async function GET(request: Request) {
     const fechaColegiadoExpr = hasFechaColegiado ? "fecha_colegiado" : "NULL";
 
     const rows = await query(
-            `SELECT id, paciente_id, fecha_consulta,
+            `SELECT id, paciente_id, fecha_consulta, sdg,
               ta_sistolica, ta_diastolica, frecuencia_cardiaca, indice_choque, frecuencia_respiratoria, temperatura,
               fondo_uterino_acorde_sdg, ivu_repeticion, estado_conciencia, hemorragia, respiracion, color_piel,
               puntaje_consulta_parametros, puntaje_total_consulta, riesgo_25_plus,
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
 
     const pacienteRows: any = await query(
       `SELECT factor_riesgo_antecedentes, factor_riesgo_tamizajes, folio, unidad, edad,
-              imc_inicial, factor_cardiopatia, factor_nefropatia, factor_hepatopatia, factor_coagulopatias
+              imc_inicial, factor_cardiopatia, factor_nefropatia, factor_hepatopatia, factor_coagulopatias, fum
          FROM cat_pacientes
         WHERE id = ?
         LIMIT 1`,
@@ -194,9 +194,30 @@ export async function POST(request: Request) {
       : puntajeCalculado;
     const riesgo25Plus = puntajeTotalConsulta >= 25 ? 1 : 0;
 
+    // Calcular SDG en la fecha de la consulta basándonos en FUM del paciente
+    let sdgInsertVal: number | null = null;
+    const fechaConsulta = body.fecha_consulta || null;
+    if (paciente.fum && fechaConsulta) {
+      try {
+        const fumDate = new Date(paciente.fum);
+        const consDate = new Date(fechaConsulta);
+        if (!isNaN(fumDate.getTime()) && !isNaN(consDate.getTime())) {
+          const fumUtc = Date.UTC(fumDate.getUTCFullYear(), fumDate.getUTCMonth(), fumDate.getUTCDate());
+          const consUtc = Date.UTC(consDate.getUTCFullYear(), consDate.getUTCMonth(), consDate.getUTCDate());
+          const diffInMs = consUtc - fumUtc;
+          if (diffInMs >= 0) {
+            sdgInsertVal = Math.round(diffInMs / (1000 * 60 * 60 * 24 * 7));
+          }
+        }
+      } catch (err) {
+        console.error("Error al calcular SDG para la nueva consulta:", err);
+      }
+    }
+
     const payload = {
       paciente_id: pacienteId,
       fecha_consulta: body.fecha_consulta || null,
+      sdg: sdgInsertVal,
       ta_sistolica: taSistolica,
       ta_diastolica: taDiastolica,
       frecuencia_cardiaca: frecuenciaCardiaca,

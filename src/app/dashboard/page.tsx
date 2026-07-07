@@ -12,6 +12,7 @@ type Patient = {
   municipio: string | null;
   localidad: string | null;
   fecha_ingreso_cpn: string | null;
+  fum: string | null;
   fpp: string | null;
   edad: number | null;
   imc_inicial: number | null;
@@ -152,6 +153,23 @@ export default function Dashboard() {
     const mm = String(date.getMonth() + 1).padStart(2, "0");
     const yyyy = date.getFullYear();
     return `${dd}-${mm}-${yyyy}`;
+  };
+
+  const calculateCurrentSdg = (fum: string | null) => {
+    if (!fum) return "—";
+    try {
+      const fumDate = new Date(fum);
+      if (Number.isNaN(fumDate.getTime())) return "—";
+      const today = new Date();
+      const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+      const fumUtc = Date.UTC(fumDate.getFullYear(), fumDate.getMonth(), fumDate.getDate());
+      const diffInMs = todayUtc - fumUtc;
+      if (diffInMs < 0) return "0.0";
+      const diffInWeeks = diffInMs / (1000 * 60 * 60 * 24 * 7);
+      return (Math.round(diffInWeeks * 10) / 10).toFixed(1);
+    } catch {
+      return "—";
+    }
   };
 
   const handleGenerateExcel = async () => {
@@ -379,7 +397,7 @@ export default function Dashboard() {
                       <td className="py-2 pr-4 text-white">{p.folio || "—"}</td>
                       <td className="py-2 pr-4 text-white">{p.nombre_completo || "Sin nombre"}</td>
                       <td className="py-2 pr-4 text-slate-100/80">{formatDate(p.fecha_ingreso_cpn)}</td>
-                      <td className="py-2 pr-4 text-slate-100/80">{p.sdg_ingreso ?? "—"}</td>
+                      <td className="py-2 pr-4 text-slate-100/80">{calculateCurrentSdg(p.fum)}</td>
                       <td className="py-2 pr-4">
                         {(() => {
                           const score = p.factor_riesgo_antecedentes ?? 0;

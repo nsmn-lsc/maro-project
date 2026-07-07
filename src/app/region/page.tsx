@@ -114,7 +114,39 @@ export default function RegionPage() {
   const [folioFilter, setFolioFilter] = useState("");
   const [municipioFilter, setMunicipioFilter] = useState("");
   const [alertaFlotante, setAlertaFlotante] = useState<AlertaFlotante | null>(null);
+  const [exportingReporte, setExportingReporte] = useState(false);
   const knownHighRiskRef = useRef<Set<string>>(new Set());
+
+  const descargarReporteExcel = async () => {
+    if (!session?.region) return;
+    setExportingReporte(true);
+    try {
+      const res = await fetch(`/api/reportes/clinico?region=${encodeURIComponent(session.region)}`, {
+        method: "GET",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Error al generar el reporte Excel clínico");
+      }
+
+      const blob = await res.blob();
+      const stamp = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-clinico-maro-region-${session.region.toLowerCase()}-${stamp}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      alert(errMsg || "Error al descargar el reporte clínico");
+    } finally {
+      setExportingReporte(false);
+    }
+  };
   const loadedOnceRef = useRef(false);
 
   // ── Auth guard ──────────────────────────────────────────────────
@@ -356,6 +388,13 @@ export default function RegionPage() {
             <span className="text-sm text-white/60 hidden sm:block">
               {session?.displayName}
             </span>
+            <button
+              onClick={descargarReporteExcel}
+              disabled={exportingReporte}
+              className="text-xs font-medium bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40 rounded-lg px-3 py-1.5 text-emerald-100 transition-colors disabled:opacity-60"
+            >
+              {exportingReporte ? "Generando Excel..." : "Descargar Reporte Excel Clínico"}
+            </button>
             <button
               onClick={async () => {
                 try {

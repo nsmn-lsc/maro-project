@@ -8,6 +8,7 @@ interface Consulta {
   id: number;
   paciente_id: number;
   fecha_consulta: string | null;
+  sdg: number | null;
   ta_sistolica: number | null;
   ta_diastolica: number | null;
   frecuencia_cardiaca: number | null;
@@ -923,6 +924,7 @@ export default function ConsultasPaciente() {
                 <thead className="text-slate-100/80">
                   <tr className="border-b border-white/10">
                     <th className="py-2 pr-4">Fecha</th>
+                    <th className="py-2 pr-4">SDG</th>
                     <th className="py-2 pr-4">T/A</th>
                     <th className="py-2 pr-4">FC</th>
                     <th className="py-2 pr-4">FR</th>
@@ -941,6 +943,7 @@ export default function ConsultasPaciente() {
                   {consultas.map((c) => (
                     <tr key={c.id} className="hover:bg-white/5">
                       <td className="py-2 pr-4 text-white">{formatDate(c.fecha_consulta)}</td>
+                      <td className="py-2 pr-4 text-white font-medium">{c.sdg ?? "—"}</td>
                       <td className="py-2 pr-4 text-slate-100/80">
                         {c.ta_sistolica ?? "—"}/{c.ta_diastolica ?? "—"}
                       </td>
