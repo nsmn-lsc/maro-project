@@ -437,7 +437,7 @@ export async function GET(request: Request) {
       if (fs.existsSync(logoPath)) {
         const logoBuffer = fs.readFileSync(logoPath);
         const logoId = wb.addImage({
-          buffer: logoBuffer,
+          buffer: logoBuffer as unknown as ArrayBuffer,
           extension: "png",
         });
         ws.addImage(logoId, {
