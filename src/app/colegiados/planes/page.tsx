@@ -123,6 +123,9 @@ export default function ColegiadosPlanesPage() {
             <p className="text-slate-300/80">Seguimiento de planes colegiados ya definidos</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <a href="/api/estatal/colegiados/excel" download className="text-sm px-3 py-1.5 rounded-full border border-teal-500 bg-teal-600/20 text-teal-200 hover:bg-teal-600/40">
+              Descargar Excel
+            </a>
             <Link href="/colegiados" className="text-sm px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400">
               Pendientes
             </Link>

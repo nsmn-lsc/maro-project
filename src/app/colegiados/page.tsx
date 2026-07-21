@@ -174,6 +174,9 @@ export default function ColegiadosPage() {
             <p className="text-slate-300/80">Casos colegiados pendientes de plan de acciones</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <a href="/api/estatal/colegiados/excel" download className="text-sm px-3 py-1.5 rounded-full border border-teal-500 bg-teal-600/20 text-teal-200 hover:bg-teal-600/40">
+              Descargar Excel
+            </a>
             <Link href="/colegiados/planes" className="text-sm px-3 py-1.5 rounded-full border border-emerald-500/50 text-emerald-200 hover:border-emerald-300">
               Casos con acciones
             </Link>
