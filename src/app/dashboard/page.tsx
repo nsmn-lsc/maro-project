@@ -13,10 +13,12 @@ type Patient = {
   localidad: string | null;
   fecha_ingreso_cpn: string | null;
   fum: string | null;
+  fum: string | null;
   fpp: string | null;
   edad: number | null;
   imc_inicial: number | null;
   sdg_ingreso: number | null;
+  semanas_gestacion: number | null;
   factor_riesgo_antecedentes: number | null;
   factor_riesgo_tamizajes: number | null;
   puntaje_ultima_consulta: number | null;
@@ -155,21 +157,28 @@ export default function Dashboard() {
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  const calculateCurrentSdg = (fum: string | null) => {
-    if (!fum) return "—";
-    try {
-      const fumDate = new Date(fum);
-      if (Number.isNaN(fumDate.getTime())) return "—";
-      const today = new Date();
-      const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-      const fumUtc = Date.UTC(fumDate.getFullYear(), fumDate.getMonth(), fumDate.getDate());
-      const diffInMs = todayUtc - fumUtc;
-      if (diffInMs < 0) return "0.0";
-      const diffInWeeks = diffInMs / (1000 * 60 * 60 * 24 * 7);
-      return (Math.round(diffInWeeks * 10) / 10).toFixed(1);
-    } catch {
-      return "—";
+  /** Calcula SDG actuales a partir de la FUM (notación médica: semanas.días) */
+  const calcularSdgActual = (p: Patient): string => {
+    // 1. Intentar calcular dinámicamente desde la FUM
+    if (p.fum) {
+      const fumDate = new Date(p.fum);
+      if (!Number.isNaN(fumDate.getTime())) {
+        const hoy = new Date();
+        const diffMs = hoy.getTime() - fumDate.getTime();
+        const totalDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+        const weeks = Math.floor(totalDays / 7);
+        const days = totalDays % 7;
+        if (weeks >= 0 && weeks <= 45) {
+          return `${weeks}.${days}`;
+        }
+      }
     }
+    // 2. Fallback al valor almacenado de semanas_gestacion
+    if (p.semanas_gestacion != null) return String(p.semanas_gestacion);
+    // 3. Fallback a sdg_ingreso
+    if (p.sdg_ingreso != null) return String(p.sdg_ingreso);
+    // 4. Sin datos
+    return "—";
   };
 
   const handleGenerateExcel = async () => {
@@ -397,7 +406,7 @@ export default function Dashboard() {
                       <td className="py-2 pr-4 text-white">{p.folio || "—"}</td>
                       <td className="py-2 pr-4 text-white">{p.nombre_completo || "Sin nombre"}</td>
                       <td className="py-2 pr-4 text-slate-100/80">{formatDate(p.fecha_ingreso_cpn)}</td>
-                      <td className="py-2 pr-4 text-slate-100/80">{calculateCurrentSdg(p.fum)}</td>
+                      <td className="py-2 pr-4 text-slate-100/80">{calcularSdgActual(p)}</td>
                       <td className="py-2 pr-4">
                         {(() => {
                           const score = p.factor_riesgo_antecedentes ?? 0;

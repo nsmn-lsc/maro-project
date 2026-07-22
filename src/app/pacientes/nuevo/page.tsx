@@ -265,11 +265,13 @@ export default function NuevoPaciente() {
 
     const now = new Date();
     const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const diffInWeeks = Math.max(0, (todayUtc.getTime() - base.getTime()) / (1000 * 60 * 60 * 24 * 7));
+    const totalDays = Math.max(0, Math.floor((todayUtc.getTime() - base.getTime()) / (1000 * 60 * 60 * 24)));
+    const weeks = Math.floor(totalDays / 7);
+    const days = totalDays % 7;
 
     return {
       fpp: fppDate.toISOString().slice(0, 10),
-      semanas_gestacion: diffInWeeks.toFixed(1),
+      semanas_gestacion: `${weeks}.${days}`,
     };
   };
 

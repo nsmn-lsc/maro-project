@@ -17,8 +17,14 @@ function formatDateOnly(dateValue: Date): string {
   return dateValue.toISOString().slice(0, 10);
 }
 
-function roundToSingleDecimal(value: number): number {
-  return Math.round(value * 10) / 10;
+/**
+ * Convierte días totales a notación médica SDG: semanas.días (0-6)
+ * Ej: 73 días → 10 semanas + 3 días → 10.3
+ */
+function computeSdgNotation(totalDays: number): number {
+  const weeks = Math.floor(totalDays / 7);
+  const days = totalDays % 7;
+  return weeks + days * 0.1;
 }
 
 function computeGestacionDesdeFum(fum: string | null | undefined) {
@@ -37,12 +43,12 @@ function computeGestacionDesdeFum(fum: string | null | undefined) {
   const today = new Date();
   const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
   const diffInMs = todayUtc.getTime() - fumDate.getTime();
-  const diffInWeeks = Math.max(0, diffInMs / (1000 * 60 * 60 * 24 * 7));
+  const totalDays = Math.max(0, Math.floor(diffInMs / (1000 * 60 * 60 * 24)));
 
   return {
     fum: formatDateOnly(fumDate),
     fpp: formatDateOnly(fppDate),
-    semanasGestacion: roundToSingleDecimal(diffInWeeks),
+    semanasGestacion: computeSdgNotation(totalDays),
   };
 }
 
