@@ -13,7 +13,6 @@ type Patient = {
   localidad: string | null;
   fecha_ingreso_cpn: string | null;
   fum: string | null;
-  fum: string | null;
   fpp: string | null;
   edad: number | null;
   imc_inicial: number | null;

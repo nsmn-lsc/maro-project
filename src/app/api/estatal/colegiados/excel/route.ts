@@ -152,9 +152,9 @@ export async function GET(request: Request) {
       const acciones = await query<any[]>(accionesQuery);
       
       acciones.forEach((a) => {
-        const text = \`[\${a.nivel_atencion.replace('_', ' ')}] \${a.descripcion} (\${a.cumplido ? 'Cumplida' : 'Pendiente'})\`;
+        const text = `[${a.nivel_atencion.replace('_', ' ')}] ${a.descripcion} (${a.cumplido ? 'Cumplida' : 'Pendiente'})`;
         if (accionesMap.has(a.plan_id)) {
-          accionesMap.set(a.plan_id, accionesMap.get(a.plan_id) + "\\n" + text);
+          accionesMap.set(a.plan_id, accionesMap.get(a.plan_id) + "\n" + text);
         } else {
           accionesMap.set(a.plan_id, text);
         }
@@ -204,7 +204,7 @@ export async function GET(request: Request) {
     titleRow.height = 40;
 
     // Subtítulo
-    const generadoText = \`Generado: \${new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}\`;
+    const generadoText = `Generado: ${new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}`;
     const subtitleRow = ws.addRow([generadoText]);
     ws.mergeCells(2, 1, 2, totalCols);
     const subCell = subtitleRow.getCell(1);
@@ -216,7 +216,7 @@ export async function GET(request: Request) {
     // Resumen
     const total = rows.length;
     const altoRiesgo = rows.filter((r) => Number(r.puntaje_total_consulta) >= 25).length;
-    const statsText = \`Total de casos colegiados: \${total}   ·   En Alto Riesgo Obstétrico (≥ 25 pts): \${altoRiesgo}\`;
+    const statsText = `Total de casos colegiados: ${total}   ·   En Alto Riesgo Obstétrico (≥ 25 pts): ${altoRiesgo}`;
     const statsRow = ws.addRow([statsText]);
     ws.mergeCells(3, 1, 3, totalCols);
     const statsCell = statsRow.getCell(1);
@@ -302,7 +302,7 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": \`attachment; filename="reporte-pacientes-colegiados-\${stamp}.xlsx"\`,
+        "Content-Disposition": `attachment; filename="reporte-pacientes-colegiados-${stamp}.xlsx"`,
         "Cache-Control": "no-store",
       },
     });
