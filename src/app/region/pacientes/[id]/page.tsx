@@ -653,6 +653,25 @@ export default function RegionPacienteResumenPage() {
               )}
             </CollapsibleSection>
 
+            {puntajeTotalActual >= 25 && (
+              <section className="rounded-2xl border border-amber-500/30 bg-amber-950/25 p-5 space-y-3 backdrop-blur-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-amber-200">Plan Colegiado</h2>
+                    <p className="text-sm text-amber-100/70">
+                      Este paciente califica para colegiado por alto riesgo obstétrico (≥ 25 pts)
+                    </p>
+                  </div>
+                  <Link
+                    href="/region/colegiados"
+                    className="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-400 transition"
+                  >
+                    Ver Casos Colegiados
+                  </Link>
+                </div>
+              </section>
+            )}
+
             <section className="rounded-2xl border border-emerald-200/15 bg-emerald-950/40 p-5 space-y-3 backdrop-blur-sm">
               <h2 className="text-lg font-semibold">Acciones preventivas</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

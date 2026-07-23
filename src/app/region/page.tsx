@@ -388,6 +388,12 @@ export default function RegionPage() {
             <span className="text-sm text-white/60 hidden sm:block">
               {session?.displayName}
             </span>
+            <Link
+              href="/region/colegiados"
+              className="text-xs font-medium bg-amber-600 hover:bg-amber-500 border border-amber-400/40 rounded-lg px-3 py-1.5 text-amber-100 transition-colors"
+            >
+              Casos Colegiados
+            </Link>
             <button
               onClick={descargarReporteExcel}
               disabled={exportingReporte}
