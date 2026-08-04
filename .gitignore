@@ -12,7 +12,8 @@
 
 # testing
 /coverage
-/querys
+querys/*
+!querys/query_all.sql
 
 # next.js
 /.next/
