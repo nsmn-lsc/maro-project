@@ -276,7 +276,7 @@ export default function PacienteDetalle() {
           <div>
             <p className="text-sm uppercase tracking-[0.25em] text-emerald-200/80">Paciente{patient?.folio ? `: ${patient.folio}` : ""}</p>
             <h1 className="text-3xl font-bold lg:text-4xl">Detalle de paciente</h1>
-            <p className="text-slate-200/80 max-w-2xl">Datos generales y accesos rápidos a seguimiento, acciones preventivas y detecciones.</p>
+            <p className="text-slate-200/80 max-w-2xl">Datos generales, acciones preventivas y detecciones.</p>
           </div>
           <div className="flex gap-2">
             <Link

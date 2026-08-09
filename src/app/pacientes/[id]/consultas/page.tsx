@@ -195,6 +195,7 @@ export default function ConsultasPaciente() {
         : 0;
 
   const puntajeFondoUterino = form.fondo_uterino_acorde_sdg ? 4 : 0;
+  const puntajeColorPiel = form.color_piel === "cianotica" ? 4 : 0;
 
   const puntajeConsultaParametros =
     puntajeTaSistolica +
@@ -202,7 +203,8 @@ export default function ConsultasPaciente() {
     puntajeFrecuenciaCardiaca +
     puntajeIndiceChoque +
     puntajeTemperatura +
-    puntajeFondoUterino;
+    puntajeFondoUterino +
+    puntajeColorPiel;
 
   const hallazgosConsulta = [
     {
@@ -240,6 +242,12 @@ export default function ConsultasPaciente() {
       valor: form.fondo_uterino_acorde_sdg ? "No acorde a SDG" : "Acorde a SDG",
       puntos: puntajeFondoUterino,
       criterio: "No acorde = 4 pts",
+    },
+    {
+      campo: "Color de piel",
+      valor: form.color_piel === "cianotica" ? "Cianótica" : "Normal/Pálida",
+      puntos: puntajeColorPiel,
+      criterio: "Cianótica = 4 pts",
     },
   ].filter((item) => item.puntos > 0);
 
@@ -655,16 +663,25 @@ export default function ConsultasPaciente() {
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Hemorragia</span>
                 <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg px-3 py-2 text-white transition-colors focus:outline-none focus:ring-2 ${
+                    form.hemorragia === "visible o abundante"
+                      ? "!bg-red-600 !border-red-500 border-2 font-bold focus:!border-red-500 focus:!ring-red-500"
+                      : "bg-white/5 border border-white/10 focus:border-white/30 focus:ring-white/10"
+                  }`}
                   value={form.hemorragia}
                   onChange={(e) => handleChange("hemorragia", e.target.value)}
                 >
-                  <option value="">Seleccione</option>
-                  <option value="sin hemorragia">Sin hemorragia</option>
-                  <option value="visible o abundante">Visible o abundante</option>
-                  <option value="no visible o moderada">No visible o moderada</option>
-                  <option value="no visible o escasa">No visible o escasa</option>
+                  <option value="" className="bg-slate-800 text-white font-normal">Seleccione</option>
+                  <option value="sin hemorragia" className="bg-slate-800 text-white font-normal">Sin hemorragia</option>
+                  <option value="visible o abundante" className="bg-red-600 text-white font-bold">Visible o abundante</option>
+                  <option value="no visible o moderada" className="bg-slate-800 text-white font-normal">No visible o moderada</option>
+                  <option value="no visible o escasa" className="bg-slate-800 text-white font-normal">No visible o escasa</option>
                 </select>
+                {form.hemorragia === "visible o abundante" && (
+                  <p className="text-xs text-red-400 font-semibold mt-1">
+                    ⚠️ ¡Emergencia Obstétrica!
+                  </p>
+                )}
               </label>
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Respiración</span>
@@ -681,15 +698,24 @@ export default function ConsultasPaciente() {
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Color de piel</span>
                 <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className={`w-full rounded-lg px-3 py-2 text-white transition-colors focus:outline-none focus:ring-2 ${
+                    form.color_piel === "cianotica"
+                      ? "!bg-red-600 !border-red-500 border-2 font-bold focus:!border-red-500 focus:!ring-red-500"
+                      : "bg-white/5 border border-white/10 focus:border-white/30 focus:ring-white/10"
+                  }`}
                   value={form.color_piel}
                   onChange={(e) => handleChange("color_piel", e.target.value)}
                 >
-                  <option value="">Seleccione</option>
-                  <option value="cianotica">Cianótica</option>
-                  <option value="palida">Pálida</option>
-                  <option value="normal">Normal</option>
+                  <option value="" className="bg-slate-800 text-white font-normal">Seleccione</option>
+                  <option value="cianotica" className="bg-red-600 text-white font-bold">Cianótica</option>
+                  <option value="palida" className="bg-slate-800 text-white font-normal">Pálida</option>
+                  <option value="normal" className="bg-slate-800 text-white font-normal">Normal</option>
                 </select>
+                {form.color_piel === "cianotica" && (
+                  <p className="text-xs text-red-400 font-semibold mt-1">
+                    ⚠️ ¡Emergencia Obstétrica!
+                  </p>
+                )}
               </label>
               <label className="space-y-1 text-sm">
                 <span className="text-slate-100">Diagnóstico</span>
