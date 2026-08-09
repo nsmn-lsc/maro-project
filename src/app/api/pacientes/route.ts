@@ -312,6 +312,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "La CLUES es obligatoria" }, { status: 400 });
     }
 
+    if (body.curp && String(body.curp).trim() !== "") {
+      const curpToCheck = String(body.curp).trim().toUpperCase();
+      const duplicateRows: any = await query(
+        `SELECT clues_id, unidad FROM cat_pacientes WHERE curp = ? LIMIT 1`,
+        [curpToCheck]
+      );
+      if (duplicateRows && duplicateRows.length > 0) {
+        const dup = duplicateRows[0];
+        return NextResponse.json(
+          {
+            message: `Esta CURP ya se encuentra registrada en la unidad: ${dup.unidad || dup.clues_id}. No es posible registrar al paciente nuevamente.`,
+            code: "CURP_DUPLICATED"
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     let fechaIngresoCpnValidada = null;
     if (body.fecha_ingreso_cpn) {
       const parsedFecha = parseDateOnly(body.fecha_ingreso_cpn);

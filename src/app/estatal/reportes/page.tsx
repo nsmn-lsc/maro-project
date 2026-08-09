@@ -891,42 +891,65 @@ export default function ReportesEstatalesPage() {
             />
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-slate-300">
-              Casos seleccionados para reporte: <span className="font-semibold text-cyan-200">{registrosReporte.length}</span>
-            </p>
-            <div className="flex flex-wrap gap-2">
+          <div className="mt-6 border-t border-slate-700/50 pt-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-slate-200">Opciones de Descarga</h3>
+              <p className="text-xs text-slate-400">
+                Casos seleccionados: <span className="font-semibold text-cyan-200">{registrosReporte.length}</span>
+              </p>
+            </div>
+            
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <button
                 type="button"
                 onClick={descargarExcel}
                 disabled={exportingExcel}
-                className="rounded-lg border border-emerald-500/60 px-3 py-2 text-sm text-emerald-200 hover:border-emerald-300 disabled:opacity-60"
+                className="flex flex-col items-start rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-left transition hover:border-emerald-500/60 hover:bg-emerald-500/20 disabled:opacity-50"
               >
-                {exportingExcel ? "Generando Excel..." : "Descargar Excel"}
+                <div className="flex items-center gap-2 text-emerald-300 font-medium text-sm mb-1">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h8M8 14h8" /></svg>
+                  {exportingExcel ? "Generando..." : "Excel Estándar"}
+                </div>
+                <p className="text-[10px] text-emerald-200/70">Resumen de los casos mostrados en la tabla con los filtros actuales.</p>
               </button>
+              
               <button
                 type="button"
                 onClick={descargarReporteClinico}
                 disabled={exportingClinico}
-                className="rounded-lg border border-teal-500/60 px-3 py-2 text-sm text-teal-200 hover:border-teal-300 disabled:opacity-60"
+                className="flex flex-col items-start rounded-xl border border-teal-500/30 bg-teal-500/10 p-3 text-left transition hover:border-teal-500/60 hover:bg-teal-500/20 disabled:opacity-50"
               >
-                {exportingClinico ? "Generando Clínico..." : "Descargar Excel Clínico Detallado"}
+                <div className="flex items-center gap-2 text-teal-300 font-medium text-sm mb-1">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  {exportingClinico ? "Generando..." : "Excel Clínico"}
+                </div>
+                <p className="text-[10px] text-teal-200/70">Detalles médicos y parámetros de las consultas seleccionadas.</p>
               </button>
+              
               <button
                 type="button"
                 onClick={descargarReporteCompleto}
                 disabled={exportingCompleto}
-                className="rounded-lg border border-cyan-500/60 px-3 py-2 text-sm text-cyan-200 hover:border-cyan-300 disabled:opacity-60"
+                className="flex flex-col items-start rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 text-left transition hover:border-cyan-500/60 hover:bg-cyan-500/20 disabled:opacity-50"
               >
-                {exportingCompleto ? "Generando Completo..." : "Descargar Reporte Completo (SQL)"}
+                <div className="flex items-center gap-2 text-cyan-300 font-medium text-sm mb-1">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+                  {exportingCompleto ? "Generando..." : "Base de Datos (SQL)"}
+                </div>
+                <p className="text-[10px] text-cyan-200/70">Toda la sábana de datos en crudo (exportación completa).</p>
               </button>
+              
               <button
                 type="button"
                 onClick={descargarPdf}
                 disabled={exportingPdf}
-                className="rounded-lg border border-amber-500/60 px-3 py-2 text-sm text-amber-200 hover:border-amber-300 disabled:opacity-60"
+                className="flex flex-col items-start rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-left transition hover:border-amber-500/60 hover:bg-amber-500/20 disabled:opacity-50"
               >
-                {exportingPdf ? "Generando PDF..." : "Descargar PDF"}
+                <div className="flex items-center gap-2 text-amber-300 font-medium text-sm mb-1">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                  {exportingPdf ? "Generando..." : "Documento PDF"}
+                </div>
+                <p className="text-[10px] text-amber-200/70">Formato listo para imprimir o presentar como reporte formal.</p>
               </button>
             </div>
           </div>
