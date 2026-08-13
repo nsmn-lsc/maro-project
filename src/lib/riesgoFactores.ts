@@ -35,13 +35,14 @@ export interface DatosFactoresPaciente {
   // Variables adicionales para sumatoria
   indigena?: boolean;
   migrante?: boolean;
+  imc_inicial?: number;
 }
 
 export interface AlertaFactor {
   campo: string;
   valor: string | number | boolean;
   puntos: number;
-  razon: string;
+  razon?: string;
   tipo: "ANTECEDENTE"; // Aquí irán más tipos luego
 }
 
@@ -60,86 +61,92 @@ export interface ResultadoFactores {
 
 const CRITERIOS = {
   edad: [
-    { rango: [0, 19], puntos: 4, razon: "recomendacion" },
-    { rango: [36, 150], puntos: 4, razon: "recomendacion" },
+    { rango: [0, 14], puntos: 8 },
+    { rango: [15, 19], puntos: 4 },
+    { rango: [36, 999], puntos: 4 },
   ],
   gestas: [
-    { rango: [2, 4], puntos: 1, razon: "recomendacion" },
-    { rango: [5, 100], puntos: 4, razon: "recomendacion" },
+    { rango: [1, 2], puntos: 2 },
+    { rango: [3, 999], puntos: 4 },
   ],
   cesareas: [
-    { rango: [2, 100], puntos: 4, razon: "recomendacion" },
+    { rango: [2, 999], puntos: 6 },
   ],
   abortos: [
-    { rango: [2, 2], puntos: 2, razon: "recomendacion" },
-    { rango: [3, 100], puntos: 4, razon: "recomendacion" },
+    { rango: [2, 999], puntos: 4 },
   ],
   ant_preeclampsia: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   ant_hemorragia: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   ant_sepsis: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   ant_bajo_peso_macrosomia: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   ant_muerte_perinatal: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   // FACTORES DE RIESGO: Comorbilidades y toxicomanías
   factor_diabetes: [
-    { valor: true, puntos: 4, razon: "" },
+    { valor: true, puntos: 4 },
   ],
   factor_hipertension: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   factor_obesidad: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   factor_cardiopatia: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   factor_hepatopatia: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   factor_enf_autoinmune: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   factor_nefropatia: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   factor_coagulopatias: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   factor_neuropatia: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   factor_enf_psiquiatrica: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   factor_alcoholismo: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   factor_tabaquismo: [
-    { valor: true, puntos: 2, razon: "recomendacion" },
+    { valor: true, puntos: 2 },
   ],
   factor_drogas_ilicitas: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
   ],
   // FACTORES EPIDEMIOLÓGICOS
   factores_riesgo_epid: [
-    { valor: 'es_contacto', puntos: 4, razon: "recomendacion" },
-    { valor: 'es_portadora', puntos: 6, razon: "recomendacion" },
+    { valor: 'es_contacto', puntos: 4 },
+    { valor: 'es_portadora', puntos: 6 },
   ],
   // VARIABLES ADICIONALES PARA SUMATORIA
   indigena: [
-    { valor: true, puntos: 2, razon: "recomendacion" },
+    { valor: true, puntos: 2 },
   ],
   migrante: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4 },
+  ],
+  imc_inicial: [
+    { rango: [0, 18.499], puntos: 6 },
+    { rango: [30, 34.999], puntos: 4 },
+    { rango: [35, 39.999], puntos: 6 },
+    { rango: [40, 999], puntos: 8 },
   ],
 };
 
@@ -158,12 +165,11 @@ export function evaluarCampoIndividual(
     valor === undefined ||
     valor === null ||
     valor === "" ||
-    (typeof valor === "number" && valor === 0)
+    (typeof valor === "number" && (valor === 0 || isNaN(valor)))
   ) {
     return null;
   }
 
-  // Campos numéricos con rango
   if (campo === "edad" && typeof valor === "number") {
     for (const criterio of CRITERIOS.edad) {
       if ("rango" in criterio) {
@@ -173,7 +179,6 @@ export function evaluarCampoIndividual(
             campo: "Edad de riesgo",
             valor: `${valor} años`,
             puntos: criterio.puntos,
-            razon: criterio.razon,
             tipo: "ANTECEDENTE",
           };
         }
@@ -190,7 +195,6 @@ export function evaluarCampoIndividual(
             campo: "Gestaciones",
             valor,
             puntos: criterio.puntos,
-            razon: criterio.razon,
             tipo: "ANTECEDENTE",
           };
         }
@@ -207,7 +211,6 @@ export function evaluarCampoIndividual(
             campo: "Cesáreas previas",
             valor,
             puntos: criterio.puntos,
-            razon: criterio.razon,
             tipo: "ANTECEDENTE",
           };
         }
@@ -224,7 +227,6 @@ export function evaluarCampoIndividual(
             campo: "Abortos previos",
             valor,
             puntos: criterio.puntos,
-            razon: criterio.razon,
             tipo: "ANTECEDENTE",
           };
         }
@@ -238,7 +240,6 @@ export function evaluarCampoIndividual(
       campo: "Antecedente de Preeclampsia",
       valor: "Sí",
       puntos: 4,
-      razon: CRITERIOS.ant_preeclampsia[0].razon,
       tipo: "ANTECEDENTE",
     };
   }
@@ -248,7 +249,6 @@ export function evaluarCampoIndividual(
       campo: "Antecedente de Hemorragia Posparto",
       valor: "Sí",
       puntos: 4,
-      razon: CRITERIOS.ant_hemorragia[0].razon,
       tipo: "ANTECEDENTE",
     };
   }
@@ -258,7 +258,6 @@ export function evaluarCampoIndividual(
       campo: "Antecedente de Sepsis",
       valor: "Sí",
       puntos: 4,
-      razon: CRITERIOS.ant_sepsis[0].razon,
       tipo: "ANTECEDENTE",
     };
   }
@@ -268,7 +267,6 @@ export function evaluarCampoIndividual(
       campo: "Antecedente de Bajo Peso/Macrosomía",
       valor: "Sí",
       puntos: 4,
-      razon: CRITERIOS.ant_bajo_peso_macrosomia[0].razon,
       tipo: "ANTECEDENTE",
     };
   }
@@ -278,7 +276,6 @@ export function evaluarCampoIndividual(
       campo: "Antecedente de Muerte Perinatal",
       valor: "Sí",
       puntos: 4,
-      razon: CRITERIOS.ant_muerte_perinatal[0].razon,
       tipo: "ANTECEDENTE",
     };
   }
@@ -328,9 +325,24 @@ export function evaluarCampoIndividual(
         campo: nombresCampos[campo] || campo,
         valor: "Sí",
         puntos: criterio.puntos,
-        razon: criterio.razon,
         tipo: "ANTECEDENTE",
       };
+    }
+  }
+
+  if (campo === "imc_inicial" && typeof valor === "number") {
+    for (const criterio of CRITERIOS.imc_inicial) {
+      if ("rango" in criterio) {
+        const [min, max] = criterio.rango;
+        if (valor >= min && valor <= max) {
+          return {
+            campo: "Índice de Masa Corporal (IMC)",
+            valor: `${valor.toFixed(1)} kg/m²`,
+            puntos: criterio.puntos,
+            tipo: "ANTECEDENTE",
+          };
+        }
+      }
     }
   }
 
@@ -344,7 +356,6 @@ export function evaluarCampoIndividual(
         campo: 'Factor epidemiológico',
         valor: nombreValor,
         puntos: criterio.puntos,
-        razon: criterio.razon,
         tipo: "ANTECEDENTE",
       };
     }

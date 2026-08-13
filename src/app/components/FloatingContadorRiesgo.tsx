@@ -193,7 +193,6 @@ export default function FloatingContadorRiesgo({ resultadoAntecedentes, resultad
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex-1">
                           <div className={`font-semibold ${colorAntecedentes.text}`}>{factor.campo}</div>
-                          <div className={`mt-1 text-[10px] ${colorAntecedentes.text} opacity-70`}>{factor.razon}</div>
                         </div>
                         <div className="text-right">
                           <div className={`font-bold text-lg ${colorAntecedentes.text}`}>+{factor.puntos}</div>
@@ -262,7 +261,6 @@ export default function FloatingContadorRiesgo({ resultadoAntecedentes, resultad
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex-1">
                           <div className={`font-semibold ${colorTamizajes.text}`}>{tamizaje.campo}</div>
-                          <div className={`mt-1 text-[10px] ${colorTamizajes.text} opacity-70`}>{tamizaje.razon}</div>
                         </div>
                         <div className="text-right">
                           <div className={`font-bold text-lg ${colorTamizajes.text}`}>+{tamizaje.puntos}</div>

@@ -142,7 +142,6 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex-1">
                     <div className="font-semibold">{factor.campo}</div>
-                    <div className="text-xs opacity-80 mt-1">{factor.razon}</div>
                   </div>
                   <div className="text-right">
                     <div className="font-bold">+{factor.puntos}</div>

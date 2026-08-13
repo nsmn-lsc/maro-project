@@ -249,7 +249,7 @@ describe('factorRiesgo - Cálculo de Factor de Riesgo Obstétrico', () => {
         diabetesGestacional: true,
         // Síntomas
         sangradoVaginal: false,
-        cefalea: false,
+        cefaleaSevera: false,
         // Signos vitales
         sistolica: 145,
         diastolica: 92,

@@ -46,6 +46,7 @@ export default function ContadorRiesgo({ formData, onPuntajeChange, isInline = f
     factores_riesgo_epid: formData.factores_riesgo_epid || 'ninguno',
     indigena: formData.indigena === true,
     migrante: formData.migrante === true,
+    imc_inicial: formData.imc_inicial && !isNaN(parseFloat(formData.imc_inicial)) ? parseFloat(formData.imc_inicial) : undefined,
   }), [
     formData.edad,
     formData.gestas,
@@ -72,6 +73,7 @@ export default function ContadorRiesgo({ formData, onPuntajeChange, isInline = f
     formData.factores_riesgo_epid,
     formData.indigena,
     formData.migrante,
+    formData.imc_inicial,
   ]);
 
   // Calcular resultado de antecedentes

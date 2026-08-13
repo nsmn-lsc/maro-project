@@ -50,6 +50,7 @@ type Patient = {
   factores_riesgo_epid?: 'ninguno' | 'es_contacto' | 'es_portadora';
   indigena?: boolean | number;
   migrante?: boolean | number;
+  imc_inicial?: number | string | null;
   // Campos de tamizajes
   prueba_vih?: string | null;
   prueba_vdrl?: string | null;
@@ -190,6 +191,7 @@ export default function PacienteDetalle() {
       factores_riesgo_epid: patient.factores_riesgo_epid || 'ninguno',
       indigena: !!patient.indigena,
       migrante: !!patient.migrante,
+      imc_inicial: patient.imc_inicial ? Number(patient.imc_inicial) : undefined,
     };
 
     return evaluarFactoresRiesgo(datosFactores);
@@ -422,7 +424,6 @@ export default function PacienteDetalle() {
                               <div className="flex justify-between items-start gap-2">
                                 <div className="flex-1">
                                   <div className="font-semibold text-xs text-white">{factor.campo}</div>
-                                  <div className="text-[10px] text-white/70 mt-0.5">{factor.razon}</div>
                                 </div>
                                 <div className="text-right">
                                   <div className="font-bold text-lg text-white">+{factor.puntos}</div>
@@ -494,7 +495,6 @@ export default function PacienteDetalle() {
                               <div className="flex justify-between items-start gap-2">
                                 <div className="flex-1">
                                   <div className="font-semibold text-xs text-white">{tamizaje.campo}</div>
-                                  <div className="text-[10px] text-white/70 mt-0.5">{tamizaje.razon}</div>
                                 </div>
                                 <div className="text-right">
                                   <div className="font-bold text-lg text-white">+{tamizaje.puntos}</div>

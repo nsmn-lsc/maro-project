@@ -33,8 +33,15 @@ function calcularEdadDesdeCurp(curp: string): number | null {
     year += 1900;
   }
 
+  // Regla de sanidad: Si la edad resultante es mayor a 60 años (biológicamente improbable para obstetricia)
+  // e inicialmente se asignó el siglo XX (1900s), y al sumarle 100 años no queda en el futuro:
+  const hoyAnio = new Date().getFullYear();
+  if (hoyAnio - year > 60 && year >= 1900 && year < 2000 && (year + 100) <= hoyAnio) {
+    year += 100;
+  }
+
   // Fallback para evitar años en el futuro (ej. CURPs atípicas con letra pero año de 1900s)
-  if (year > new Date().getFullYear()) {
+  if (year > hoyAnio) {
     year -= 100;
   }
 
@@ -240,7 +247,7 @@ export default function NuevoPaciente() {
       recs.push("Asegurar comunicación con enfoque multicultural y traductor si es requerido");
     }
     if (form.migrante) {
-      recs.push("Garantizar continuidad de atención / referencia y portabilidad del expediente");
+      recs.push("Garantizar continuidad de atención, paciente migrante");
     }
     if (form.edad && (parseInt(form.edad) < 19 || parseInt(form.edad) > 35)) {
       recs.push("Vigilancia estrecha por edad extrema de riesgo");
@@ -253,6 +260,15 @@ export default function NuevoPaciente() {
     }
     if (form.factor_obesidad) {
       recs.push("Asesoría nutricional y control estricto de ganancia de peso");
+    }
+    if (form.imc_inicial && form.imc_inicial.trim() !== "") {
+      const imc = parseFloat(form.imc_inicial);
+      if (!isNaN(imc) && (imc < 18.5 || imc >= 30)) {
+        recs.push("Referir a segundo nivel de atencion servicio de nutricion");
+      }
+    }
+    if (form.ganancia_ponderal_max && String(form.ganancia_ponderal_max).trim() !== "") {
+      recs.push("Vigilar ganancia de peso en cada consulta");
     }
     return recs;
   };
@@ -706,13 +722,17 @@ export default function NuevoPaciente() {
                 {form.curp && form.curp.length > 0 && (
                   <p className={`text-xs mt-1 font-medium ${
                     form.curp.length === 18 && /^[A-ZÑ]{4}\d{6}[HMX][A-ZÑ]{5}[A-Z0-9][A-Z0-9]$/.test(form.curp)
-                      ? "text-emerald-400"
+                      ? (form.edad && (Number(form.edad) > 55 || Number(form.edad) < 10))
+                        ? "text-amber-400 font-bold"
+                        : "text-emerald-400"
                       : "text-rose-400"
                   }`}>
                     {form.curp.length < 18
                       ? `Incompleta: ${form.curp.length}/18 caracteres`
                       : /^[A-ZÑ]{4}\d{6}[HMX][A-ZÑ]{5}[A-Z0-9][A-Z0-9]$/.test(form.curp)
-                      ? "✓ CURP válida. Edad calculada automáticamente."
+                      ? (form.edad && (Number(form.edad) > 55 || Number(form.edad) < 10))
+                        ? `⚠️ CURP válida, pero la edad calculada (${form.edad} años) es inusual para embarazo. Verifique los datos.`
+                        : "✓ CURP válida. Edad calculada automáticamente."
                       : "✗ Formato de CURP inválido"}
                   </p>
                 )}
@@ -1374,7 +1394,7 @@ export default function NuevoPaciente() {
                 ¿Confirmar registro de paciente?
               </h2>
               <p className="text-sm text-slate-300/70 mt-0.5">
-                Revisa los datos antes de guardar. Esta acción creará el expediente.
+                Revisa los datos antes de guardar. Esta acción creará el registro.
               </p>
             </div>
 
