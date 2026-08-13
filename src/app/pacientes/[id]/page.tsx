@@ -48,6 +48,8 @@ type Patient = {
   factor_tabaquismo?: boolean | number;
   factor_drogas_ilicitas?: boolean | number;
   factores_riesgo_epid?: 'ninguno' | 'es_contacto' | 'es_portadora';
+  indigena?: boolean | number;
+  migrante?: boolean | number;
   // Campos de tamizajes
   prueba_vih?: string | null;
   prueba_vdrl?: string | null;
@@ -186,6 +188,8 @@ export default function PacienteDetalle() {
       factor_tabaquismo: !!patient.factor_tabaquismo,
       factor_drogas_ilicitas: !!patient.factor_drogas_ilicitas,
       factores_riesgo_epid: patient.factores_riesgo_epid || 'ninguno',
+      indigena: !!patient.indigena,
+      migrante: !!patient.migrante,
     };
 
     return evaluarFactoresRiesgo(datosFactores);

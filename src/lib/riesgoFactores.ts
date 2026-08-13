@@ -32,6 +32,9 @@ export interface DatosFactoresPaciente {
   factor_drogas_ilicitas?: boolean;
   // Factores epidemiológicos
   factores_riesgo_epid?: 'ninguno' | 'es_contacto' | 'es_portadora';
+  // Variables adicionales para sumatoria
+  indigena?: boolean;
+  migrante?: boolean;
 }
 
 export interface AlertaFactor {
@@ -88,7 +91,7 @@ const CRITERIOS = {
   ],
   // FACTORES DE RIESGO: Comorbilidades y toxicomanías
   factor_diabetes: [
-    { valor: true, puntos: 4, razon: "recomendacion" },
+    { valor: true, puntos: 4, razon: "" },
   ],
   factor_hipertension: [
     { valor: true, puntos: 4, razon: "recomendacion" },
@@ -130,6 +133,13 @@ const CRITERIOS = {
   factores_riesgo_epid: [
     { valor: 'es_contacto', puntos: 4, razon: "recomendacion" },
     { valor: 'es_portadora', puntos: 6, razon: "recomendacion" },
+  ],
+  // VARIABLES ADICIONALES PARA SUMATORIA
+  indigena: [
+    { valor: true, puntos: 2, razon: "recomendacion" },
+  ],
+  migrante: [
+    { valor: true, puntos: 4, razon: "recomendacion" },
   ],
 };
 
@@ -288,6 +298,8 @@ export function evaluarCampoIndividual(
     'factor_alcoholismo',
     'factor_tabaquismo',
     'factor_drogas_ilicitas',
+    'indigena',
+    'migrante',
   ];
 
   if (camposBooleanos.includes(campo) && valor === true) {
@@ -309,6 +321,8 @@ export function evaluarCampoIndividual(
         factor_alcoholismo: 'Alcoholismo',
         factor_tabaquismo: 'Tabaquismo',
         factor_drogas_ilicitas: 'Drogas ilícitas',
+        indigena: 'Población Indígena',
+        migrante: 'Población Migrante',
       };
       return {
         campo: nombresCampos[campo] || campo,

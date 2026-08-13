@@ -14,9 +14,10 @@ import FloatingContadorRiesgo from './FloatingContadorRiesgo';
 interface ContadorRiesgoProps {
   formData: any;
   onPuntajeChange?: (puntosAntecedentes: number, puntosTamizajes: number) => void;
+  isInline?: boolean;
 }
 
-export default function ContadorRiesgo({ formData, onPuntajeChange }: ContadorRiesgoProps) {
+export default function ContadorRiesgo({ formData, onPuntajeChange, isInline = false }: ContadorRiesgoProps) {
   // Convertir datos del formulario al formato esperado por evaluarFactoresRiesgo
   const datosFactores: DatosFactoresPaciente = useMemo(() => ({
     edad: formData.edad ? parseInt(formData.edad) : undefined,
@@ -43,6 +44,8 @@ export default function ContadorRiesgo({ formData, onPuntajeChange }: ContadorRi
     factor_tabaquismo: formData.factor_tabaquismo === true,
     factor_drogas_ilicitas: formData.factor_drogas_ilicitas === true,
     factores_riesgo_epid: formData.factores_riesgo_epid || 'ninguno',
+    indigena: formData.indigena === true,
+    migrante: formData.migrante === true,
   }), [
     formData.edad,
     formData.gestas,
@@ -67,6 +70,8 @@ export default function ContadorRiesgo({ formData, onPuntajeChange }: ContadorRi
     formData.factor_tabaquismo,
     formData.factor_drogas_ilicitas,
     formData.factores_riesgo_epid,
+    formData.indigena,
+    formData.migrante,
   ]);
 
   // Calcular resultado de antecedentes
@@ -109,6 +114,7 @@ export default function ContadorRiesgo({ formData, onPuntajeChange }: ContadorRi
       resultadoAntecedentes={resultadoAntecedentes} 
       resultadoTamizajes={resultadoTamizajes}
       semanasGestacion={semanasGestacion} 
+      isInline={isInline}
     />
   );
 }

@@ -14,9 +14,10 @@ interface Props {
   resultadoAntecedentes: ResultadoFactores;
   resultadoTamizajes: ResultadoTamizajes;
   semanasGestacion?: number;
+  isInline?: boolean;
 }
 
-export default function FloatingContadorRiesgo({ resultadoAntecedentes, resultadoTamizajes, semanasGestacion = 0 }: Props) {
+export default function FloatingContadorRiesgo({ resultadoAntecedentes, resultadoTamizajes, semanasGestacion = 0, isInline = false }: Props) {
   const [minimizado, setMinimizado] = useState(true);
 
   // Colores según nivel
@@ -97,16 +98,18 @@ export default function FloatingContadorRiesgo({ resultadoAntecedentes, resultad
   // ============================================================
   if (minimizado) {
     return (
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 animate-in slide-in-from-bottom-4">
+      <div className={isInline ? "flex flex-col gap-2 w-full animate-in fade-in duration-200" : "fixed bottom-6 right-6 z-50 flex flex-col gap-2 animate-in slide-in-from-bottom-4"}>
         {/* Badge Antecedentes */}
         <button
           onClick={() => setMinimizado(false)}
-          className={`flex items-center gap-2 rounded-full shadow-2xl px-4 py-2.5 backdrop-blur-sm ${colorAntecedentes.bgTranslucent} border-2 ${colorAntecedentes.borderTranslucent} hover:scale-105 transition-transform cursor-pointer`}
+          className={`flex items-center gap-2 px-4 py-2.5 backdrop-blur-sm ${colorAntecedentes.bgTranslucent} border-2 ${colorAntecedentes.borderTranslucent} hover:scale-[1.02] transition-all cursor-pointer justify-between ${isInline ? "rounded-xl w-full" : "rounded-full shadow-2xl"}`}
         >
-          <span className="text-xl">{colorAntecedentes.icon}</span>
-          <div className="text-left">
-            <div className={`text-[10px] font-semibold ${colorAntecedentes.textTranslucent} opacity-80`}>ANTECEDENTES</div>
-            <div className={`text-xl font-bold ${colorAntecedentes.textTranslucent}`}>{resultadoAntecedentes.puntajeTotal}</div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{colorAntecedentes.icon}</span>
+            <div className="text-left">
+              <div className={`text-[10px] font-semibold ${colorAntecedentes.textTranslucent} opacity-80`}>ANTECEDENTES</div>
+              <div className={`text-xl font-bold ${colorAntecedentes.textTranslucent}`}>{resultadoAntecedentes.puntajeTotal}</div>
+            </div>
           </div>
           <div className={`px-2.5 py-0.5 rounded-full text-xs font-bold text-white ${colorAntecedentes.badgeTranslucent}`}>
             {resultadoAntecedentes.nivel}
@@ -116,12 +119,14 @@ export default function FloatingContadorRiesgo({ resultadoAntecedentes, resultad
         {/* Badge Tamizajes */}
         <button
           onClick={() => setMinimizado(false)}
-          className={`flex items-center gap-2 rounded-full shadow-2xl px-4 py-2.5 backdrop-blur-sm ${colorTamizajes.bgTranslucent} border-2 ${colorTamizajes.borderTranslucent} hover:scale-105 transition-transform cursor-pointer`}
+          className={`flex items-center gap-2 px-4 py-2.5 backdrop-blur-sm ${colorTamizajes.bgTranslucent} border-2 ${colorTamizajes.borderTranslucent} hover:scale-[1.02] transition-all cursor-pointer justify-between ${isInline ? "rounded-xl w-full" : "rounded-full shadow-2xl"}`}
         >
-          <span className="text-xl">{colorTamizajes.icon}</span>
-          <div className="text-left">
-            <div className={`text-[10px] font-semibold ${colorTamizajes.textTranslucent} opacity-80`}>TAMIZAJES</div>
-            <div className={`text-xl font-bold ${colorTamizajes.textTranslucent}`}>{resultadoTamizajes.puntajeTotal}</div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{colorTamizajes.icon}</span>
+            <div className="text-left">
+              <div className={`text-[10px] font-semibold ${colorTamizajes.textTranslucent} opacity-80`}>TAMIZAJES</div>
+              <div className={`text-xl font-bold ${colorTamizajes.textTranslucent}`}>{resultadoTamizajes.puntajeTotal}</div>
+            </div>
           </div>
           <div className={`px-2.5 py-0.5 rounded-full text-xs font-bold text-white ${colorTamizajes.badgeTranslucent}`}>
             {resultadoTamizajes.nivel}
@@ -135,7 +140,7 @@ export default function FloatingContadorRiesgo({ resultadoAntecedentes, resultad
   // VERSIÓN EXPANDIDA (panel flotante con tabs o secciones)
   // ============================================================
   return (
-    <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 w-96 max-h-[80vh] overflow-y-auto">
+    <div className={isInline ? "w-full animate-in fade-in duration-200" : "fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 w-96 max-h-[80vh] overflow-y-auto"}>
       <div className="space-y-3">
         {/* PANEL ANTECEDENTES */}
         <div className={`rounded-xl shadow-2xl bg-white/95 border-2 ${colorAntecedentes.border} overflow-hidden`}> 

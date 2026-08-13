@@ -231,6 +231,32 @@ export default function NuevoPaciente() {
     }
   };
 
+  const getRecomendaciones = () => {
+    const recs: string[] = [];
+    if (form.tipo_riesgo_social === "Medio" || form.tipo_riesgo_social === "Alto") {
+      recs.push("Fortalecer red social, vinculación con acción comunitaria");
+    }
+    if (form.indigena) {
+      recs.push("Asegurar comunicación con enfoque multicultural y traductor si es requerido");
+    }
+    if (form.migrante) {
+      recs.push("Garantizar continuidad de atención / referencia y portabilidad del expediente");
+    }
+    if (form.edad && (parseInt(form.edad) < 19 || parseInt(form.edad) > 35)) {
+      recs.push("Vigilancia estrecha por edad extrema de riesgo");
+    }
+    if (form.factor_diabetes) {
+      recs.push("Seguimiento estrecho de glicemia y ajuste de terapia médica");
+    }
+    if (form.factor_hipertension) {
+      recs.push("Monitoreo continuo de presión arterial, restricción de sodio");
+    }
+    if (form.factor_obesidad) {
+      recs.push("Asesoría nutricional y control estricto de ganancia de peso");
+    }
+    return recs;
+  };
+
   const handleChange = (field: string, value: string) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
@@ -542,7 +568,7 @@ export default function NuevoPaciente() {
     >
       <div className="absolute inset-0 bg-black/30" aria-hidden />
 
-      <div className="relative mx-auto max-w-6xl px-6 py-10 lg:py-14 space-y-8">
+      <div className="relative w-full max-w-none px-6 lg:px-16 py-10 lg:py-14 space-y-8">
         <header className="space-y-3">
           <p className="text-sm uppercase tracking-[0.25em] text-emerald-200/80">Pacientes</p>
           <div className="flex items-center gap-3 flex-wrap">
@@ -579,10 +605,51 @@ export default function NuevoPaciente() {
         )}
         {success && <p className="text-sm text-emerald-200 bg-emerald-500/10 border border-emerald-500/40 rounded-lg px-3 py-2">{success}</p>}
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6"
-        >
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+          {/* PANEL DE RECOMENDACIONES CLÍNICAS */}
+          <aside className="lg:col-span-1 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-6 space-y-4 shadow-xl lg:sticky lg:top-6">
+            <h3 className="text-lg font-semibold text-emerald-300 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              Recomendaciones
+            </h3>
+            <p className="text-xs text-slate-300/70 leading-relaxed border-b border-white/10 pb-3">
+              Guías y acciones sugeridas en tiempo real según el perfil clínico de la paciente.
+            </p>
+            {getRecomendaciones().length === 0 ? (
+              <p className="text-sm text-slate-400 italic leading-relaxed">
+                No hay recomendaciones activas basadas en los datos capturados actualmente.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {getRecomendaciones().map((rec, index) => (
+                  <li key={index} className="text-sm text-slate-200 bg-white/5 border border-white/5 rounded-xl p-3 flex gap-2.5 items-start">
+                    <span className="text-emerald-400 mt-0.5 font-bold">•</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            
+            {/* SUMATORIA Y CONTADOR DE RIESGOS INLINE */}
+            <div className="pt-4 border-t border-white/10 space-y-3">
+              <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Puntaje y Hallazgos</h4>
+              <ContadorRiesgo 
+                formData={form} 
+                isInline={true}
+                onPuntajeChange={(puntosAntecedentes, puntosTamizajes) => {
+                  setPuntajeFactorAntecedentes(puntosAntecedentes);
+                  setPuntajeFactorTamizajes(puntosTamizajes);
+                }}
+              />
+            </div>
+          </aside>
+
+          <form
+            onSubmit={handleSubmit}
+            className="lg:col-span-4 space-y-6"
+          >
           <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
@@ -1288,15 +1355,8 @@ export default function NuevoPaciente() {
           </div>
         </form>
       </div>
+    </div>
 
-      {/* CONTADOR FLOTANTE DE FACTOR DE RIESGO */}
-      <ContadorRiesgo 
-        formData={form} 
-        onPuntajeChange={(puntosAntecedentes, puntosTamizajes) => {
-          setPuntajeFactorAntecedentes(puntosAntecedentes);
-          setPuntajeFactorTamizajes(puntosTamizajes);
-        }}
-      />
 
       {/* MODAL DE CONFIRMACIÓN */}
       {showConfirmModal && (
