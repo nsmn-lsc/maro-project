@@ -1,20 +1,34 @@
 // src/app/api/casos/calcular-factor-riesgo/route.ts
 /**
- * Endpoint para calcular el factor de riesgo obstétrico
- * Se integra con los datos existentes en la BD
+ * @deprecated Este endpoint pertenece al modelo legado `casos`.
+ * Para el cálculo y guardado de factores de riesgo de pacientes activos, usar:
+ * - POST `/api/pacientes/guardar-factor-riesgo`
+ * - Motores puros en `@/lib/riesgoFactores` y `@/lib/factorRiesgo`
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { calcularFactorRiesgo, DatosFactorRiesgo } from '@/lib/factorRiesgo';
 
+const DEPRECATION_WARNING = '299 - "Endpoint deprecado (/api/casos/calcular-factor-riesgo). Migrar a /api/pacientes/guardar-factor-riesgo"';
+
+function deprecatedJsonResponse(body: any, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  res.headers.set('Warning', DEPRECATION_WARNING);
+  res.headers.set('Deprecation', 'true');
+  return res;
+}
+
+/**
+ * @deprecated
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { casoId } = body;
 
     if (!casoId) {
-      return NextResponse.json(
+      return deprecatedJsonResponse(
         { error: 'ID del caso requerido' },
         { status: 400 }
       );
@@ -27,7 +41,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!casosResult || casosResult.length === 0) {
-      return NextResponse.json(
+      return deprecatedJsonResponse(
         { error: 'Caso no encontrado' },
         { status: 404 }
       );
@@ -63,59 +77,55 @@ export async function POST(request: NextRequest) {
       partos: caseData.partos,
       cesareasPrevias: caseData.cesareas_previas,
       semanasGestacion: caseData.semanas_gestacion,
-
-      // De la evaluación clínica
-      embarazoMultiple: evaluacionData.embarazo_multiple,
-      antecedentePreeclampsia: evaluacionData.antecedente_preeclampsia,
-      antecedenteHemorragiaPosparto: evaluacionData.antecedente_hemorragia,
-      diabetesPrevia: evaluacionData.diabetes_previa,
-      diabetesGestacional: evaluacionData.diabetes_gestacional,
-      hipertensionCronica: evaluacionData.hipertension_cronica,
-      cardiopatia: evaluacionData.cardiopatia,
-      nefropatia: evaluacionData.nefropatia,
-      epilepsia: evaluacionData.epilepsia,
-      VIH: evaluacionData.vih,
-      sangradoVaginal: evaluacionData.sangrado_vaginal,
-      salidaLiquido: evaluacionData.salida_liquido,
-      dolorAbdominalIntenso: evaluacionData.dolor_abdominal_intenso,
-      cefaleaSevera: evaluacionData.cefalea_severa,
-      fosfenos: evaluacionData.fosfenos,
-      epigastralgia: evaluacionData.epigastralgia,
-      fiebre: evaluacionData.fiebre,
-      disnea: evaluacionData.disnea,
-      disminucionMovimientosFetales: evaluacionData.disminucion_movimientos_fetales,
-      sistolica: evaluacionData.sistolica,
-      diastolica: evaluacionData.diastolica,
-      frecuenciaCardiaca: evaluacionData.frecuencia_cardiaca,
-      frecuenciaRespiratoria: evaluacionData.frecuencia_respiratoria,
-      saturacionO2: evaluacionData.saturacion_o2,
-      temperatura: evaluacionData.temperatura,
-      plaquetas: evaluacionData.plaquetas,
-      creatinina: evaluacionData.creatinina,
-      ast: evaluacionData.ast,
-      alt: evaluacionData.alt,
-      proteinuriaTira: evaluacionData.proteinuria_tira,
-      imc: evaluacionData.imc,
+      // De la evaluación
+      ...evaluacionData,
     };
 
-    // 4. Calcular factor de riesgo
+    // 4. Calcular el factor de riesgo
     const resultado = calcularFactorRiesgo(datosRiesgo);
 
-    // 5. Opcionalmente: guardar el score en la BD (tabla casos)
-    // Necesitarías agregar una columna "score_factor_riesgo" en la tabla casos
-    // await query(
-    //   'UPDATE casos SET score_factor_riesgo = ? WHERE id = ?',
-    //   [resultado.puntajeTotal, casoId]
-    // );
+    // 5. Guardar en la tabla historial_factor_riesgo
+    await query(
+      `INSERT INTO historial_factor_riesgo 
+       (caso_id, puntaje_total, categoria, detalles, sugerencias)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        casoId,
+        resultado.puntajeTotal,
+        resultado.categoria,
+        JSON.stringify(resultado.detalles),
+        JSON.stringify(resultado.sugerencias),
+      ]
+    );
 
-    return NextResponse.json({
+    // 6. Actualizar el caso con el score calculado
+    await query(
+      `UPDATE casos 
+       SET score_factor_riesgo = ?,
+           categoria_riesgo_factor = ?,
+           fecha_calculo_factor = NOW(),
+           detalle_factor_riesgo = ?
+       WHERE id = ?`,
+      [
+        resultado.puntajeTotal,
+        resultado.categoria,
+        JSON.stringify(resultado.detalles),
+        casoId,
+      ]
+    );
+
+    // 7. Retornar el resultado
+    return deprecatedJsonResponse({
       success: true,
-      casoId,
-      resultado,
+      data: {
+        casoId,
+        ...resultado,
+        calculadoEn: new Date().toISOString(),
+      },
     });
   } catch (error: any) {
-    console.error('Error al calcular factor de riesgo:', error);
-    return NextResponse.json(
+    console.error('Error calculando factor de riesgo:', error);
+    return deprecatedJsonResponse(
       { error: 'Error al calcular factor de riesgo', details: error.message },
       { status: 500 }
     );
@@ -123,25 +133,56 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET: Obtener factor de riesgo calculado de un caso
- * Uso: /api/casos/calcular-factor-riesgo?casoId=123
+ * @deprecated
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const casoId = searchParams.get('casoId');
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const casoId = searchParams.get('casoId');
 
-  if (!casoId) {
-    return NextResponse.json(
-      { error: 'ID del caso requerido' },
-      { status: 400 }
+    if (!casoId) {
+      return deprecatedJsonResponse(
+        { error: 'casoId requerido' },
+        { status: 400 }
+      );
+    }
+
+    // Obtener el último cálculo del caso
+    const result = await query<any[]>(
+      `SELECT 
+        score_factor_riesgo as puntajeTotal,
+        categoria_riesgo_factor as categoria,
+        detalle_factor_riesgo as detalles,
+        fecha_calculo_factor as calculadoEn
+       FROM casos 
+       WHERE id = ?`,
+      [casoId]
+    );
+
+    if (!result || result.length === 0 || !result[0].puntajeTotal) {
+      return deprecatedJsonResponse(
+        { error: 'No hay cálculo previo para este caso' },
+        { status: 404 }
+      );
+    }
+
+    const data = result[0];
+    if (typeof data.detalles === 'string') {
+      data.detalles = JSON.parse(data.detalles);
+    }
+
+    return deprecatedJsonResponse({
+      success: true,
+      data: {
+        casoId,
+        ...data,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error obteniendo factor de riesgo:', error);
+    return deprecatedJsonResponse(
+      { error: 'Error al obtener factor de riesgo', details: error.message },
+      { status: 500 }
     );
   }
-
-  // Hacer POST interno con los mismos parámetros
-  return POST(
-    new NextRequest(request.url, {
-      method: 'POST',
-      body: JSON.stringify({ casoId: parseInt(casoId) }),
-    })
-  );
 }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTelegramWorkerToken } from "@/lib/telegramAlerts";
-import { requireApiAuth } from "@/lib/apiAuth";
 import {
   dispatchPendingTelegramAlerts,
   parseTelegramDispatchLimit,
@@ -18,40 +17,45 @@ function extractBearerToken(authHeader: string | null): string | null {
 function isAuthorized(request: NextRequest): boolean {
   const configuredToken = getTelegramWorkerToken();
   if (!configuredToken) {
-    return false;
+    // Si no está configurado un token en el entorno, bloquear por seguridad en producción
+    return process.env.NODE_ENV !== "production";
   }
 
   const authHeader = request.headers.get("authorization");
   const bearerToken = extractBearerToken(authHeader);
-  const workerToken = request.headers.get("x-worker-token");
-  const internalToken = request.headers.get("x-internal-token");
+  const workerTokenHeader = request.headers.get("x-worker-token");
+  const internalTokenHeader = request.headers.get("x-internal-token");
 
-  const provided = bearerToken || workerToken || internalToken;
-  return provided === configuredToken;
+  const providedToken = bearerToken || workerTokenHeader || internalTokenHeader;
+
+  return providedToken === configuredToken;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const configuredToken = getTelegramWorkerToken();
-    if (configuredToken) {
-      if (!isAuthorized(request)) {
-        return NextResponse.json({ message: "No autorizado" }, { status: 401 });
-      }
-    } else {
-      const authResult = await requireApiAuth(request, 3);
-      if (!authResult.ok) return authResult.response;
+    if (!isAuthorized(request)) {
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+          message: "Token de autenticación de worker inválido o ausente.",
+        },
+        { status: 401 }
+      );
     }
 
     const { searchParams } = new URL(request.url);
     const limit = parseTelegramDispatchLimit(searchParams.get("limit"));
+
     const result = await dispatchPendingTelegramAlerts(limit);
-    return NextResponse.json(result);
+
+    return NextResponse.json(result, { status: 200 });
   } catch (error: unknown) {
-    console.error("Error despachando alertas Telegram", error);
+    console.error("[telegram-dispatcher-worker] Error en ejecución:", error);
     return NextResponse.json(
       {
-        message: "Error al despachar alertas",
-        details: error instanceof Error ? error.message : "Error interno",
+        error: "Internal Server Error",
+        message: "Error al procesar el lote de alertas de Telegram",
+        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     );

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { query } from "@/lib/db";
+import type mysql from "mysql2/promise";
+import { getPool, query } from "@/lib/db";
 import { assertPacienteScope, requireApiAuth } from "@/lib/apiAuth";
 import { dispatchPendingTelegramAlerts } from "@/lib/telegramDispatch";
 import { isTelegramAlertsEnabled } from "@/lib/telegramAlerts";
@@ -130,6 +131,8 @@ export async function POST(request: Request) {
   if (!authResult.ok) return authResult.response;
   const auth = authResult.auth;
 
+  let connection: mysql.PoolConnection | null = null;
+
   try {
     const body = await request.json();
     const pacienteId = body.paciente_id;
@@ -248,7 +251,11 @@ export async function POST(request: Request) {
 
     const values = Object.values(payload);
 
-    const result: any = await query(
+    // Iniciar transacción ACID
+    connection = await getPool().getConnection();
+    await connection.beginTransaction();
+
+    const [result]: any = await connection.execute(
       `INSERT INTO consultas_prenatales (${Object.keys(payload).join(", ")}) VALUES (${placeholders})`,
       values
     );
@@ -256,50 +263,52 @@ export async function POST(request: Request) {
     const consultaId = Number(result?.insertId) || null;
     const puntajeTotal = Number(puntajeTotalConsulta) || 0;
 
-    if (consultaId && riesgo25Plus === 1 && isTelegramAlertsEnabled()) {
+    let alertEnqueued = false;
+    if (consultaId && riesgo25Plus === 1) {
       const folio = paciente?.folio || null;
       const unidad = paciente?.unidad || null;
 
-      try {
-        await query(
-          `INSERT INTO alertas_telegram (
-            tipo, paciente_id, consulta_id, folio, unidad, puntaje_total, payload_json
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)
-          ON DUPLICATE KEY UPDATE id = id`,
-          [
-            TELEGRAM_RIESGO_TIPO,
-            pacienteId,
-            consultaId,
-            folio,
-            unidad,
-            puntajeTotal,
-            JSON.stringify({ folio, unidad, puntaje_total: puntajeTotal }),
-          ]
-        );
-
-        // Dispara un intento inmediato para reducir la latencia respecto al cron.
-        setTimeout(() => {
-          void dispatchPendingTelegramAlerts(1).catch((dispatchError: unknown) => {
-            console.error("No se pudo despachar alerta Telegram inmediatamente", {
-              consultaId,
-              pacienteId,
-              error: dispatchError instanceof Error ? dispatchError.message : String(dispatchError),
-            });
-          });
-        }, 0);
-      } catch (enqueueError: any) {
-        // El guardado clinico no debe fallar por problemas de la cola de alertas.
-        console.error("No se pudo encolar alerta Telegram", {
-          consultaId,
+      await connection.execute(
+        `INSERT INTO alertas_telegram (
+          tipo, paciente_id, consulta_id, folio, unidad, puntaje_total, payload_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE id = id`,
+        [
+          TELEGRAM_RIESGO_TIPO,
           pacienteId,
-          error: enqueueError?.message || enqueueError,
-        });
-      }
+          consultaId,
+          folio,
+          unidad,
+          puntajeTotal,
+          JSON.stringify({ folio, unidad, puntaje_total: puntajeTotal }),
+        ]
+      );
+      alertEnqueued = true;
     }
 
-    return NextResponse.json({ id: result.insertId, ...payload }, { status: 201 });
+    await connection.commit();
+
+    // Disparar despacho asíncrono si la alerta quedó encolada y el servicio está habilitado
+    if (alertEnqueued && isTelegramAlertsEnabled()) {
+      setTimeout(() => {
+        void dispatchPendingTelegramAlerts(1).catch((dispatchError: unknown) => {
+          console.error("No se pudo despachar alerta Telegram inmediatamente", {
+            consultaId,
+            pacienteId,
+            error: dispatchError instanceof Error ? dispatchError.message : String(dispatchError),
+          });
+        });
+      }, 0);
+    }
+
+    return NextResponse.json({ id: consultaId, ...payload }, { status: 201 });
   } catch (error: any) {
-    console.error("Error creando consulta", error);
-    return NextResponse.json({ message: "Error al crear consulta" }, { status: 500 });
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error("Error creando consulta (transacción revertida):", error);
+    return NextResponse.json({ message: "Error al crear consulta", details: error?.message || "Error interno" }, { status: 500 });
+  } finally {
+    connection?.release();
   }
 }

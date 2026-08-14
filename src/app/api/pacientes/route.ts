@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { query } from "@/lib/db";
+import type mysql from "mysql2/promise";
+import { getPool, query } from "@/lib/db";
 import { assertCluesScope, requireApiAuth } from "@/lib/apiAuth";
 
 function parseDateOnly(dateValue: string): Date | null {
@@ -56,9 +57,10 @@ function computeGestacionDesdeFum(fum: string | null | undefined) {
  * Genera el siguiente folio consecutivo para un CLUES
  * Formato: CLUES-001, CLUES-002, etc.
  */
-async function generarSiguienteFolio(cluesId: string): Promise<string> {
+async function generarSiguienteFolio(cluesId: string, conn?: mysql.PoolConnection | mysql.Pool): Promise<string> {
   // Obtener el último folio para este CLUES
-  const rows: any = await query(
+  const runner = conn || getPool();
+  const [rows]: any = await runner.query(
     `SELECT folio FROM cat_pacientes 
      WHERE clues_id = ? AND folio LIKE ? 
      ORDER BY folio DESC 
@@ -299,6 +301,8 @@ export async function POST(request: Request) {
   if (!authResult.ok) return authResult.response;
   const auth = authResult.auth;
 
+  let connection: mysql.PoolConnection | null = null;
+
   try {
     const body = await request.json();
     const gestacionCalculada = computeGestacionDesdeFum(body.fum);
@@ -361,8 +365,12 @@ export async function POST(request: Request) {
 
     const unidadCatalogo = unidadRows[0];
 
-    // Generar folio automáticamente si no se proporciona
-    const folio = body.folio || await generarSiguienteFolio(clues);
+    // Iniciar transacción ACID
+    connection = await getPool().getConnection();
+    await connection.beginTransaction();
+
+    // Generar folio automáticamente si no se proporciona dentro del contexto de la transacción
+    const folio = body.folio || (await generarSiguienteFolio(clues, connection));
 
     const payload = {
       folio: folio,
@@ -429,14 +437,14 @@ export async function POST(request: Request) {
 
     const values = Object.values(payload);
 
-    const result: any = await query(
+    const [result]: any = await connection.execute(
       `INSERT INTO cat_pacientes (${Object.keys(payload).join(", ")}) VALUES (${placeholders})`,
       values
     );
 
     const pacienteId = result.insertId;
 
-    // Si se proporcionaron tamizajes iniciales, crear el registro de detecciones
+    // Si se proporcionaron tamizajes iniciales, crear el registro de detecciones en la misma transacción
     const detecciones = {
       prueba_vih: body.prueba_vih || null,
       prueba_vdrl: body.prueba_vdrl || null,
@@ -445,36 +453,36 @@ export async function POST(request: Request) {
       violencia: body.violencia || null,
     };
 
-    // Solo crear detecciones si al menos un campo está capturado
     const hayDetecciones = Object.values(detecciones).some(v => v !== null);
     
     if (hayDetecciones) {
-      try {
-        await query(
-          `INSERT INTO detecciones 
-           (paciente_id, prueba_vih, prueba_vdrl, prueba_hepatitis_c, diabetes_glicemia, violencia, created_by, updated_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            pacienteId,
-            detecciones.prueba_vih,
-            detecciones.prueba_vdrl,
-            detecciones.prueba_hepatitis_c,
-            detecciones.diabetes_glicemia,
-            detecciones.violencia,
-            auth.userId,
-            auth.userId,
-          ]
-        );
-        console.log(`✅ Detecciones iniciales guardadas para paciente ${pacienteId}`);
-      } catch (detError: any) {
-        console.error("⚠️ Error guardando detecciones iniciales (paciente ya creado):", detError);
-        // No fallar la creación del paciente si las detecciones fallan
-      }
+      await connection.execute(
+        `INSERT INTO detecciones 
+         (paciente_id, prueba_vih, prueba_vdrl, prueba_hepatitis_c, diabetes_glicemia, violencia, created_by, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          pacienteId,
+          detecciones.prueba_vih,
+          detecciones.prueba_vdrl,
+          detecciones.prueba_hepatitis_c,
+          detecciones.diabetes_glicemia,
+          detecciones.violencia,
+          auth.userId,
+          auth.userId,
+        ]
+      );
     }
+
+    await connection.commit();
 
     return NextResponse.json({ id: pacienteId, ...payload }, { status: 201 });
   } catch (error: any) {
-    console.error("Error creando paciente", error);
-    return NextResponse.json({ message: "Error al crear paciente" }, { status: 500 });
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error("Error creando paciente (transacción revertida):", error);
+    return NextResponse.json({ message: "Error al crear paciente", details: error?.message || "Error interno" }, { status: 500 });
+  } finally {
+    connection?.release();
   }
 }

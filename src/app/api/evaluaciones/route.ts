@@ -1,7 +1,21 @@
 // app/api/evaluaciones/route.ts
+/**
+ * @deprecated Este endpoint pertenece al modelo legado `casos` / `evaluaciones_clinicas`.
+ * Para el registro clínico activo, utilizar `/api/consultas`.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireApiAuth } from '@/lib/apiAuth';
+
+const DEPRECATION_WARNING = '299 - "Endpoint deprecado (/api/evaluaciones). Migrar a /api/consultas"';
+
+function deprecatedJsonResponse(body: any, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  res.headers.set('Warning', DEPRECATION_WARNING);
+  res.headers.set('Deprecation', 'true');
+  return res;
+}
 
 function normalizeUpper(value: unknown): string {
   return String(value || '').trim().toUpperCase();
@@ -24,6 +38,9 @@ async function canAccessCaso(casoId: number, auth: { nivel: number; cluesId: str
   return !!auth.cluesId && !!row.clues && normalizeUpper(auth.cluesId) === normalizeUpper(row.clues);
 }
 
+/**
+ * @deprecated Usar POST /api/consultas
+ */
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireApiAuth(request, 1);
@@ -34,7 +51,7 @@ export async function POST(request: NextRequest) {
     const { casoId, ...evaluacion } = body;
 
     if (!casoId) {
-      return NextResponse.json(
+      return deprecatedJsonResponse(
         { error: 'ID del caso requerido' },
         { status: 400 }
       );
@@ -42,12 +59,12 @@ export async function POST(request: NextRequest) {
 
     const casoIdNum = Number(casoId);
     if (!Number.isFinite(casoIdNum) || casoIdNum <= 0) {
-      return NextResponse.json({ error: 'ID del caso inválido' }, { status: 400 });
+      return deprecatedJsonResponse({ error: 'ID del caso inválido' }, { status: 400 });
     }
 
     const allowed = await canAccessCaso(casoIdNum, auth);
     if (!allowed) {
-      return NextResponse.json({ error: 'Sin permisos para registrar evaluación en este caso' }, { status: 403 });
+      return deprecatedJsonResponse({ error: 'Sin permisos para registrar evaluación en este caso' }, { status: 403 });
     }
 
     const result = await query<any>(
@@ -58,8 +75,8 @@ export async function POST(request: NextRequest) {
         dolor_abdominal_intenso, cefalea_severa, fosfenos, epigastralgia,
         convulsiones, fiebre, disnea, dolor_toracico, alteracion_estado_mental,
         disminucion_movimientos_fetales, sistolica, diastolica, frecuencia_cardiaca,
-        frecuencia_respiratoria, saturacion_o2, temperatura, plaquetas, creatinina,
-        ast, alt, proteinuria_tira, peso_kg, talla_cm, imc, fondo_uterino_cm
+        frecuencia_respiratoria, saturacion_o2, temperatura, plaquetas,
+        creatinina, ast, alt, proteinuria_tira, peso_kg, talla_cm, imc, fondo_uterino_cm
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         casoIdNum,
@@ -103,19 +120,22 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    return NextResponse.json({
+    return deprecatedJsonResponse({
       success: true,
       evaluacionId: result.insertId,
     });
   } catch (error: any) {
-    console.error('Error al guardar evaluación clínica:', error);
-    return NextResponse.json(
+    console.error('Error al guardar evaluación:', error);
+    return deprecatedJsonResponse(
       { error: 'Error al guardar la evaluación', details: error.message },
       { status: 500 }
     );
   }
 }
 
+/**
+ * @deprecated Usar GET /api/consultas
+ */
 export async function GET(request: NextRequest) {
   try {
     const authResult = await requireApiAuth(request, 1);
@@ -126,7 +146,7 @@ export async function GET(request: NextRequest) {
     const casoId = searchParams.get('casoId');
 
     if (!casoId) {
-      return NextResponse.json(
+      return deprecatedJsonResponse(
         { error: 'ID del caso requerido' },
         { status: 400 }
       );
@@ -134,31 +154,27 @@ export async function GET(request: NextRequest) {
 
     const casoIdNum = Number(casoId);
     if (!Number.isFinite(casoIdNum) || casoIdNum <= 0) {
-      return NextResponse.json({ error: 'ID del caso inválido' }, { status: 400 });
+      return deprecatedJsonResponse({ error: 'ID del caso inválido' }, { status: 400 });
     }
 
     const allowed = await canAccessCaso(casoIdNum, auth);
     if (!allowed) {
-      return NextResponse.json({ error: 'Sin permisos para consultar esta evaluación' }, { status: 403 });
+      return deprecatedJsonResponse({ error: 'Sin permisos para consultar este caso' }, { status: 403 });
     }
 
     const evaluaciones = await query<any[]>(
-      'SELECT * FROM evaluaciones_clinicas WHERE caso_id = ? ORDER BY created_at DESC LIMIT 1',
+      'SELECT * FROM evaluaciones_clinicas WHERE caso_id = ? ORDER BY created_at DESC',
       [casoIdNum]
     );
 
-    if (evaluaciones.length === 0) {
-      return NextResponse.json(
-        { error: 'Evaluación no encontrada' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: evaluaciones[0] });
+    return deprecatedJsonResponse({
+      success: true,
+      data: evaluaciones,
+    });
   } catch (error: any) {
-    console.error('Error al recuperar evaluación clínica:', error);
-    return NextResponse.json(
-      { error: 'Error al recuperar la evaluación', details: error.message },
+    console.error('Error al recuperar evaluaciones:', error);
+    return deprecatedJsonResponse(
+      { error: 'Error al recuperar las evaluaciones', details: error.message },
       { status: 500 }
     );
   }

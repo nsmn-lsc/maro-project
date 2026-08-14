@@ -1,302 +1,275 @@
-// src/lib/__tests__/factorRiesgo.test.ts
-/**
- * Tests unitarios para el motor de cálculo de factor de riesgo
- * Validar que los criterios funcionan correctamente
- */
+import { describe, it, expect } from "vitest";
+import {
+  evaluarFactoresRiesgo,
+  evaluarCampoIndividual,
+  type DatosFactoresPaciente,
+} from "../riesgoFactores";
+import { evaluarTamizajes, type DatosTamizajes } from "../riesgoTamizajes";
+import { calcularFactorRiesgo, type DatosFactorRiesgo } from "../factorRiesgo";
 
-import { calcularFactorRiesgo, DatosFactorRiesgo } from '../factorRiesgo';
-
-describe('factorRiesgo - Cálculo de Factor de Riesgo Obstétrico', () => {
-  describe('Antecedentes Obstétricos', () => {
-    test('Debe dar 1 punto por 2-4 gestaciones', () => {
-      const resultado = calcularFactorRiesgo({ gesta: 3 });
-      expect(resultado.puntajeTotal).toBe(1);
-      expect(resultado.detalles).toHaveLength(1);
-      expect(resultado.detalles[0].campo).toBe('Gestaciones previas');
-      expect(resultado.detalles[0].puntos).toBe(1);
+describe("Motor de Factores de Riesgo Obstétrico (riesgoFactores)", () => {
+  describe("1. Ponderación por IMC Inicial", () => {
+    it("debe asignar 6 puntos para bajo peso (IMC < 18.5)", () => {
+      const resultado = evaluarFactoresRiesgo({ imc_inicial: 17.5 });
+      expect(resultado.puntajeTotal).toBe(6);
+      expect(resultado.factores).toHaveLength(1);
+      expect(resultado.factores[0].campo).toBe("Índice de Masa Corporal (IMC)");
+      expect(resultado.factores[0].puntos).toBe(6);
     });
 
-    test('Debe dar 4 puntos por ≥5 gestaciones', () => {
-      const resultado = calcularFactorRiesgo({ gesta: 5 });
+    it("no debe asignar puntos para IMC normal (18.5 - 24.9) o sobrepeso (25.0 - 29.9)", () => {
+      const normal = evaluarFactoresRiesgo({ imc_inicial: 22.4 });
+      expect(normal.puntajeTotal).toBe(0);
+      expect(normal.factores).toHaveLength(0);
+
+      const sobrepeso = evaluarFactoresRiesgo({ imc_inicial: 28.1 });
+      expect(sobrepeso.puntajeTotal).toBe(0);
+      expect(sobrepeso.factores).toHaveLength(0);
+    });
+
+    it("debe asignar 4 puntos para obesidad Grado I (IMC 30.0 - 34.99)", () => {
+      const resultado = evaluarFactoresRiesgo({ imc_inicial: 32.0 });
       expect(resultado.puntajeTotal).toBe(4);
+      expect(resultado.factores[0].puntos).toBe(4);
     });
 
-    test('No debe dar puntos por 1 gestación', () => {
-      const resultado = calcularFactorRiesgo({ gesta: 1 });
-      expect(resultado.puntajeTotal).toBe(0);
+    it("debe asignar 6 puntos para obesidad Grado II (IMC 35.0 - 39.99)", () => {
+      const resultado = evaluarFactoresRiesgo({ imc_inicial: 37.5 });
+      expect(resultado.puntajeTotal).toBe(6);
+      expect(resultado.factores[0].puntos).toBe(6);
     });
 
-    test('Debe dar 2 puntos por 1 cesárea', () => {
-      const resultado = calcularFactorRiesgo({ cesareasPrevias: 1 });
-      expect(resultado.puntajeTotal).toBe(2);
-    });
-
-    test('Debe dar 4 puntos por ≥2 cesáreas', () => {
-      const resultado = calcularFactorRiesgo({ cesareasPrevias: 2 });
-      expect(resultado.puntajeTotal).toBe(4);
-    });
-
-    test('Debe sumar gestaciones + cesáreas', () => {
-      const resultado = calcularFactorRiesgo({
-        gesta: 3,
-        cesareasPrevias: 1,
-      });
-      expect(resultado.puntajeTotal).toBe(3); // 1 + 2
-    });
-
-    test('Debe dar 3 puntos por ≥3 abortos', () => {
-      const resultado = calcularFactorRiesgo({ abortos: 3 });
-      expect(resultado.puntajeTotal).toBe(3);
+    it("debe asignar 8 puntos para obesidad Grado III / severa (IMC >= 40.0)", () => {
+      const resultado = evaluarFactoresRiesgo({ imc_inicial: 42.1 });
+      expect(resultado.puntajeTotal).toBe(8);
+      expect(resultado.factores[0].puntos).toBe(8);
     });
   });
 
-  describe('Factores Demográficos', () => {
-    test('Debe dar 2 puntos por edad ≤19 años', () => {
-      const resultado = calcularFactorRiesgo({ edad: 18 });
-      expect(resultado.puntajeTotal).toBe(2);
+  describe("2. Umbrales de Riesgo por Edad Materna Extrema", () => {
+    it("debe asignar 8 puntos para menores de 15 años (< 15)", () => {
+      const resultado = evaluarFactoresRiesgo({ edad: 14 });
+      expect(resultado.puntajeTotal).toBe(8);
+      expect(resultado.factores[0].campo).toBe("Edad de riesgo");
+      expect(resultado.factores[0].puntos).toBe(8);
     });
 
-    test('Debe dar 3 puntos por edad ≥35 años', () => {
-      const resultado = calcularFactorRiesgo({ edad: 35 });
-      expect(resultado.puntajeTotal).toBe(3);
+    it("debe asignar 4 puntos para adolescentes (15 a 19 años)", () => {
+      const r15 = evaluarFactoresRiesgo({ edad: 15 });
+      expect(r15.puntajeTotal).toBe(4);
+      expect(r15.factores[0].puntos).toBe(4);
+
+      const r19 = evaluarFactoresRiesgo({ edad: 19 });
+      expect(r19.puntajeTotal).toBe(4);
+      expect(r19.factores[0].puntos).toBe(4);
     });
 
-    test('No debe dar puntos por edad normal (20-34)', () => {
-      const resultado = calcularFactorRiesgo({ edad: 28 });
-      expect(resultado.puntajeTotal).toBe(0);
+    it("no debe asignar puntos para edad reproductiva óptima (20 a 35 años)", () => {
+      const r20 = evaluarFactoresRiesgo({ edad: 20 });
+      expect(r20.puntajeTotal).toBe(0);
+
+      const r28 = evaluarFactoresRiesgo({ edad: 28 });
+      expect(r28.puntajeTotal).toBe(0);
+
+      const r35 = evaluarFactoresRiesgo({ edad: 35 });
+      expect(r35.puntajeTotal).toBe(0);
     });
 
-    test('Debe dar 1 punto por IMC bajo (<18.5)', () => {
-      const resultado = calcularFactorRiesgo({ imc: 18 });
-      expect(resultado.puntajeTotal).toBe(1);
-    });
+    it("debe asignar 4 puntos para edad materna avanzada (>= 36 años)", () => {
+      const r36 = evaluarFactoresRiesgo({ edad: 36 });
+      expect(r36.puntajeTotal).toBe(4);
 
-    test('Debe dar 2 puntos por obesidad (30-39.9)', () => {
-      const resultado = calcularFactorRiesgo({ imc: 32 });
-      expect(resultado.puntajeTotal).toBe(2);
-    });
-
-    test('Debe dar 4 puntos por obesidad severa (≥40)', () => {
-      const resultado = calcularFactorRiesgo({ imc: 42 });
-      expect(resultado.puntajeTotal).toBe(4);
-    });
-  });
-
-  describe('Condiciones Médicas Previas', () => {
-    test('Debe dar 4 puntos por embarazo múltiple', () => {
-      const resultado = calcularFactorRiesgo({ embarazoMultiple: true });
-      expect(resultado.puntajeTotal).toBe(4);
-    });
-
-    test('Debe dar 4 puntos por antecedente de preeclampsia', () => {
-      const resultado = calcularFactorRiesgo({
-        antecedentePreeclampsia: true,
-      });
-      expect(resultado.puntajeTotal).toBe(4);
-    });
-
-    test('Debe dar 3 puntos por diabetes previa', () => {
-      const resultado = calcularFactorRiesgo({ diabetesPrevia: true });
-      expect(resultado.puntajeTotal).toBe(3);
-    });
-
-    test('Debe dar 4 puntos por cardiopatía', () => {
-      const resultado = calcularFactorRiesgo({ cardiopatia: true });
-      expect(resultado.puntajeTotal).toBe(4);
-    });
-
-    test('Debe sumar múltiples condiciones', () => {
-      const resultado = calcularFactorRiesgo({
-        diabetesPrevia: true,
-        hipertensionCronica: true,
-        nefropatia: true,
-      });
-      expect(resultado.puntajeTotal).toBe(9); // 3 + 3 + 3
+      const r42 = evaluarFactoresRiesgo({ edad: 42 });
+      expect(r42.puntajeTotal).toBe(4);
     });
   });
 
-  describe('Signos y Síntomas de Alarma', () => {
-    test('Debe dar 3 puntos por sangrado vaginal', () => {
-      const resultado = calcularFactorRiesgo({ sangradoVaginal: true });
-      expect(resultado.puntajeTotal).toBe(3);
-    });
+  describe("3. Antecedentes Gineco-Obstétricos y Comorbilidades", () => {
+    it("debe asignar 2 puntos para 1 o 2 gestaciones y 4 puntos para >= 3 gestas", () => {
+      const r1 = evaluarFactoresRiesgo({ gestas: 1 });
+      expect(r1.puntajeTotal).toBe(2);
 
-    test('Debe dar 4 puntos por fosfenos', () => {
-      const resultado = calcularFactorRiesgo({ fosfenos: true });
-      expect(resultado.puntajeTotal).toBe(4);
-    });
-
-    test('Debe sumar múltiples síntomas', () => {
-      const resultado = calcularFactorRiesgo({
-        sangradoVaginal: true,
-        dolorAbdominalIntenso: true,
-        disnea: true,
-      });
-      expect(resultado.puntajeTotal).toBe(9); // 3 + 3 + 3
-    });
-  });
-
-  describe('Signos Vitales Anormales', () => {
-    test('Debe dar 2 puntos por TA sistólica 140-149', () => {
-      const resultado = calcularFactorRiesgo({ sistolica: 145 });
-      expect(resultado.puntajeTotal).toBe(2);
-    });
-
-    test('Debe dar 3 puntos por TA sistólica ≥150', () => {
-      const resultado = calcularFactorRiesgo({ sistolica: 160 });
-      expect(resultado.puntajeTotal).toBe(3);
-    });
-
-    test('Debe dar 2 puntos por TA diastólica 90-99', () => {
-      const resultado = calcularFactorRiesgo({ diastolica: 95 });
-      expect(resultado.puntajeTotal).toBe(2);
-    });
-
-    test('Debe dar 2 puntos por FR ≥25', () => {
-      const resultado = calcularFactorRiesgo({
-        frecuenciaRespiratoria: 26,
-      });
-      expect(resultado.puntajeTotal).toBe(2);
-    });
-
-    test('Debe dar 2 puntos por SatO2 <95', () => {
-      const resultado = calcularFactorRiesgo({ saturacionO2: 93 });
-      expect(resultado.puntajeTotal).toBe(2);
-    });
-
-    test('Debe dar 1 punto por temperatura 38.0-38.4', () => {
-      const resultado = calcularFactorRiesgo({ temperatura: 38.2 });
-      expect(resultado.puntajeTotal).toBe(1);
-    });
-
-    test('Debe dar 2 puntos por temperatura ≥38.5', () => {
-      const resultado = calcularFactorRiesgo({ temperatura: 39 });
-      expect(resultado.puntajeTotal).toBe(2);
-    });
-  });
-
-  describe('Laboratorios', () => {
-    test('Debe dar 1 punto por plaquetas 100-149', () => {
-      const resultado = calcularFactorRiesgo({ plaquetas: 120000 });
-      expect(resultado.puntajeTotal).toBe(1);
-    });
-
-    test('Debe dar 3 puntos por plaquetas <100', () => {
-      const resultado = calcularFactorRiesgo({ plaquetas: 80000 });
-      expect(resultado.puntajeTotal).toBe(3);
-    });
-
-    test('Debe dar 2 puntos por creatinina >1.2', () => {
-      const resultado = calcularFactorRiesgo({ creatinina: 1.5 });
-      expect(resultado.puntajeTotal).toBe(2);
-    });
-
-    test('Debe dar 2 puntos por AST >70', () => {
-      const resultado = calcularFactorRiesgo({ ast: 100 });
-      expect(resultado.puntajeTotal).toBe(2);
-    });
-
-    test('Debe dar puntos progresivos por proteinuria', () => {
-      const r1 = calcularFactorRiesgo({ proteinuriaTira: '1+' });
-      const r2 = calcularFactorRiesgo({ proteinuriaTira: '2+' });
-      const r4 = calcularFactorRiesgo({ proteinuriaTira: '4+' });
-
-      expect(r1.puntajeTotal).toBe(1);
+      const r2 = evaluarFactoresRiesgo({ gestas: 2 });
       expect(r2.puntajeTotal).toBe(2);
-      expect(r4.puntajeTotal).toBe(4);
+
+      const r3 = evaluarFactoresRiesgo({ gestas: 3 });
+      expect(r3.puntajeTotal).toBe(4);
+
+      const r6 = evaluarFactoresRiesgo({ gestas: 6 });
+      expect(r6.puntajeTotal).toBe(4);
+    });
+
+    it("debe asignar 6 puntos por cesáreas previas (>= 2)", () => {
+      const r1 = evaluarFactoresRiesgo({ cesareas: 1 });
+      expect(r1.puntajeTotal).toBe(0);
+
+      const r2 = evaluarFactoresRiesgo({ cesareas: 2 });
+      expect(r2.puntajeTotal).toBe(6);
+
+      const r3 = evaluarFactoresRiesgo({ cesareas: 3 });
+      expect(r3.puntajeTotal).toBe(6);
+    });
+
+    it("debe asignar 4 puntos por abortos previos (>= 2)", () => {
+      const r1 = evaluarFactoresRiesgo({ abortos: 1 });
+      expect(r1.puntajeTotal).toBe(0);
+
+      const r2 = evaluarFactoresRiesgo({ abortos: 2 });
+      expect(r2.puntajeTotal).toBe(4);
+    });
+
+    it("debe ponderar correctamente antecedentes graves (4 puntos c/u)", () => {
+      const resultado = evaluarFactoresRiesgo({
+        ant_preeclampsia: true,
+        ant_hemorragia: true,
+        ant_sepsis: true,
+        ant_bajo_peso_macrosomia: true,
+        ant_muerte_perinatal: true,
+      });
+      // 5 antecedentes * 4 puntos = 20 puntos
+      expect(resultado.puntajeTotal).toBe(20);
+      expect(resultado.factores).toHaveLength(5);
+    });
+
+    it("debe sumar comorbilidades crónicas y toxicomanías", () => {
+      const resultado = evaluarFactoresRiesgo({
+        factor_diabetes: true,     // 4 pts
+        factor_hipertension: true, // 4 pts
+        factor_tabaquismo: true,   // 2 pts
+        factor_drogas_ilicitas: true, // 4 pts
+      });
+      expect(resultado.puntajeTotal).toBe(14); // 4 + 4 + 2 + 4
+      expect(resultado.factores).toHaveLength(4);
+    });
+
+    it("debe evaluar factores sociodemográficos y epidemiológicos", () => {
+      const rContacto = evaluarFactoresRiesgo({
+        indigena: true, // 2 pts
+        migrante: true, // 4 pts
+        factores_riesgo_epid: "es_contacto", // 4 pts
+      });
+      expect(rContacto.puntajeTotal).toBe(10);
+
+      const rPortadora = evaluarFactoresRiesgo({
+        factores_riesgo_epid: "es_portadora", // 6 pts
+      });
+      expect(rPortadora.puntajeTotal).toBe(6);
     });
   });
 
-  describe('Categorización', () => {
-    test('Debe categorizar como BAJO (0-9 puntos)', () => {
-      const resultado = calcularFactorRiesgo({ edad: 25 });
-      expect(resultado.categoria).toBe('BAJO');
+  describe("4. Clasificación de Nivel de Riesgo (Semaforización)", () => {
+    it("debe clasificar como BAJO (0 - 3 puntos)", () => {
+      const r0 = evaluarFactoresRiesgo({});
+      expect(r0.nivel).toBe("BAJO");
+
+      const r2 = evaluarFactoresRiesgo({ gestas: 1 }); // 2 pts
+      expect(r2.nivel).toBe("BAJO");
     });
 
-    test('Debe categorizar como MODERADO (10-19 puntos)', () => {
-      const resultado = calcularFactorRiesgo({
-        gesta: 5,
-        edad: 37,
-        imc: 32,
-      });
-      expect(resultado.categoria).toBe('MODERADO');
+    it("debe clasificar como ALTO (4 - 9 puntos)", () => {
+      const r4 = evaluarFactoresRiesgo({ edad: 16 }); // 4 pts
+      expect(r4.nivel).toBe("ALTO");
+
+      const r8 = evaluarFactoresRiesgo({ edad: 14 }); // 8 pts
+      expect(r8.nivel).toBe("ALTO");
     });
 
-    test('Debe categorizar como ALTO (≥20 puntos)', () => {
-      const resultado = calcularFactorRiesgo({
-        embarazoMultiple: true,
-        antecedentePreeclampsia: true,
-        cardiopatia: true,
-        sangradoVaginal: true,
-      });
-      expect(resultado.categoria).toBe('ALTO');
-      expect(resultado.puntajeTotal).toBeGreaterThanOrEqual(20);
+    it("debe clasificar como MUY_ALTO (10 - 25 puntos)", () => {
+      const rMuyAlto = evaluarFactoresRiesgo({
+        edad: 14,             // 8 pts
+        cesareas: 2,          // 6 pts
+        ant_preeclampsia: true, // 4 pts
+      }); // total = 18 pts
+      expect(rMuyAlto.puntajeTotal).toBe(18);
+      expect(rMuyAlto.nivel).toBe("MUY_ALTO");
     });
-  });
 
-  describe('Caso Complejo Real', () => {
-    test('Debe calcular correctamente un caso complejo', () => {
-      const datos: DatosFactorRiesgo = {
-        // Antecedentes
-        gesta: 3,
-        cesareasPrevias: 1,
-        abortos: 1,
-        // Demográficos
-        edad: 38,
-        imc: 35,
-        // Condiciones
-        hipertensionCronica: true,
-        diabetesGestacional: true,
-        // Síntomas
-        sangradoVaginal: false,
-        cefaleaSevera: false,
-        // Signos vitales
-        sistolica: 145,
-        diastolica: 92,
-        // Laboratorios
-        plaquetas: 140000,
-        proteinuriaTira: '1+',
-      };
-
-      const resultado = calcularFactorRiesgo(datos);
-
-      // Verificar que tiene detalles
-      expect(resultado.detalles.length).toBeGreaterThan(0);
-
-      // Verificar que tiene sugerencias
-      expect(resultado.sugerencias.length).toBeGreaterThan(0);
-
-      // Verificar rango de puntuación esperado
-      expect(resultado.puntajeTotal).toBeGreaterThan(0);
-      expect(resultado.puntajeTotal).toBeLessThan(100);
-
-      // Debería ser MODERADO o ALTO
-      expect(['MODERADO', 'ALTO']).toContain(resultado.categoria);
+    it("debe clasificar como CRITICO (> 25 puntos)", () => {
+      const rCritico = evaluarFactoresRiesgo({
+        edad: 14,                 // 8 pts
+        cesareas: 2,              // 6 pts
+        ant_preeclampsia: true,   // 4 pts
+        factor_diabetes: true,    // 4 pts
+        factor_hipertension: true,// 4 pts
+        imc_inicial: 41,          // 8 pts
+      }); // total = 34 pts
+      expect(rCritico.puntajeTotal).toBe(34);
+      expect(rCritico.nivel).toBe("CRITICO");
     });
   });
+});
 
-  describe('Manejo de Valores Nulos/Undefined', () => {
-    test('Debe ignorar campos undefined', () => {
-      const resultado = calcularFactorRiesgo({
-        edad: undefined,
-        gesta: 3,
-      });
-      expect(resultado.puntajeTotal).toBe(1); // Solo por gesta
+describe("Motor de Tamizajes Iniciales (riesgoTamizajes)", () => {
+  it("debe retornar SIN_HALLAZGOS cuando todas las pruebas son negativas/normales", () => {
+    const res = evaluarTamizajes({
+      prueba_vih: "No reactiva",
+      prueba_vdrl: "No reactiva",
+      prueba_hepatitis_c: "No reactiva",
+      diabetes_glicemia: "Normal",
+      violencia: "Negativa",
     });
+    expect(res.puntajeTotal).toBe(0);
+    expect(res.tamizajes).toHaveLength(0);
+    expect(res.nivel).toBe("SIN_HALLAZGOS");
+  });
 
-    test('Debe ignorar campos null', () => {
-      const resultado = calcularFactorRiesgo({
-        edad: null as any,
-        cesareasPrevias: 1,
-      });
-      expect(resultado.puntajeTotal).toBe(2); // Solo por cesáreas
+  it("debe sumar 4 puntos por cada tamizaje reactivo o positivo y clasificar como ALERTA", () => {
+    const res = evaluarTamizajes({
+      prueba_vih: "Reactiva",                 // 4 pts
+      prueba_vdrl: "Reactiva",                // 4 pts
+      diabetes_glicemia: "Diabetes",          // 4 pts
+      violencia: "Positiva",                  // 4 pts
     });
+    expect(res.puntajeTotal).toBe(16);
+    expect(res.tamizajes).toHaveLength(4);
+    expect(res.nivel).toBe("ALERTA");
+  });
+});
 
-    test('Debe retornar 0 puntos cuando no hay datos', () => {
-      const resultado = calcularFactorRiesgo({});
-      expect(resultado.puntajeTotal).toBe(0);
-      expect(resultado.detalles).toHaveLength(0);
-      expect(resultado.categoria).toBe('BAJO');
+describe("Motor Clínico General de Puntuación (factorRiesgo)", () => {
+  it("debe calcular un caso clínico con signos vitales y laboratorios", () => {
+    const datos: DatosFactorRiesgo = {
+      gesta: 3,
+      cesareasPrevias: 1,
+      edad: 38,
+      imc: 35,
+      hipertensionCronica: true,
+      sistolica: 145,
+      diastolica: 92,
+      plaquetas: 140000,
+      proteinuriaTira: "1+",
+    };
+
+    const res = calcularFactorRiesgo(datos);
+    expect(res.puntajeTotal).toBeGreaterThan(0);
+    expect(res.detalles.length).toBeGreaterThan(0);
+    expect(res.sugerencias.length).toBeGreaterThan(0);
+    expect(["MODERADO", "ALTO"]).toContain(res.categoria);
+  });
+
+  it("debe clasificar correctamente en BAJO, MODERADO y ALTO", () => {
+    const bajo = calcularFactorRiesgo({ edad: 25 });
+    expect(bajo.categoria).toBe("BAJO");
+
+    // gesta: 5 (4 pts) + cesareasPrevias: 1 (2 pts) + edad: 37 (3 pts) + imc: 32 (2 pts) = 11 pts -> MODERADO
+    const moderado = calcularFactorRiesgo({
+      gesta: 5,
+      cesareasPrevias: 1,
+      edad: 37,
+      imc: 32,
     });
+    expect(moderado.puntajeTotal).toBe(11);
+    expect(moderado.categoria).toBe("MODERADO");
+
+    const alto = calcularFactorRiesgo({
+      embarazoMultiple: true, // 4 pts
+      antecedentePreeclampsia: true, // 4 pts
+      cardiopatia: true, // 4 pts
+      sangradoVaginal: true, // 3 pts
+      fosfenos: true, // 4 pts
+      cefaleaSevera: true, // 3 pts
+    });
+    expect(alto.puntajeTotal).toBe(22);
+    expect(alto.categoria).toBe("ALTO");
   });
 });

@@ -1,5 +1,6 @@
 // src/lib/api-client.ts
-// Helper para facilitar las llamadas a la API desde los componentes
+// Helper para llamadas a la API
+// NOTA: Los clientes de `casos`, `sesiones` y `evaluaciones` están deprecados.
 
 export class APIError extends Error {
   constructor(public statusCode: number, message: string) {
@@ -29,7 +30,9 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
   return data;
 }
 
-// API de Sesiones
+/**
+ * @deprecated API de Sesiones legada. Migrar a /api/colegiados
+ */
 export const sesionesAPI = {
   crear: async (datos: {
     region: string;
@@ -57,7 +60,9 @@ export const sesionesAPI = {
   },
 };
 
-// API de Casos
+/**
+ * @deprecated API de Casos legada. Migrar a /api/pacientes
+ */
 export const casosAPI = {
   crear: async (datos: {
     folio: string;
@@ -118,11 +123,13 @@ export const casosAPI = {
   },
 };
 
-// API de Evaluaciones Clínicas
+/**
+ * @deprecated API de Evaluaciones Clínicas legada. Migrar a /api/consultas
+ */
 export const evaluacionesAPI = {
   crear: async (datos: {
     casoId: number;
-    [key: string]: any; // Todos los campos de EvaluacionClinica
+    [key: string]: any;
   }) => {
     return fetchAPI<{ success: boolean; evaluacionId: number }>(
       '/api/evaluaciones',
@@ -140,12 +147,10 @@ export const evaluacionesAPI = {
   },
 };
 
-// API de Factor de Riesgo Obstétrico
+/**
+ * @deprecated API de Factor de Riesgo para Casos. Usar @/lib/riesgoFactores y /api/pacientes/guardar-factor-riesgo
+ */
 export const factorRiesgoAPI = {
-  /**
-   * Calcula el factor de riesgo basado en los datos del caso y su evaluación
-   * Recopila automáticamente todos los campos disponibles en la BD
-   */
   calcular: async (casoId: number) => {
     return fetchAPI<{
       success: boolean;
@@ -167,9 +172,6 @@ export const factorRiesgoAPI = {
     });
   },
 
-  /**
-   * Obtener factor de riesgo calculado de un caso (GET alternativo)
-   */
   obtener: async (casoId: number) => {
     return fetchAPI<{
       success: boolean;
@@ -178,9 +180,6 @@ export const factorRiesgoAPI = {
     }>(`/api/casos/calcular-factor-riesgo?casoId=${casoId}`);
   },
 
-  /**
-   * Obtener historial de cálculos de factor de riesgo para un caso
-   */
   obtenerHistorial: async (casoId: number) => {
     return fetchAPI<{
       success: boolean;
@@ -196,7 +195,6 @@ export const factorRiesgoAPI = {
   },
 };
 
-// Helper para manejar errores de forma consistente
 export function manejarErrorAPI(error: unknown): string {
   if (error instanceof APIError) {
     return error.message;

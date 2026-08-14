@@ -1,7 +1,21 @@
 // app/api/casos/route.ts
+/**
+ * @deprecated Este endpoint pertenece al modelo legado `casos`.
+ * El flujo canónico activo de MARO Hub utiliza `/api/pacientes`, `/api/consultas` y `/api/colegiados`.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { assertCluesScope, requireApiAuth } from '@/lib/apiAuth';
+
+const DEPRECATION_WARNING = '299 - "Endpoint deprecado (/api/casos). Migrar a /api/pacientes"';
+
+function deprecatedJsonResponse(body: any, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  res.headers.set('Warning', DEPRECATION_WARNING);
+  res.headers.set('Deprecation', 'true');
+  return res;
+}
 
 function normalizeUpper(value: unknown): string {
   return String(value || '').trim().toUpperCase();
@@ -24,6 +38,9 @@ async function canAccessCaso(casoId: number, auth: { nivel: number; cluesId: str
   return !!auth.cluesId && !!row.clues && normalizeUpper(auth.cluesId) === normalizeUpper(row.clues);
 }
 
+/**
+ * @deprecated Usar POST /api/pacientes para registro de pacientes
+ */
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireApiAuth(request, 1);
@@ -57,11 +74,11 @@ export async function POST(request: NextRequest) {
 
     if (auth.nivel === 1) {
       if (!auth.cluesId) {
-        return NextResponse.json({ error: 'Usuario CLUES sin alcance asignado' }, { status: 403 });
+        return deprecatedJsonResponse({ error: 'Usuario CLUES sin alcance asignado' }, { status: 403 });
       }
 
       if (cluesNormalized && cluesNormalized !== normalizeUpper(auth.cluesId)) {
-        return NextResponse.json({ error: 'Sin permisos para registrar otro CLUES' }, { status: 403 });
+        return deprecatedJsonResponse({ error: 'Sin permisos para registrar otro CLUES' }, { status: 403 });
       }
 
       cluesNormalized = normalizeUpper(auth.cluesId);
@@ -72,20 +89,20 @@ export async function POST(request: NextRequest) {
 
     if (auth.nivel === 2) {
       if (!auth.region) {
-        return NextResponse.json({ error: 'Usuario regional sin región asignada' }, { status: 403 });
+        return deprecatedJsonResponse({ error: 'Usuario regional sin región asignada' }, { status: 403 });
       }
 
       regionNormalized = normalizeUpper(auth.region);
       if (cluesNormalized) {
         const allowed = await assertCluesScope(cluesNormalized, auth);
         if (!allowed) {
-          return NextResponse.json({ error: 'Sin permisos para registrar ese CLUES' }, { status: 403 });
+          return deprecatedJsonResponse({ error: 'Sin permisos para registrar ese CLUES' }, { status: 403 });
         }
       }
     }
 
     if (!folio || !regionNormalized || !municipio || !unidad || !pacienteIniciales) {
-      return NextResponse.json(
+      return deprecatedJsonResponse(
         { error: 'Faltan campos requeridos' },
         { status: 400 }
       );
@@ -119,20 +136,23 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    return NextResponse.json({
+    return deprecatedJsonResponse({
       success: true,
       casoId: result.insertId,
       folio,
     });
   } catch (error: any) {
     console.error('Error al guardar caso:', error);
-    return NextResponse.json(
+    return deprecatedJsonResponse(
       { error: 'Error al guardar el caso', details: error.message },
       { status: 500 }
     );
   }
 }
 
+/**
+ * @deprecated Usar GET /api/pacientes para consulta de expedientes
+ */
 export async function GET(request: NextRequest) {
   try {
     const authResult = await requireApiAuth(request, 1);
@@ -148,13 +168,13 @@ export async function GET(request: NextRequest) {
 
     if (auth.nivel === 1) {
       if (!auth.cluesId) {
-        return NextResponse.json({ error: 'Usuario CLUES sin alcance asignado' }, { status: 403 });
+        return deprecatedJsonResponse({ error: 'Usuario CLUES sin alcance asignado' }, { status: 403 });
       }
       whereScope.push('UPPER(c.clues) = ?');
       scopeParams.push(normalizeUpper(auth.cluesId));
     } else if (auth.nivel === 2) {
       if (!auth.region) {
-        return NextResponse.json({ error: 'Usuario regional sin región asignada' }, { status: 403 });
+        return deprecatedJsonResponse({ error: 'Usuario regional sin región asignada' }, { status: 403 });
       }
       whereScope.push('UPPER(c.region) = ?');
       scopeParams.push(normalizeUpper(auth.region));
@@ -163,7 +183,7 @@ export async function GET(request: NextRequest) {
     if (id) {
       const idNum = Number(id);
       if (!Number.isFinite(idNum) || idNum <= 0) {
-        return NextResponse.json({ error: 'ID de caso inválido' }, { status: 400 });
+        return deprecatedJsonResponse({ error: 'ID de caso inválido' }, { status: 400 });
       }
 
       const where = ['c.id = ?', ...whereScope];
@@ -173,13 +193,13 @@ export async function GET(request: NextRequest) {
       );
 
       if (casos.length === 0) {
-        return NextResponse.json(
+        return deprecatedJsonResponse(
           { error: 'Caso no encontrado' },
           { status: 404 }
         );
       }
 
-      return NextResponse.json({ success: true, data: casos[0] });
+      return deprecatedJsonResponse({ success: true, data: casos[0] });
     }
 
     if (folio) {
@@ -190,13 +210,13 @@ export async function GET(request: NextRequest) {
       );
 
       if (casos.length === 0) {
-        return NextResponse.json(
+        return deprecatedJsonResponse(
           { error: 'Caso no encontrado' },
           { status: 404 }
         );
       }
 
-      return NextResponse.json({ success: true, data: casos[0] });
+      return deprecatedJsonResponse({ success: true, data: casos[0] });
     }
 
     // Listar todos los casos
@@ -206,16 +226,19 @@ export async function GET(request: NextRequest) {
       scopeParams
     );
 
-    return NextResponse.json({ success: true, data: casos });
+    return deprecatedJsonResponse({ success: true, data: casos });
   } catch (error: any) {
     console.error('Error al recuperar casos:', error);
-    return NextResponse.json(
+    return deprecatedJsonResponse(
       { error: 'Error al recuperar los casos', details: error.message },
       { status: 500 }
     );
   }
 }
 
+/**
+ * @deprecated Usar endpoints de actualización en /api/pacientes o /api/consultas
+ */
 export async function PUT(request: NextRequest) {
   try {
     const authResult = await requireApiAuth(request, 1);
@@ -226,7 +249,7 @@ export async function PUT(request: NextRequest) {
     const { id, estatus, nivelRiesgo, scoreRiesgo, resumenClinico } = body;
 
     if (!id) {
-      return NextResponse.json(
+      return deprecatedJsonResponse(
         { error: 'ID del caso requerido' },
         { status: 400 }
       );
@@ -234,12 +257,12 @@ export async function PUT(request: NextRequest) {
 
     const idNum = Number(id);
     if (!Number.isFinite(idNum) || idNum <= 0) {
-      return NextResponse.json({ error: 'ID de caso inválido' }, { status: 400 });
+      return deprecatedJsonResponse({ error: 'ID de caso inválido' }, { status: 400 });
     }
 
     const allowed = await canAccessCaso(idNum, auth);
     if (!allowed) {
-      return NextResponse.json({ error: 'Sin permisos para actualizar este caso' }, { status: 403 });
+      return deprecatedJsonResponse({ error: 'Sin permisos para actualizar este caso' }, { status: 403 });
     }
 
     const updates: string[] = [];
@@ -263,7 +286,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (updates.length === 0) {
-      return NextResponse.json(
+      return deprecatedJsonResponse(
         { error: 'No hay campos para actualizar' },
         { status: 400 }
       );
@@ -276,10 +299,10 @@ export async function PUT(request: NextRequest) {
       values
     );
 
-    return NextResponse.json({ success: true });
+    return deprecatedJsonResponse({ success: true });
   } catch (error: any) {
     console.error('Error al actualizar caso:', error);
-    return NextResponse.json(
+    return deprecatedJsonResponse(
       { error: 'Error al actualizar el caso', details: error.message },
       { status: 500 }
     );

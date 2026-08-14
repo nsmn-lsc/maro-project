@@ -54,3 +54,4 @@ credenciales-bootstrap.csv
 # tar.gz archives
 *.tar.gz
 
+context_proyecto.txt
