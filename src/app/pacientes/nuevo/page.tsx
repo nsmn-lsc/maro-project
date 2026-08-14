@@ -238,8 +238,45 @@ export default function NuevoPaciente() {
     }
   };
 
+  const factoresSegundoNivelActivos = useMemo(() => {
+    const list: string[] = [];
+    if (form.factor_diabetes) list.push("Diabetes");
+    if (form.factor_hipertension) list.push("Hipertensión");
+    if (form.factor_obesidad) list.push("Obesidad");
+    if (form.factor_cardiopatia) list.push("Cardiopatía");
+    if (form.factor_hepatopatia) list.push("Hepatopatía");
+    if (form.factor_enf_autoinmune) list.push("Enfermedad autoinmune");
+    if (form.factor_nefropatia) list.push("Nefropatía");
+    if (form.factor_coagulopatias) list.push("Coagulopatías");
+    if (form.factor_enf_psiquiatrica) list.push("Enfermedad psiquiátrica");
+    return list;
+  }, [
+    form.factor_diabetes,
+    form.factor_hipertension,
+    form.factor_obesidad,
+    form.factor_cardiopatia,
+    form.factor_hepatopatia,
+    form.factor_enf_autoinmune,
+    form.factor_nefropatia,
+    form.factor_coagulopatias,
+    form.factor_enf_psiquiatrica,
+  ]);
+
+  const tieneAlertaSegundoNivel = factoresSegundoNivelActivos.length > 0;
+
+  const tamizajesReactivosActivos = useMemo(() => {
+    const list: string[] = [];
+    if (form.prueba_vih === "Reactiva") list.push("VIH Reactiva");
+    if (form.prueba_vdrl === "Reactiva") list.push("VDRL Reactiva");
+    if (form.prueba_hepatitis_c === "Reactiva") list.push("Hepatitis C Reactiva");
+    return list;
+  }, [form.prueba_vih, form.prueba_vdrl, form.prueba_hepatitis_c]);
+
+  const tieneAlertaNotificacion = tamizajesReactivosActivos.length > 0;
+
   const getRecomendaciones = () => {
     const recs: string[] = [];
+    
     if (form.tipo_riesgo_social === "Medio" || form.tipo_riesgo_social === "Alto") {
       recs.push("Fortalecer red social, vinculación con acción comunitaria");
     }
@@ -633,10 +670,59 @@ export default function NuevoPaciente() {
             <p className="text-xs text-slate-300/70 leading-relaxed border-b border-white/10 pb-3">
               Guías y acciones sugeridas en tiempo real según el perfil clínico de la paciente.
             </p>
+
+            {/* ALERTA DE SEGUNDO NIVEL POR FACTORES DE RIESGO SELECCIONADOS */}
+            {tieneAlertaSegundoNivel && (
+              <div className="rounded-xl border border-amber-400/50 bg-amber-500/20 p-3.5 space-y-2 shadow-lg shadow-amber-950/30 animate-in fade-in duration-200">
+                <div className="flex items-center gap-1.5 text-amber-300 font-bold text-xs uppercase tracking-wider">
+                  <span className="text-sm">⚠️</span>
+                  <span>Alerta de Referencia</span>
+                </div>
+                <p className="text-xs font-semibold text-amber-100 leading-snug">
+                  Referencia a segundo nivel de atención con paraclinicos desde la primera consulta
+                </p>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {factoresSegundoNivelActivos.map((factor, index) => (
+                    <span
+                      key={index}
+                      className="text-[10px] bg-amber-400/20 border border-amber-300/40 text-amber-200 font-medium px-2 py-0.5 rounded-full"
+                    >
+                      {factor}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ALERTA DE NOTIFICACION POR TAMIZAJES REACTIVOS */}
+            {tieneAlertaNotificacion && (
+              <div className="rounded-xl border border-rose-400/60 bg-rose-500/20 p-3.5 space-y-2 shadow-lg shadow-rose-950/30 animate-in fade-in duration-200">
+                <div className="flex items-center gap-1.5 text-rose-300 font-bold text-xs uppercase tracking-wider">
+                  <span className="text-sm">📢</span>
+                  <span>Alerta de Notificación</span>
+                </div>
+                <p className="text-xs font-semibold text-rose-100 leading-snug">
+                  Informar inmediatamente a enlace zonal y epidemiologia regional, seguimiento normativo hasta descarte o confirmacion
+                </p>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {tamizajesReactivosActivos.map((tamizaje, index) => (
+                    <span
+                      key={index}
+                      className="text-[10px] bg-rose-400/20 border border-rose-300/40 text-rose-200 font-medium px-2 py-0.5 rounded-full"
+                    >
+                      {tamizaje}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {getRecomendaciones().length === 0 ? (
-              <p className="text-sm text-slate-400 italic leading-relaxed">
-                No hay recomendaciones activas basadas en los datos capturados actualmente.
-              </p>
+              !tieneAlertaSegundoNivel && !tieneAlertaNotificacion && (
+                <p className="text-sm text-slate-400 italic leading-relaxed">
+                  No hay recomendaciones activas basadas en los datos capturados actualmente.
+                </p>
+              )
             ) : (
               <ul className="space-y-3">
                 {getRecomendaciones().map((rec, index) => (

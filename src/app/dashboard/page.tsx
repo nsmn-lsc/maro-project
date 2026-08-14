@@ -49,6 +49,9 @@ export default function Dashboard() {
   });
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [showEmptyReportModal, setShowEmptyReportModal] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("maro:user");
@@ -182,9 +185,12 @@ export default function Dashboard() {
 
   const handleGenerateExcel = async () => {
     if (patients.length === 0) {
-      alert("No hay pacientes para generar el reporte");
+      setShowEmptyReportModal(true);
       return;
     }
+
+    setGeneratingReport(true);
+    setReportError(null);
 
     try {
       const res = await fetch("/api/pacientes/reportes/excel", {
@@ -200,7 +206,7 @@ export default function Dashboard() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error || "Error al generar el reporte Excel");
+        throw new Error(err?.error || err?.message || "Error al generar el reporte Excel");
       }
 
       const blob = await res.blob();
@@ -212,7 +218,9 @@ export default function Dashboard() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err: any) {
-      alert(err?.message || "No se pudo generar el reporte Excel");
+      setReportError(err?.message || "No se pudo generar el reporte Excel");
+    } finally {
+      setGeneratingReport(false);
     }
   };
 
@@ -482,25 +490,130 @@ export default function Dashboard() {
         </section>
 
         <section className="bg-amber-500/10 backdrop-blur-sm border border-amber-400/30 rounded-2xl shadow-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold text-amber-100">Reportes y Concentrados</h2>
-              <p className="text-sm text-amber-200/70">Generación de reportes consolidados de datos</p>
+              <p className="text-sm text-amber-200/70">Generación y exportación de reportes consolidados en Excel</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={handleGenerateExcel}
-                className="text-sm text-amber-100 bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 rounded-full hover:border-amber-300/70 hover:bg-amber-500/25 transition-colors flex items-center gap-2"
+                disabled={generatingReport}
+                className="text-sm text-amber-100 bg-amber-500/15 border border-amber-500/30 px-4 py-2 rounded-full hover:border-amber-300/70 hover:bg-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2 font-medium shadow-sm"
                 title="Descargar concentrado de pacientes en Excel"
               >
-                📊 Generar Concentrado basico
+                {generatingReport ? (
+                  <>
+                    <span className="inline-block animate-spin">⏳</span>
+                    <span>Generando concentrado...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>📊</span>
+                    <span>Generar Censo de pacientes</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
-          <p className="text-sm text-amber-200/80 bg-amber-500/20 border border-amber-400/30 rounded-lg px-4 py-3">
-            Descarga los datos de pacientes en formato Excel. El archivo incluye folio, nombre, ingreso, semanas de gestación, puntaje de antecedentes, tamizajes, puntaje de última consulta y total actual. Aun en construcción, esta función te permitirá obtener un reporte basico inicial de los pacientes registrados en tu unidad para análisis y seguimiento.
+
+          {reportError && (
+            <div className="rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-200 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{reportError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReportError(null)}
+                className="text-xs text-red-300 hover:text-white underline"
+              >
+                Descartar
+              </button>
+            </div>
+          )}
+
+          <p className="text-sm text-amber-200/80 bg-amber-500/20 border border-amber-400/30 rounded-lg px-4 py-3 leading-relaxed">
+            Descarga los datos de pacientes de tu unidad en formato Excel (.xlsx). El archivo incluye folio, nombre completo, fecha de ingreso, semanas de gestación calculadas, desglose de antecedentes, tamizajes iniciales y puntajes de riesgo total para seguimiento clínico y control epidemiológico.
           </p>
         </section>
+
+        {/* Modal de Advertencia: Sin Pacientes Registrados */}
+        {showEmptyReportModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="empty-report-title"
+            onClick={() => setShowEmptyReportModal(false)}
+          >
+            <div
+              className="relative w-full max-w-lg rounded-3xl border border-amber-400/40 bg-slate-900/95 p-6 sm:p-8 text-slate-100 shadow-2xl shadow-amber-950/40 space-y-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Botón cerrar esquina */}
+              <button
+                type="button"
+                onClick={() => setShowEmptyReportModal(false)}
+                className="absolute top-5 right-5 text-slate-400 hover:text-white rounded-full p-1 transition"
+                aria-label="Cerrar ventana modal"
+              >
+                ✕
+              </button>
+
+              {/* Encabezado con Icono */}
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-300 text-2xl shadow-inner">
+                  ⚠️
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-400">
+                    Concentrado de Datos
+                  </span>
+                  <h3 id="empty-report-title" className="text-xl font-bold text-white">
+                    Sin pacientes registrados
+                  </h3>
+                </div>
+              </div>
+
+              {/* Mensaje descriptivo */}
+              <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+                <p>
+                  No es posible generar el <strong className="text-white">Concentrado Básico en Excel</strong> porque actualmente no hay pacientes registrados en tu unidad:
+                </p>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-emerald-200 font-medium">
+                  🏥 {user?.unidad || "Unidad Médica"}
+                  <span className="text-xs text-slate-400 block font-normal mt-0.5">
+                    CLUES: {user?.clues || "—"} | Región: {user?.region || "—"}
+                  </span>
+                </div>
+                <p>
+                  Para generar y exportar el censo clínico con folios, SDG y factores de riesgo, primero debes capturar al menos un expediente obstétrico.
+                </p>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEmptyReportModal(false)}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-full border border-slate-600 bg-slate-800 text-sm font-medium text-slate-200 hover:bg-slate-700 hover:text-white transition"
+                >
+                  Entendido
+                </button>
+                <Link
+                  href="/pacientes/nuevo"
+                  onClick={() => setShowEmptyReportModal(false)}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white shadow-lg shadow-emerald-950/50 transition inline-flex items-center justify-center gap-2"
+                >
+                  <span>+</span>
+                  <span>Registrar nueva paciente</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
