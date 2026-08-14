@@ -527,14 +527,25 @@ export default function FormatoColegiadoPage() {
               Casos con acciones
             </Link>
           </div>
-          <button
-            type="button"
-            onClick={generarPdfPersonalizado}
-            disabled={generatingPdf}
-            className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-          >
-            {generatingPdf ? "Generando PDF..." : "Descargar PDF personalizado"}
-          </button>
+          <div className="flex gap-2">
+            <a
+              href={`/api/colegiados/${consulta.consulta_id}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 transition inline-flex items-center gap-1.5"
+            >
+              <span>📄</span>
+              <span>Descargar Cédula Oficial (PDF)</span>
+            </a>
+            <button
+              type="button"
+              onClick={generarPdfPersonalizado}
+              disabled={generatingPdf}
+              className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition"
+            >
+              {generatingPdf ? "Generando..." : "Descarga Alternativa"}
+            </button>
+          </div>
         </div>
 
         <article className="mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm print:max-w-none print:rounded-none print:border-0 print:p-8 print:shadow-none">

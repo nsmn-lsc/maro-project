@@ -344,8 +344,17 @@ export default function DetalleColegiadoPage() {
             <p className="text-slate-300/80">Definición de seguimiento por nivel de atención</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <a
+              href={`/api/colegiados/${consultaId}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm px-3.5 py-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-500 text-white font-medium shadow-sm transition inline-flex items-center gap-1.5"
+            >
+              <span>📄</span>
+              <span>Descargar Cédula PDF</span>
+            </a>
             <Link href={`/colegiados/${consultaId}/formato`} className="text-sm px-3 py-1.5 rounded-full border border-emerald-500/40 text-emerald-200 hover:border-emerald-300">
-              Formato PDF
+              Vista Formato
             </Link>
             <Link href="/colegiados/planes" className="text-sm px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400">
               Casos con acciones
