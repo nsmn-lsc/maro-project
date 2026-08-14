@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { sanitizePdfText } from "@/lib/pdfSanitizer";
 
 type SessionInfo = {
   nivel?: number;
@@ -179,8 +180,9 @@ export default function FormatoColegiadoPage() {
       };
 
       const wrapText = (text: string, maxWidth: number, size: number, font = regularFont): string[] => {
-        const words = String(text || "").split(/\s+/).filter(Boolean);
-        if (!words.length) return ["—"];
+        const sanitized = sanitizePdfText(text);
+        const words = sanitized.split(/\s+/).filter(Boolean);
+        if (!words.length) return ["-"];
         const lines: string[] = [];
         let cur = "";
         for (const w of words) {

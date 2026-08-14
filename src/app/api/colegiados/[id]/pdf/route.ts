@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { query } from "@/lib/db";
 import { requireApiAuth } from "@/lib/apiAuth";
+import { sanitizePdfText } from "@/lib/pdfSanitizer";
 
 type RouteContext = {
   params: Promise<{
@@ -10,9 +11,9 @@ type RouteContext = {
 };
 
 function formatDate(value: string | Date | null, includeTime = false): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date.getTime())) return String(value);
+  if (Number.isNaN(date.getTime())) return sanitizePdfText(String(value));
 
   const dd = String(date.getDate()).padStart(2, "0");
   const mm = String(date.getMonth() + 1).padStart(2, "0");
@@ -154,8 +155,9 @@ export async function GET(request: Request, context: RouteContext) {
     const bgGray = rgb(0.96, 0.97, 0.98);
 
     const wrapText = (text: string, maxWidth: number, size: number, font = fontRegular): string[] => {
-      const words = String(text || "").split(/\s+/).filter(Boolean);
-      if (!words.length) return ["—"];
+      const sanitized = sanitizePdfText(text);
+      const words = sanitized.split(/\s+/).filter(Boolean);
+      if (!words.length) return ["-"];
       const lines: string[] = [];
       let currentLine = "";
       for (const word of words) {
@@ -182,7 +184,7 @@ export async function GET(request: Request, context: RouteContext) {
       color: primaryDark,
     });
 
-    page.drawText("MARO HUB — CÉDULA DE CASO COLEGIADO Y EVALUACIÓN OBSTÉTRICA", {
+    page.drawText(sanitizePdfText("MARO HUB - CÉDULA DE CASO COLEGIADO Y EVALUACIÓN OBSTÉTRICA"), {
       x: margin + 12,
       y: y - 20,
       size: 11,
@@ -190,21 +192,27 @@ export async function GET(request: Request, context: RouteContext) {
       color: rgb(1, 1, 1),
     });
 
-    page.drawText(`CLUES: ${data.clues_id || "—"}  |  Unidad: ${data.unidad || "—"}  |  Región: ${data.region || "—"}`, {
-      x: margin + 12,
-      y: y - 36,
-      size: 8.5,
-      font: fontRegular,
-      color: rgb(0.85, 0.95, 0.91),
-    });
+    page.drawText(
+      sanitizePdfText(`CLUES: ${data.clues_id || "-"}  |  Unidad: ${data.unidad || "-"}  |  Región: ${data.region || "-"}`),
+      {
+        x: margin + 12,
+        y: y - 36,
+        size: 8.5,
+        font: fontRegular,
+        color: rgb(0.85, 0.95, 0.91),
+      }
+    );
 
-    page.drawText(`Folio: ${data.folio || "SIN FOLIO"}   |   Emisión: ${formatDate(new Date(), true)}`, {
-      x: margin + 12,
-      y: y - 48,
-      size: 8,
-      font: fontRegular,
-      color: rgb(0.85, 0.95, 0.91),
-    });
+    page.drawText(
+      sanitizePdfText(`Folio: ${data.folio || "SIN FOLIO"}   |   Emisión: ${formatDate(new Date(), true)}`),
+      {
+        x: margin + 12,
+        y: y - 48,
+        size: 8,
+        font: fontRegular,
+        color: rgb(0.85, 0.95, 0.91),
+      }
+    );
 
     y -= 68;
 
@@ -221,7 +229,7 @@ export async function GET(request: Request, context: RouteContext) {
       borderWidth: 0.5,
     });
 
-    page.drawText("1. DATOS DE IDENTIFICACIÓN Y ANTECEDENTES MATERNOS", {
+    page.drawText(sanitizePdfText("1. DATOS DE IDENTIFICACIÓN Y ANTECEDENTES MATERNOS"), {
       x: margin + 8,
       y: y - 13,
       size: 8.5,
@@ -243,37 +251,40 @@ export async function GET(request: Request, context: RouteContext) {
     });
 
     // Fila 1
-    page.drawText(`Paciente: `, { x: margin + 8, y: y - 14, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${data.nombre_completo || "—"}`, { x: margin + 52, y: y - 14, size: 8, font: fontRegular, color: textDark });
+    page.drawText(sanitizePdfText("Paciente: "), { x: margin + 8, y: y - 14, size: 8, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText(data.nombre_completo || "-"), { x: margin + 52, y: y - 14, size: 8, font: fontRegular, color: textDark });
 
-    page.drawText(`CURP: `, { x: margin + 270, y: y - 14, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${data.curp || "—"}`, { x: margin + 302, y: y - 14, size: 8, font: fontRegular, color: textDark });
+    page.drawText(sanitizePdfText("CURP: "), { x: margin + 270, y: y - 14, size: 8, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText(data.curp || "-"), { x: margin + 302, y: y - 14, size: 8, font: fontRegular, color: textDark });
 
-    page.drawText(`Edad: `, { x: margin + 440, y: y - 14, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${data.edad ? `${data.edad} años` : "—"}`, { x: margin + 468, y: y - 14, size: 8, font: fontRegular, color: textDark });
+    page.drawText(sanitizePdfText("Edad: "), { x: margin + 440, y: y - 14, size: 8, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText(data.edad ? `${data.edad} años` : "-"), { x: margin + 468, y: y - 14, size: 8, font: fontRegular, color: textDark });
 
     // Fila 2
-    page.drawText(`FUM: `, { x: margin + 8, y: y - 28, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${formatDate(data.fum)}`, { x: margin + 34, y: y - 28, size: 8, font: fontRegular, color: textDark });
+    page.drawText(sanitizePdfText("FUM: "), { x: margin + 8, y: y - 28, size: 8, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText(formatDate(data.fum)), { x: margin + 34, y: y - 28, size: 8, font: fontRegular, color: textDark });
 
-    page.drawText(`FPP: `, { x: margin + 115, y: y - 28, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${formatDate(data.fpp)}`, { x: margin + 140, y: y - 28, size: 8, font: fontRegular, color: textDark });
+    page.drawText(sanitizePdfText("FPP: "), { x: margin + 115, y: y - 28, size: 8, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText(formatDate(data.fpp)), { x: margin + 140, y: y - 28, size: 8, font: fontRegular, color: textDark });
 
-    page.drawText(`SDG Consulta: `, { x: margin + 230, y: y - 28, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${data.sdg ?? data.semanas_gestacion ?? "—"} sem`, { x: margin + 295, y: y - 28, size: 8, font: fontRegular, color: textDark });
+    page.drawText(sanitizePdfText("SDG Consulta: "), { x: margin + 230, y: y - 28, size: 8, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText(`${data.sdg ?? data.semanas_gestacion ?? "-"} sem`), { x: margin + 295, y: y - 28, size: 8, font: fontRegular, color: textDark });
 
-    page.drawText(`IMC Inicial: `, { x: margin + 380, y: y - 28, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${data.imc_inicial ? `${data.imc_inicial} kg/m²` : "—"}`, { x: margin + 432, y: y - 28, size: 8, font: fontRegular, color: textDark });
+    page.drawText(sanitizePdfText("IMC Inicial: "), { x: margin + 380, y: y - 28, size: 8, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText(data.imc_inicial ? `${data.imc_inicial} kg/m2` : "-"), { x: margin + 432, y: y - 28, size: 8, font: fontRegular, color: textDark });
 
     // Fila 3
-    page.drawText(`Paridad: `, { x: margin + 8, y: y - 42, size: 8, font: fontBold, color: textDark });
-    page.drawText(`G:${data.gestas ?? 0}  P:${data.partos ?? 0}  C:${data.cesareas ?? 0}  A:${data.abortos ?? 0}`, {
-      x: margin + 48,
-      y: y - 42,
-      size: 8,
-      font: fontRegular,
-      color: textDark,
-    });
+    page.drawText(sanitizePdfText("Paridad: "), { x: margin + 8, y: y - 42, size: 8, font: fontBold, color: textDark });
+    page.drawText(
+      sanitizePdfText(`G:${data.gestas ?? 0}  P:${data.partos ?? 0}  C:${data.cesareas ?? 0}  A:${data.abortos ?? 0}`),
+      {
+        x: margin + 48,
+        y: y - 42,
+        size: 8,
+        font: fontRegular,
+        color: textDark,
+      }
+    );
 
     const antClaves = [
       data.ant_preeclampsia ? "Preeclampsia previa" : null,
@@ -284,8 +295,8 @@ export async function GET(request: Request, context: RouteContext) {
       data.factor_nefropatia ? "Nefropatía" : null,
     ].filter(Boolean).join(", ") || "Sin comorbilidades registradas";
 
-    page.drawText(`Antecedentes: `, { x: margin + 200, y: y - 42, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${antClaves}`, { x: margin + 268, y: y - 42, size: 7.5, font: fontRegular, color: textDark });
+    page.drawText(sanitizePdfText("Antecedentes: "), { x: margin + 200, y: y - 42, size: 8, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText(antClaves), { x: margin + 268, y: y - 42, size: 7.5, font: fontRegular, color: textDark });
 
     y -= (patientBoxHeight + 12);
 
@@ -302,7 +313,7 @@ export async function GET(request: Request, context: RouteContext) {
       borderWidth: 0.5,
     });
 
-    page.drawText("2. TRIAGE CLÍNICO Y ESTRATIFICACIÓN DE RIESGO OBSTÉTRICO", {
+    page.drawText(sanitizePdfText("2. TRIAGE CLÍNICO Y ESTRATIFICACIÓN DE RIESGO OBSTÉTRICO"), {
       x: margin + 8,
       y: y - 13,
       size: 8.5,
@@ -326,48 +337,56 @@ export async function GET(request: Request, context: RouteContext) {
     });
 
     // Signos Vitales
-    page.drawText(`T.A.: `, { x: margin + 8, y: y - 14, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${data.ta_sistolica && data.ta_diastolica ? `${data.ta_sistolica}/${data.ta_diastolica} mmHg` : "—"}`, {
-      x: margin + 32, y: y - 14, size: 8, font: fontRegular, color: textDark
-    });
+    page.drawText(sanitizePdfText("T.A.: "), { x: margin + 8, y: y - 14, size: 8, font: fontBold, color: textDark });
+    page.drawText(
+      sanitizePdfText(data.ta_sistolica && data.ta_diastolica ? `${data.ta_sistolica}/${data.ta_diastolica} mmHg` : "-"),
+      { x: margin + 32, y: y - 14, size: 8, font: fontRegular, color: textDark }
+    );
 
-    page.drawText(`F.C.: `, { x: margin + 115, y: y - 14, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${data.frecuencia_cardiaca ? `${data.frecuencia_cardiaca} lpm` : "—"}`, {
-      x: margin + 138, y: y - 14, size: 8, font: fontRegular, color: textDark
-    });
+    page.drawText(sanitizePdfText("F.C.: "), { x: margin + 115, y: y - 14, size: 8, font: fontBold, color: textDark });
+    page.drawText(
+      sanitizePdfText(data.frecuencia_cardiaca ? `${data.frecuencia_cardiaca} lpm` : "-"),
+      { x: margin + 138, y: y - 14, size: 8, font: fontRegular, color: textDark }
+    );
 
-    page.drawText(`F.R.: `, { x: margin + 200, y: y - 14, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${data.frecuencia_respiratoria ? `${data.frecuencia_respiratoria} rpm` : "—"}`, {
-      x: margin + 224, y: y - 14, size: 8, font: fontRegular, color: textDark
-    });
+    page.drawText(sanitizePdfText("F.R.: "), { x: margin + 200, y: y - 14, size: 8, font: fontBold, color: textDark });
+    page.drawText(
+      sanitizePdfText(data.frecuencia_respiratoria ? `${data.frecuencia_respiratoria} rpm` : "-"),
+      { x: margin + 224, y: y - 14, size: 8, font: fontRegular, color: textDark }
+    );
 
-    page.drawText(`Temp: `, { x: margin + 280, y: y - 14, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${data.temperatura ? `${data.temperatura} °C` : "—"}`, {
-      x: margin + 308, y: y - 14, size: 8, font: fontRegular, color: textDark
-    });
+    page.drawText(sanitizePdfText("Temp: "), { x: margin + 280, y: y - 14, size: 8, font: fontBold, color: textDark });
+    page.drawText(
+      sanitizePdfText(data.temperatura ? `${data.temperatura} oC` : "-"),
+      { x: margin + 308, y: y - 14, size: 8, font: fontRegular, color: textDark }
+    );
 
-    page.drawText(`Índice Choque: `, { x: margin + 370, y: y - 14, size: 8, font: fontBold, color: textDark });
-    page.drawText(`${data.indice_choque ?? "—"}`, {
-      x: margin + 435, y: y - 14, size: 8, font: fontRegular, color: textDark
-    });
+    page.drawText(sanitizePdfText("Índice Choque: "), { x: margin + 370, y: y - 14, size: 8, font: fontBold, color: textDark });
+    page.drawText(
+      sanitizePdfText(String(data.indice_choque ?? "-")),
+      { x: margin + 435, y: y - 14, size: 8, font: fontRegular, color: textDark }
+    );
 
     // Fila 2: Puntajes y Semáforo
-    page.drawText(`Puntos Parámetros: ${Number(data.puntaje_consulta_parametros) || 0} pts`, {
-      x: margin + 8, y: y - 30, size: 8, font: fontRegular, color: textDark
-    });
+    page.drawText(
+      sanitizePdfText(`Puntos Parámetros: ${Number(data.puntaje_consulta_parametros) || 0} pts`),
+      { x: margin + 8, y: y - 30, size: 8, font: fontRegular, color: textDark }
+    );
 
-    page.drawText(`Puntos Antecedentes: ${Number(data.factor_riesgo_antecedentes) || 0} pts`, {
-      x: margin + 140, y: y - 30, size: 8, font: fontRegular, color: textDark
-    });
+    page.drawText(
+      sanitizePdfText(`Puntos Antecedentes: ${Number(data.factor_riesgo_antecedentes) || 0} pts`),
+      { x: margin + 140, y: y - 30, size: 8, font: fontRegular, color: textDark }
+    );
 
-    page.drawText(`Puntos Tamizajes: ${Number(data.factor_riesgo_tamizajes) || 0} pts`, {
-      x: margin + 285, y: y - 30, size: 8, font: fontRegular, color: textDark
-    });
+    page.drawText(
+      sanitizePdfText(`Puntos Tamizajes: ${Number(data.factor_riesgo_tamizajes) || 0} pts`),
+      { x: margin + 285, y: y - 30, size: 8, font: fontRegular, color: textDark }
+    );
 
-    // Badge de Riesgo Total
+    // Badge de Riesgo Total (con >= compatible WinAnsi)
     const badgeText = isAltoRiesgo
-      ? `TOTAL: ${Number(data.puntaje_total_consulta) || 0} PTS (ALTO RIESGO / CRÍTICO ≥ 25)`
-      : `TOTAL: ${Number(data.puntaje_total_consulta) || 0} PTS (RIESGO MODERADO / BAJO)`;
+      ? sanitizePdfText(`TOTAL: ${Number(data.puntaje_total_consulta) || 0} PTS (ALTO RIESGO / CRÍTICO >= 25)`)
+      : sanitizePdfText(`TOTAL: ${Number(data.puntaje_total_consulta) || 0} PTS (RIESGO MODERADO / BAJO)`);
 
     page.drawRectangle({
       x: margin + 8,
@@ -400,7 +419,7 @@ export async function GET(request: Request, context: RouteContext) {
       borderWidth: 0.5,
     });
 
-    page.drawText("3. PLAN DE ACCIONES COLEGIADAS POR NIVEL DE ATENCIÓN", {
+    page.drawText(sanitizePdfText("3. PLAN DE ACCIONES COLEGIADAS POR NIVEL DE ATENCIÓN"), {
       x: margin + 8,
       y: y - 13,
       size: 8.5,
@@ -419,7 +438,7 @@ export async function GET(request: Request, context: RouteContext) {
     for (const nivel of nivelesInfo) {
       const itemsNivel = acciones.filter((a) => a.nivel_atencion === nivel.key);
 
-      page.drawText(nivel.title, {
+      page.drawText(sanitizePdfText(nivel.title), {
         x: margin + 4,
         y: y,
         size: 8,
@@ -429,7 +448,7 @@ export async function GET(request: Request, context: RouteContext) {
       y -= 10;
 
       if (itemsNivel.length === 0) {
-        page.drawText("• Sin acciones adicionales prescritas para este nivel.", {
+        page.drawText(sanitizePdfText("* Sin acciones adicionales prescritas para este nivel."), {
           x: margin + 12,
           y,
           size: 7.5,
@@ -443,7 +462,7 @@ export async function GET(request: Request, context: RouteContext) {
           const lines = wrapText(`${item.orden}. ${item.descripcion} ${statusText}`, contentWidth - 20, 7.5, fontRegular);
 
           for (const line of lines) {
-            page.drawText(line, {
+            page.drawText(sanitizePdfText(line), {
               x: margin + 12,
               y,
               size: 7.5,
@@ -472,7 +491,7 @@ export async function GET(request: Request, context: RouteContext) {
       borderWidth: 0.5,
     });
 
-    page.drawText("4. OBSERVACIONES GENERALES Y ACUERDOS DEL COLEGIADO", {
+    page.drawText(sanitizePdfText("4. OBSERVACIONES GENERALES Y ACUERDOS DEL COLEGIADO"), {
       x: margin + 8,
       y: y - 12,
       size: 8,
@@ -497,7 +516,7 @@ export async function GET(request: Request, context: RouteContext) {
 
     let obsY = y - 10;
     for (const l of obsLines) {
-      page.drawText(l, {
+      page.drawText(sanitizePdfText(l), {
         x: margin + 8,
         y: obsY,
         size: 7.5,
@@ -523,8 +542,8 @@ export async function GET(request: Request, context: RouteContext) {
       thickness: 0.7,
       color: textMuted,
     });
-    page.drawText("Médico Tratante / Unidad", { x: margin + 8, y: y + 14, size: 7, font: fontBold, color: textDark });
-    page.drawText("Nombre y Cédula Profesional", { x: margin + 8, y: y + 4, size: 6.5, font: fontRegular, color: textMuted });
+    page.drawText(sanitizePdfText("Médico Tratante / Unidad"), { x: margin + 8, y: y + 14, size: 7, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText("Nombre y Cédula Profesional"), { x: margin + 8, y: y + 4, size: 6.5, font: fontRegular, color: textMuted });
 
     // Firma 2: Colegiador / Coordinador
     page.drawLine({
@@ -533,8 +552,8 @@ export async function GET(request: Request, context: RouteContext) {
       thickness: 0.7,
       color: textMuted,
     });
-    page.drawText("Especialista Colegiador", { x: margin + colWidth + 20, y: y + 14, size: 7, font: fontBold, color: textDark });
-    page.drawText("Coordinación Estatal MARO", { x: margin + colWidth + 20, y: y + 4, size: 6.5, font: fontRegular, color: textMuted });
+    page.drawText(sanitizePdfText("Especialista Colegiador"), { x: margin + colWidth + 20, y: y + 14, size: 7, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText("Coordinación Estatal MARO"), { x: margin + colWidth + 20, y: y + 4, size: 6.5, font: fontRegular, color: textMuted });
 
     // Firma 3: Sello
     page.drawLine({
@@ -543,8 +562,8 @@ export async function GET(request: Request, context: RouteContext) {
       thickness: 0.7,
       color: textMuted,
     });
-    page.drawText("Sello de la Unidad / Hospital", { x: margin + colWidth * 2 + 30, y: y + 14, size: 7, font: fontBold, color: textDark });
-    page.drawText("Fecha y Firma de Recepción", { x: margin + colWidth * 2 + 30, y: y + 4, size: 6.5, font: fontRegular, color: textMuted });
+    page.drawText(sanitizePdfText("Sello de la Unidad / Hospital"), { x: margin + colWidth * 2 + 30, y: y + 14, size: 7, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText("Fecha y Firma de Recepción"), { x: margin + colWidth * 2 + 30, y: y + 4, size: 6.5, font: fontRegular, color: textMuted });
 
     // Generar Buffer del PDF
     const pdfBytes = await pdfDoc.save();
