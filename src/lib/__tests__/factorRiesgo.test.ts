@@ -118,17 +118,26 @@ describe("Motor de Factores de Riesgo Obstétrico (riesgoFactores)", () => {
       expect(r2.puntajeTotal).toBe(4);
     });
 
-    it("debe ponderar correctamente antecedentes graves (4 puntos c/u)", () => {
+    it("debe ponderar correctamente antecedentes graves (4 puntos c/u) y embarazo ectópico (6 puntos)", () => {
       const resultado = evaluarFactoresRiesgo({
         ant_preeclampsia: true,
         ant_hemorragia: true,
         ant_sepsis: true,
         ant_bajo_peso_macrosomia: true,
         ant_muerte_perinatal: true,
+        ant_embarazo_ectopico: true,
       });
-      // 5 antecedentes * 4 puntos = 20 puntos
-      expect(resultado.puntajeTotal).toBe(20);
-      expect(resultado.factores).toHaveLength(5);
+      // 5 antecedentes * 4 puntos + 6 puntos (embarazo ectópico) = 26 puntos
+      expect(resultado.puntajeTotal).toBe(26);
+      expect(resultado.factores).toHaveLength(6);
+      expect(resultado.nivel).toBe("CRITICO");
+    });
+
+    it("debe evaluar antecedente de embarazo ectópico individualmente con 6 puntos", () => {
+      const r = evaluarFactoresRiesgo({ ant_embarazo_ectopico: true });
+      expect(r.puntajeTotal).toBe(6);
+      expect(r.factores[0].campo).toBe("Antecedente de Embarazo Ectópico");
+      expect(r.factores[0].puntos).toBe(6);
     });
 
     it("debe sumar comorbilidades crónicas y toxicomanías", () => {
@@ -136,10 +145,25 @@ describe("Motor de Factores de Riesgo Obstétrico (riesgoFactores)", () => {
         factor_diabetes: true,     // 4 pts
         factor_hipertension: true, // 4 pts
         factor_tabaquismo: true,   // 2 pts
-        factor_drogas_ilicitas: true, // 4 pts
+        factor_drogas_ilicitas: true, // 6 pts (Otras drogas)
       });
-      expect(resultado.puntajeTotal).toBe(14); // 4 + 4 + 2 + 4
+      expect(resultado.puntajeTotal).toBe(16); // 4 + 4 + 2 + 6
       expect(resultado.factores).toHaveLength(4);
+    });
+
+    it("debe evaluar y sumar correctamente los nuevos factores de riesgo agregados", () => {
+      const resultado = evaluarFactoresRiesgo({
+        factor_endocrinopatia: true,            // 12 pts
+        factor_neumopatia: true,                // 12 pts
+        factor_drogas_ilicitas: true,           // 6 pts (Otras drogas)
+        factor_its: true,                       // 4 pts
+        factor_cirugias_pelvico_uterinas: true, // 4 pts
+        factor_discapacidad: true,              // 12 pts
+      });
+      // 12 + 12 + 6 + 4 + 4 + 12 = 50 puntos
+      expect(resultado.puntajeTotal).toBe(50);
+      expect(resultado.factores).toHaveLength(6);
+      expect(resultado.nivel).toBe("CRITICO");
     });
 
     it("debe evaluar factores sociodemográficos y epidemiológicos", () => {

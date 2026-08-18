@@ -34,6 +34,7 @@ type Patient = {
   ant_sepsis?: boolean | number;
   ant_bajo_peso_macrosomia?: boolean | number;
   ant_muerte_perinatal?: boolean | number;
+  ant_embarazo_ectopico?: boolean | number;
   factor_diabetes?: boolean | number;
   factor_hipertension?: boolean | number;
   factor_obesidad?: boolean | number;
@@ -47,6 +48,12 @@ type Patient = {
   factor_alcoholismo?: boolean | number;
   factor_tabaquismo?: boolean | number;
   factor_drogas_ilicitas?: boolean | number;
+  factor_endocrinopatia?: boolean | number;
+  factor_neumopatia?: boolean | number;
+  factor_its?: boolean | number;
+  factor_cirugias_pelvico_uterinas?: boolean | number;
+  factor_discapacidad?: boolean | number;
+  otros_antecedentes?: string | null;
   factores_riesgo_epid?: 'ninguno' | 'es_contacto' | 'es_portadora';
   indigena?: boolean | number;
   migrante?: boolean | number;
@@ -175,6 +182,7 @@ export default function PacienteDetalle() {
       ant_sepsis: !!patient.ant_sepsis,
       ant_bajo_peso_macrosomia: !!patient.ant_bajo_peso_macrosomia,
       ant_muerte_perinatal: !!patient.ant_muerte_perinatal,
+      ant_embarazo_ectopico: !!patient.ant_embarazo_ectopico,
       factor_diabetes: !!patient.factor_diabetes,
       factor_hipertension: !!patient.factor_hipertension,
       factor_obesidad: !!patient.factor_obesidad,
@@ -188,6 +196,11 @@ export default function PacienteDetalle() {
       factor_alcoholismo: !!patient.factor_alcoholismo,
       factor_tabaquismo: !!patient.factor_tabaquismo,
       factor_drogas_ilicitas: !!patient.factor_drogas_ilicitas,
+      factor_endocrinopatia: !!patient.factor_endocrinopatia,
+      factor_neumopatia: !!patient.factor_neumopatia,
+      factor_its: !!patient.factor_its,
+      factor_cirugias_pelvico_uterinas: !!patient.factor_cirugias_pelvico_uterinas,
+      factor_discapacidad: !!patient.factor_discapacidad,
       factores_riesgo_epid: patient.factores_riesgo_epid || 'ninguno',
       indigena: !!patient.indigena,
       migrante: !!patient.migrante,

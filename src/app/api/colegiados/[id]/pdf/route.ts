@@ -89,11 +89,17 @@ export async function GET(request: Request, context: RouteContext) {
         p.ant_preeclampsia,
         p.ant_hemorragia,
         p.ant_sepsis,
+        p.ant_embarazo_ectopico,
         p.factor_diabetes,
         p.factor_hipertension,
         p.factor_obesidad,
         p.factor_cardiopatia,
         p.factor_nefropatia,
+        p.factor_endocrinopatia,
+        p.factor_neumopatia,
+        p.factor_its,
+        p.factor_cirugias_pelvico_uterinas,
+        p.factor_discapacidad,
         p.factor_riesgo_antecedentes,
         p.factor_riesgo_tamizajes
       FROM consultas_prenatales c
@@ -289,10 +295,15 @@ export async function GET(request: Request, context: RouteContext) {
     const antClaves = [
       data.ant_preeclampsia ? "Preeclampsia previa" : null,
       data.ant_hemorragia ? "Hemorragia previa" : null,
+      data.ant_embarazo_ectopico ? "Embarazo ectópico previo" : null,
       data.factor_diabetes ? "Diabetes" : null,
       data.factor_hipertension ? "Hipertensión" : null,
       data.factor_cardiopatia ? "Cardiopatía" : null,
       data.factor_nefropatia ? "Nefropatía" : null,
+      data.factor_endocrinopatia ? "Endocrinopatía" : null,
+      data.factor_neumopatia ? "Neumopatía" : null,
+      data.factor_discapacidad ? "Discapacidad" : null,
+      data.factor_cirugias_pelvico_uterinas ? "Cirugías pélvico uterinas" : null,
     ].filter(Boolean).join(", ") || "Sin comorbilidades registradas";
 
     page.drawText(sanitizePdfText("Antecedentes: "), { x: margin + 200, y: y - 42, size: 8, font: fontBold, color: textDark });

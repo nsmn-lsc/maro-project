@@ -40,6 +40,7 @@ type Paciente = {
   ant_sepsis?: boolean | number;
   ant_bajo_peso_macrosomia?: boolean | number;
   ant_muerte_perinatal?: boolean | number;
+  ant_embarazo_ectopico?: boolean | number;
   factor_diabetes?: boolean | number;
   factor_hipertension?: boolean | number;
   factor_obesidad?: boolean | number;
@@ -53,6 +54,12 @@ type Paciente = {
   factor_alcoholismo?: boolean | number;
   factor_tabaquismo?: boolean | number;
   factor_drogas_ilicitas?: boolean | number;
+  factor_endocrinopatia?: boolean | number;
+  factor_neumopatia?: boolean | number;
+  factor_its?: boolean | number;
+  factor_cirugias_pelvico_uterinas?: boolean | number;
+  factor_discapacidad?: boolean | number;
+  otros_antecedentes?: string | null;
   factores_riesgo_epid?: "ninguno" | "es_contacto" | "es_portadora";
   prueba_vih?: string | null;
   prueba_vdrl?: string | null;
@@ -308,6 +315,7 @@ export default function RegionPacienteResumenPage() {
       ant_sepsis: !!paciente.ant_sepsis,
       ant_bajo_peso_macrosomia: !!paciente.ant_bajo_peso_macrosomia,
       ant_muerte_perinatal: !!paciente.ant_muerte_perinatal,
+      ant_embarazo_ectopico: !!paciente.ant_embarazo_ectopico,
       factor_diabetes: !!paciente.factor_diabetes,
       factor_hipertension: !!paciente.factor_hipertension,
       factor_obesidad: !!paciente.factor_obesidad,
@@ -321,6 +329,11 @@ export default function RegionPacienteResumenPage() {
       factor_alcoholismo: !!paciente.factor_alcoholismo,
       factor_tabaquismo: !!paciente.factor_tabaquismo,
       factor_drogas_ilicitas: !!paciente.factor_drogas_ilicitas,
+      factor_endocrinopatia: !!paciente.factor_endocrinopatia,
+      factor_neumopatia: !!paciente.factor_neumopatia,
+      factor_its: !!paciente.factor_its,
+      factor_cirugias_pelvico_uterinas: !!paciente.factor_cirugias_pelvico_uterinas,
+      factor_discapacidad: !!paciente.factor_discapacidad,
       factores_riesgo_epid: paciente.factores_riesgo_epid || "ninguno",
     };
 
@@ -494,6 +507,7 @@ export default function RegionPacienteResumenPage() {
                 <Info label="Antecedente sepsis" value={antecedentesConPuntos.ant_sepsis ? `${boolLabel(paciente.ant_sepsis)} · ${antecedentesConPuntos.ant_sepsis} pts` : boolLabel(paciente.ant_sepsis)} toneClass={scoreToneClass(antecedentesConPuntos.ant_sepsis || 0)} />
                 <Info label="Bajo peso/macrosomía" value={antecedentesConPuntos.ant_bajo_peso_macrosomia ? `${boolLabel(paciente.ant_bajo_peso_macrosomia)} · ${antecedentesConPuntos.ant_bajo_peso_macrosomia} pts` : boolLabel(paciente.ant_bajo_peso_macrosomia)} toneClass={scoreToneClass(antecedentesConPuntos.ant_bajo_peso_macrosomia || 0)} />
                 <Info label="Muerte perinatal" value={antecedentesConPuntos.ant_muerte_perinatal ? `${boolLabel(paciente.ant_muerte_perinatal)} · ${antecedentesConPuntos.ant_muerte_perinatal} pts` : boolLabel(paciente.ant_muerte_perinatal)} toneClass={scoreToneClass(antecedentesConPuntos.ant_muerte_perinatal || 0)} />
+                <Info label="Embarazo ectópico" value={antecedentesConPuntos.ant_embarazo_ectopico ? `${boolLabel(paciente.ant_embarazo_ectopico)} · ${antecedentesConPuntos.ant_embarazo_ectopico} pts` : boolLabel(paciente.ant_embarazo_ectopico)} toneClass={scoreToneClass(antecedentesConPuntos.ant_embarazo_ectopico || 0)} />
                 <Info label="Diabetes" value={antecedentesConPuntos.factor_diabetes ? `${boolLabel(paciente.factor_diabetes)} · ${antecedentesConPuntos.factor_diabetes} pts` : boolLabel(paciente.factor_diabetes)} toneClass={scoreToneClass(antecedentesConPuntos.factor_diabetes || 0)} />
                 <Info label="Hipertensión" value={antecedentesConPuntos.factor_hipertension ? `${boolLabel(paciente.factor_hipertension)} · ${antecedentesConPuntos.factor_hipertension} pts` : boolLabel(paciente.factor_hipertension)} toneClass={scoreToneClass(antecedentesConPuntos.factor_hipertension || 0)} />
                 <Info label="Obesidad" value={antecedentesConPuntos.factor_obesidad ? `${boolLabel(paciente.factor_obesidad)} · ${antecedentesConPuntos.factor_obesidad} pts` : boolLabel(paciente.factor_obesidad)} toneClass={scoreToneClass(antecedentesConPuntos.factor_obesidad || 0)} />
@@ -506,7 +520,15 @@ export default function RegionPacienteResumenPage() {
                 <Info label="Enf. psiquiátrica" value={antecedentesConPuntos.factor_enf_psiquiatrica ? `${boolLabel(paciente.factor_enf_psiquiatrica)} · ${antecedentesConPuntos.factor_enf_psiquiatrica} pts` : boolLabel(paciente.factor_enf_psiquiatrica)} toneClass={scoreToneClass(antecedentesConPuntos.factor_enf_psiquiatrica || 0)} />
                 <Info label="Alcoholismo" value={antecedentesConPuntos.factor_alcoholismo ? `${boolLabel(paciente.factor_alcoholismo)} · ${antecedentesConPuntos.factor_alcoholismo} pts` : boolLabel(paciente.factor_alcoholismo)} toneClass={scoreToneClass(antecedentesConPuntos.factor_alcoholismo || 0)} />
                 <Info label="Tabaquismo" value={antecedentesConPuntos.factor_tabaquismo ? `${boolLabel(paciente.factor_tabaquismo)} · ${antecedentesConPuntos.factor_tabaquismo} pts` : boolLabel(paciente.factor_tabaquismo)} toneClass={scoreToneClass(antecedentesConPuntos.factor_tabaquismo || 0)} />
-                <Info label="Drogas ilícitas" value={antecedentesConPuntos.factor_drogas_ilicitas ? `${boolLabel(paciente.factor_drogas_ilicitas)} · ${antecedentesConPuntos.factor_drogas_ilicitas} pts` : boolLabel(paciente.factor_drogas_ilicitas)} toneClass={scoreToneClass(antecedentesConPuntos.factor_drogas_ilicitas || 0)} />
+                <Info label="Otras drogas" value={antecedentesConPuntos.factor_drogas_ilicitas ? `${boolLabel(paciente.factor_drogas_ilicitas)} · ${antecedentesConPuntos.factor_drogas_ilicitas} pts` : boolLabel(paciente.factor_drogas_ilicitas)} toneClass={scoreToneClass(antecedentesConPuntos.factor_drogas_ilicitas || 0)} />
+                <Info label="Endocrinopatía" value={antecedentesConPuntos.factor_endocrinopatia ? `${boolLabel(paciente.factor_endocrinopatia)} · ${antecedentesConPuntos.factor_endocrinopatia} pts` : boolLabel(paciente.factor_endocrinopatia)} toneClass={scoreToneClass(antecedentesConPuntos.factor_endocrinopatia || 0)} />
+                <Info label="Neumopatía" value={antecedentesConPuntos.factor_neumopatia ? `${boolLabel(paciente.factor_neumopatia)} · ${antecedentesConPuntos.factor_neumopatia} pts` : boolLabel(paciente.factor_neumopatia)} toneClass={scoreToneClass(antecedentesConPuntos.factor_neumopatia || 0)} />
+                <Info label="ITS" value={antecedentesConPuntos.factor_its ? `${boolLabel(paciente.factor_its)} · ${antecedentesConPuntos.factor_its} pts` : boolLabel(paciente.factor_its)} toneClass={scoreToneClass(antecedentesConPuntos.factor_its || 0)} />
+                <Info label="Cirugías pélvico uterinas" value={antecedentesConPuntos.factor_cirugias_pelvico_uterinas ? `${boolLabel(paciente.factor_cirugias_pelvico_uterinas)} · ${antecedentesConPuntos.factor_cirugias_pelvico_uterinas} pts` : boolLabel(paciente.factor_cirugias_pelvico_uterinas)} toneClass={scoreToneClass(antecedentesConPuntos.factor_cirugias_pelvico_uterinas || 0)} />
+                <Info label="Discapacidad" value={antecedentesConPuntos.factor_discapacidad ? `${boolLabel(paciente.factor_discapacidad)} · ${antecedentesConPuntos.factor_discapacidad} pts` : boolLabel(paciente.factor_discapacidad)} toneClass={scoreToneClass(antecedentesConPuntos.factor_discapacidad || 0)} />
+                {paciente.otros_antecedentes && (
+                  <Info label="Otros antecedentes" value={paciente.otros_antecedentes} />
+                )}
               </div>
             </CollapsibleSection>
 

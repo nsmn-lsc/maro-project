@@ -30,6 +30,7 @@ interface ConsultaFocosRow {
   ant_sepsis?: number | boolean | null;
   ant_bajo_peso_macrosomia?: number | boolean | null;
   ant_muerte_perinatal?: number | boolean | null;
+  ant_embarazo_ectopico?: number | boolean | null;
   factor_diabetes?: number | boolean | null;
   factor_hipertension?: number | boolean | null;
   factor_obesidad?: number | boolean | null;
@@ -43,6 +44,11 @@ interface ConsultaFocosRow {
   factor_alcoholismo?: number | boolean | null;
   factor_tabaquismo?: number | boolean | null;
   factor_drogas_ilicitas?: number | boolean | null;
+  factor_endocrinopatia?: number | boolean | null;
+  factor_neumopatia?: number | boolean | null;
+  factor_its?: number | boolean | null;
+  factor_cirugias_pelvico_uterinas?: number | boolean | null;
+  factor_discapacidad?: number | boolean | null;
   factores_riesgo_epid?: string | null;
   ta_sistolica?: number | string | null;
   ta_diastolica?: number | string | null;
@@ -166,6 +172,7 @@ function getFocosDeAlerta(row: ConsultaFocosRow): string {
   if (Number(row.ant_sepsis) === 1) focos.push("• Antecedente de sepsis");
   if (Number(row.ant_bajo_peso_macrosomia) === 1) focos.push("• Antecedente de bajo peso o macrosomía");
   if (Number(row.ant_muerte_perinatal) === 1) focos.push("• Antecedente de muerte perinatal");
+  if (Number(row.ant_embarazo_ectopico) === 1) focos.push("• Antecedente de embarazo ectópico");
 
   // --- 3. Comorbilidades y Toxicomanías ---
   if (Number(row.factor_diabetes) === 1) focos.push("• Comorbilidad: Diabetes");
@@ -180,7 +187,12 @@ function getFocosDeAlerta(row: ConsultaFocosRow): string {
   if (Number(row.factor_enf_psiquiatrica) === 1) focos.push("• Comorbilidad: Enfermedad psiquiátrica");
   if (Number(row.factor_alcoholismo) === 1) focos.push("• Toxicomanía: Alcoholismo");
   if (Number(row.factor_tabaquismo) === 1) focos.push("• Toxicomanía: Tabaquismo");
-  if (Number(row.factor_drogas_ilicitas) === 1) focos.push("• Toxicomanía: Uso de drogas ilícitas");
+  if (Number(row.factor_drogas_ilicitas) === 1) focos.push("• Toxicomanía: Otras drogas");
+  if (Number(row.factor_endocrinopatia) === 1) focos.push("• Comorbilidad: Endocrinopatía (12 pts - Referencia a 2do nivel)");
+  if (Number(row.factor_neumopatia) === 1) focos.push("• Comorbilidad: Neumopatía (12 pts - Referencia a 2do nivel)");
+  if (Number(row.factor_its) === 1) focos.push("• Antecedente: Infección de Transmisión Sexual (ITS)");
+  if (Number(row.factor_cirugias_pelvico_uterinas) === 1) focos.push("• Antecedente: Cirugías Pélvico Uterinas");
+  if (Number(row.factor_discapacidad) === 1) focos.push("• Condición: Discapacidad (12 pts - Manejo conjunto 2do nivel)");
 
   // --- 4. Riesgo Epidemiológico ---
   if (row.factores_riesgo_epid === "es_contacto") focos.push("• Riesgo epidemiológico: Contacto");
@@ -334,6 +346,7 @@ export async function GET(request: Request) {
         cp.ant_sepsis,
         cp.ant_bajo_peso_macrosomia,
         cp.ant_muerte_perinatal,
+        cp.ant_embarazo_ectopico,
         cp.factor_diabetes,
         cp.factor_hipertension,
         cp.factor_obesidad,
@@ -347,6 +360,11 @@ export async function GET(request: Request) {
         cp.factor_alcoholismo,
         cp.factor_tabaquismo,
         cp.factor_drogas_ilicitas,
+        cp.factor_endocrinopatia,
+        cp.factor_neumopatia,
+        cp.factor_its,
+        cp.factor_cirugias_pelvico_uterinas,
+        cp.factor_discapacidad,
         cp.factores_riesgo_epid,
         cp.gestas,
         cp.partos,

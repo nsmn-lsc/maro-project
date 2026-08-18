@@ -16,6 +16,7 @@ export interface DatosFactoresPaciente {
   ant_sepsis?: boolean;
   ant_bajo_peso_macrosomia?: boolean;
   ant_muerte_perinatal?: boolean;
+  ant_embarazo_ectopico?: boolean;
   // Factores de riesgo (comorbilidades y toxicomanías)
   factor_diabetes?: boolean;
   factor_hipertension?: boolean;
@@ -30,6 +31,11 @@ export interface DatosFactoresPaciente {
   factor_alcoholismo?: boolean;
   factor_tabaquismo?: boolean;
   factor_drogas_ilicitas?: boolean;
+  factor_endocrinopatia?: boolean;
+  factor_neumopatia?: boolean;
+  factor_its?: boolean;
+  factor_cirugias_pelvico_uterinas?: boolean;
+  factor_discapacidad?: boolean;
   // Factores epidemiológicos
   factores_riesgo_epid?: 'ninguno' | 'es_contacto' | 'es_portadora';
   // Variables adicionales para sumatoria
@@ -90,6 +96,9 @@ const CRITERIOS = {
   ant_muerte_perinatal: [
     { valor: true, puntos: 4 },
   ],
+  ant_embarazo_ectopico: [
+    { valor: true, puntos: 6 },
+  ],
   // FACTORES DE RIESGO: Comorbilidades y toxicomanías
   factor_diabetes: [
     { valor: true, puntos: 4 },
@@ -128,7 +137,22 @@ const CRITERIOS = {
     { valor: true, puntos: 2 },
   ],
   factor_drogas_ilicitas: [
+    { valor: true, puntos: 6 },
+  ],
+  factor_endocrinopatia: [
+    { valor: true, puntos: 12 },
+  ],
+  factor_neumopatia: [
+    { valor: true, puntos: 12 },
+  ],
+  factor_its: [
     { valor: true, puntos: 4 },
+  ],
+  factor_cirugias_pelvico_uterinas: [
+    { valor: true, puntos: 4 },
+  ],
+  factor_discapacidad: [
+    { valor: true, puntos: 12 },
   ],
   // FACTORES EPIDEMIOLÓGICOS
   factores_riesgo_epid: [
@@ -280,6 +304,15 @@ export function evaluarCampoIndividual(
     };
   }
 
+  if (campo === "ant_embarazo_ectopico" && valor === true) {
+    return {
+      campo: "Antecedente de Embarazo Ectópico",
+      valor: "Sí",
+      puntos: 6,
+      tipo: "ANTECEDENTE",
+    };
+  }
+
   // Campos booleanos genéricos - Factores de riesgo
   const camposBooleanos: Array<keyof DatosFactoresPaciente> = [
     'factor_diabetes',
@@ -295,6 +328,11 @@ export function evaluarCampoIndividual(
     'factor_alcoholismo',
     'factor_tabaquismo',
     'factor_drogas_ilicitas',
+    'factor_endocrinopatia',
+    'factor_neumopatia',
+    'factor_its',
+    'factor_cirugias_pelvico_uterinas',
+    'factor_discapacidad',
     'indigena',
     'migrante',
   ];
@@ -317,7 +355,12 @@ export function evaluarCampoIndividual(
         factor_enf_psiquiatrica: 'Enfermedad psiquiátrica',
         factor_alcoholismo: 'Alcoholismo',
         factor_tabaquismo: 'Tabaquismo',
-        factor_drogas_ilicitas: 'Drogas ilícitas',
+        factor_drogas_ilicitas: 'Otras drogas',
+        factor_endocrinopatia: 'Endocrinopatía',
+        factor_neumopatia: 'Neumopatía',
+        factor_its: 'ITS',
+        factor_cirugias_pelvico_uterinas: 'Cirugías pélvico uterinas',
+        factor_discapacidad: 'Discapacidad',
         indigena: 'Población Indígena',
         migrante: 'Población Migrante',
       };

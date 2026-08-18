@@ -164,6 +164,13 @@ export default function NuevoPaciente() {
     factor_alcoholismo: false,
     factor_tabaquismo: false,
     factor_drogas_ilicitas: false,
+    factor_endocrinopatia: false,
+    factor_neumopatia: false,
+    factor_its: false,
+    factor_cirugias_pelvico_uterinas: false,
+    factor_discapacidad: false,
+    tiene_otros_antecedentes: false,
+    otros_antecedentes: "",
 
     // Antecedentes gineco-obstétricos
     menarca: "",
@@ -176,6 +183,7 @@ export default function NuevoPaciente() {
     ant_sepsis: false,
     ant_bajo_peso_macrosomia: false,
     ant_muerte_perinatal: false,
+    ant_embarazo_ectopico: false,
 
     // Tamizajes iniciales (detecciones primer contacto)
     prueba_vih: "",
@@ -249,6 +257,8 @@ export default function NuevoPaciente() {
     if (form.factor_nefropatia) list.push("Nefropatía");
     if (form.factor_coagulopatias) list.push("Coagulopatías");
     if (form.factor_enf_psiquiatrica) list.push("Enfermedad psiquiátrica");
+    if (form.factor_endocrinopatia) list.push("Endocrinopatía");
+    if (form.factor_neumopatia) list.push("Neumopatía");
     return list;
   }, [
     form.factor_diabetes,
@@ -260,6 +270,8 @@ export default function NuevoPaciente() {
     form.factor_nefropatia,
     form.factor_coagulopatias,
     form.factor_enf_psiquiatrica,
+    form.factor_endocrinopatia,
+    form.factor_neumopatia,
   ]);
 
   const tieneAlertaSegundoNivel = factoresSegundoNivelActivos.length > 0;
@@ -279,6 +291,9 @@ export default function NuevoPaciente() {
     
     if (form.tipo_riesgo_social === "Medio" || form.tipo_riesgo_social === "Alto") {
       recs.push("Fortalecer red social, vinculación con acción comunitaria");
+    }
+    if (form.factor_discapacidad) {
+      recs.push("Fortalecer red social, manejo conjunto con segundo nivel de atención");
     }
     if (form.indigena) {
       recs.push("Asegurar comunicación con enfoque multicultural y traductor si es requerido");
@@ -557,6 +572,7 @@ export default function NuevoPaciente() {
           ant_sepsis: form.ant_sepsis,
           ant_bajo_peso_macrosomia: form.ant_bajo_peso_macrosomia,
           ant_muerte_perinatal: form.ant_muerte_perinatal,
+          ant_embarazo_ectopico: form.ant_embarazo_ectopico,
           // Factores de riesgo
           factor_diabetes: form.factor_diabetes,
           factor_hipertension: form.factor_hipertension,
@@ -571,6 +587,12 @@ export default function NuevoPaciente() {
           factor_alcoholismo: form.factor_alcoholismo,
           factor_tabaquismo: form.factor_tabaquismo,
           factor_drogas_ilicitas: form.factor_drogas_ilicitas,
+          factor_endocrinopatia: form.factor_endocrinopatia,
+          factor_neumopatia: form.factor_neumopatia,
+          factor_its: form.factor_its,
+          factor_cirugias_pelvico_uterinas: form.factor_cirugias_pelvico_uterinas,
+          factor_discapacidad: form.factor_discapacidad,
+          otros_antecedentes: form.tiene_otros_antecedentes ? (form.otros_antecedentes?.trim().slice(0, 50) || null) : null,
           // Tamizajes iniciales
           prueba_vih: form.prueba_vih || null,
           prueba_vdrl: form.prueba_vdrl || null,
@@ -662,20 +684,18 @@ export default function NuevoPaciente() {
           {/* PANEL DE RECOMENDACIONES CLÍNICAS */}
           <aside className="lg:col-span-1 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-6 space-y-4 shadow-xl lg:sticky lg:top-6">
             <h3 className="text-lg font-semibold text-emerald-300 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              Recomendaciones
+              <i className="fa-solid fa-clipboard-check text-emerald-400"></i>
+              <span>Recomendaciones</span>
             </h3>
-            <p className="text-xs text-slate-300/70 leading-relaxed border-b border-white/10 pb-3">
+            <p className="text-xs text-slate-300 leading-relaxed border-b border-white/10 pb-3">
               Guías y acciones sugeridas en tiempo real según el perfil clínico de la paciente.
             </p>
 
             {/* ALERTA DE SEGUNDO NIVEL POR FACTORES DE RIESGO SELECCIONADOS */}
             {tieneAlertaSegundoNivel && (
               <div className="rounded-xl border border-amber-400/50 bg-amber-500/20 p-3.5 space-y-2 shadow-lg shadow-amber-950/30 animate-in fade-in duration-200">
-                <div className="flex items-center gap-1.5 text-amber-300 font-bold text-xs uppercase tracking-wider">
-                  <span className="text-sm">⚠️</span>
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-triangle-exclamation text-sm text-amber-400"></i>
                   <span>Alerta de Referencia</span>
                 </div>
                 <p className="text-xs font-semibold text-amber-100 leading-snug">
@@ -697,8 +717,8 @@ export default function NuevoPaciente() {
             {/* ALERTA DE NOTIFICACION POR TAMIZAJES REACTIVOS */}
             {tieneAlertaNotificacion && (
               <div className="rounded-xl border border-rose-400/60 bg-rose-500/20 p-3.5 space-y-2 shadow-lg shadow-rose-950/30 animate-in fade-in duration-200">
-                <div className="flex items-center gap-1.5 text-rose-300 font-bold text-xs uppercase tracking-wider">
-                  <span className="text-sm">📢</span>
+                <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-bullhorn text-sm text-rose-400"></i>
                   <span>Alerta de Notificación</span>
                 </div>
                 <p className="text-xs font-semibold text-rose-100 leading-snug">
@@ -717,8 +737,21 @@ export default function NuevoPaciente() {
               </div>
             )}
 
+            {/* ALERTA DE DISCAPACIDAD */}
+            {form.factor_discapacidad && (
+              <div className="rounded-xl border border-sky-400/60 bg-sky-500/20 p-3.5 space-y-2 shadow-lg shadow-sky-950/30 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-sky-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-wheelchair text-sm text-sky-400"></i>
+                  <span>Alerta de Discapacidad</span>
+                </div>
+                <p className="text-xs font-semibold text-sky-100 leading-snug">
+                  Fortalecer red social, manejo conjunto con segundo nivel de atención
+                </p>
+              </div>
+            )}
+
             {getRecomendaciones().length === 0 ? (
-              !tieneAlertaSegundoNivel && !tieneAlertaNotificacion && (
+              !tieneAlertaSegundoNivel && !tieneAlertaNotificacion && !form.factor_discapacidad && (
                 <p className="text-sm text-slate-400 italic leading-relaxed">
                   No hay recomendaciones activas basadas en los datos capturados actualmente.
                 </p>
@@ -754,9 +787,14 @@ export default function NuevoPaciente() {
           >
           <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-xl font-semibold">Identificación</h2>
-                <p className="text-sm text-slate-200/70">Datos personales y de contacto</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-id-card text-emerald-400 text-lg"></i>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">Identificación</h2>
+                  <p className="text-sm text-slate-300">Datos personales y de contacto</p>
+                </div>
               </div>
               <span className="text-xs text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full">Obligatorio *</span>
             </div>
@@ -840,25 +878,41 @@ export default function NuevoPaciente() {
                   <p className="text-xs text-rose-400 mt-1 font-medium">✗ La edad es obligatoria</p>
                 )}
               </label>
-              <div className="flex flex-wrap items-center gap-6 pt-6">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-white/40 bg-white/10 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900"
-                    checked={form.indigena}
-                    onChange={() => handleToggle("indigena")}
-                  />
-                  <span className="text-slate-100 select-none">Población indígena</span>
-                </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-white/40 bg-white/10 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900"
-                    checked={form.migrante}
-                    onChange={() => handleToggle("migrante")}
-                  />
-                  <span className="text-slate-100 select-none">Población migrante</span>
-                </label>
+              <div className="flex flex-wrap items-center gap-3 pt-6">
+                {[
+                  { key: "indigena", label: "Población indígena", icon: "fa-solid fa-users" },
+                  { key: "migrante", label: "Población migrante", icon: "fa-solid fa-person-walking-luggage" },
+                ].map((item) => {
+                  const isChecked = Boolean((form as any)[item.key]);
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => handleToggle(item.key)}
+                      className={`group flex items-center gap-2.5 h-10 rounded-lg px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                        isChecked
+                          ? "bg-emerald-500/20 border-emerald-400/60 text-white shadow-sm ring-1 ring-emerald-400/30"
+                          : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                      }`}
+                    >
+                      <div
+                        className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                          isChecked
+                            ? "bg-emerald-500 shadow-sm shadow-emerald-500/40"
+                            : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                        }`}
+                      >
+                        <div
+                          className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
+                            isChecked ? "translate-x-3 bg-white" : "translate-x-0 bg-white/70 group-hover:bg-white"
+                          }`}
+                        />
+                      </div>
+                      <i className={`${item.icon} ${isChecked ? "text-emerald-300" : "text-slate-400"}`}></i>
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               <label className="space-y-1 text-sm">
@@ -997,9 +1051,14 @@ export default function NuevoPaciente() {
 
           <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-xl font-semibold">Ingreso CPN y riesgo</h2>
-                <p className="text-sm text-slate-200/70">Datos clínicos iniciales</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-notes-medical text-cyan-400 text-lg"></i>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">Ingreso CPN y riesgo</h2>
+                  <p className="text-sm text-slate-300">Datos clínicos iniciales</p>
+                </div>
               </div>
             </div>
 
@@ -1138,56 +1197,339 @@ export default function NuevoPaciente() {
               </label>
             </div>
 
-            {/* FACTORES DE RIESGO: Comorbilidades y toxicomanías */}
-            <div className="space-y-3">
+            {/* FACTORES DE RIESGO: Comorbilidades y toxicomanías (Rediseño Híbrido: Grupos + Chips) */}
+            <div className="space-y-4">
               <div>
                 <button
                   type="button"
                   onClick={() => setMostrarFactoresRiesgo(!mostrarFactoresRiesgo)}
-                  className="w-full flex items-center justify-between text-sm font-semibold text-slate-100 bg-white/5 border border-white/10 rounded-lg px-4 py-3 hover:bg-white/10 transition-colors"
+                  className="w-full flex items-center justify-between text-sm font-semibold text-slate-100 bg-white/5 border border-white/10 rounded-xl px-4 py-3 hover:bg-white/10 transition-colors"
                 >
-                  <div className="flex items-center gap-2">
-                    <span>{mostrarFactoresRiesgo ? '▼' : '▶'}</span>
-                    <span>Factores de riesgo (Comorbilidades y/o toxicomanías)</span>
+                  <div className="flex items-center gap-2.5">
+                    <i className={`fa-solid ${mostrarFactoresRiesgo ? "fa-chevron-down" : "fa-chevron-right"} text-xs text-slate-400`}></i>
+                    <i className="fa-solid fa-clipboard-list text-base text-indigo-400"></i>
+                    <span>Factores de riesgo (Comorbilidades y antecedentes)</span>
                   </div>
-                  <span className="text-xs text-slate-300">
-                    {mostrarFactoresRiesgo ? 'Ocultar' : 'Mostrar'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const totalSeleccionados = [
+                        form.factor_diabetes, form.factor_hipertension, form.factor_obesidad,
+                        form.factor_cardiopatia, form.factor_hepatopatia, form.factor_enf_autoinmune,
+                        form.factor_nefropatia, form.factor_coagulopatias, form.factor_neuropatia,
+                        form.factor_enf_psiquiatrica, form.factor_alcoholismo, form.factor_tabaquismo,
+                        form.factor_drogas_ilicitas, form.factor_endocrinopatia, form.factor_neumopatia,
+                        form.factor_its, form.factor_cirugias_pelvico_uterinas, form.factor_discapacidad,
+                      ].filter(Boolean).length;
+                      return totalSeleccionados > 0 ? (
+                        <span className="text-[11px] bg-amber-500/20 border border-amber-400/40 text-amber-200 font-semibold px-2 py-0.5 rounded-full">
+                          {totalSeleccionados} {totalSeleccionados === 1 ? 'seleccionado' : 'seleccionados'}
+                        </span>
+                      ) : null;
+                    })()}
+                    <span className="text-xs text-slate-400">
+                      {mostrarFactoresRiesgo ? 'Ocultar' : 'Mostrar'}
+                    </span>
+                  </div>
                 </button>
               </div>
               
               {mostrarFactoresRiesgo && (
-                <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
-                  <p className="text-xs text-slate-200/70 px-1">
-                    Selecciona todos los que apliquen
-                  </p>
-                  
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-3.5 animate-in slide-in-from-top-2 duration-200">
+                  {/* 1. SECCIÓN PRINCIPAL: COMORBILIDADES MÉDICAS (ANCHO COMPLETO CON GRID UNIFORME DE 4 COLUMNAS) */}
+                  {(() => {
+                    const comorbilidades = [
+                      { key: "factor_endocrinopatia", label: "Endocrinopatía", puntos: 12, nivel: "critico" },
+                      { key: "factor_neumopatia", label: "Neumopatía", puntos: 12, nivel: "critico" },
+                      { key: "factor_diabetes", label: "Diabetes", puntos: 4, nivel: "moderado" },
+                      { key: "factor_hipertension", label: "Hipertensión", puntos: 4, nivel: "moderado" },
+                      { key: "factor_cardiopatia", label: "Cardiopatía", puntos: 4, nivel: "moderado" },
+                      { key: "factor_nefropatia", label: "Nefropatía", puntos: 4, nivel: "moderado" },
+                      { key: "factor_hepatopatia", label: "Hepatopatía", puntos: 4, nivel: "moderado" },
+                      { key: "factor_enf_autoinmune", label: "Enf. autoinmune", puntos: 4, nivel: "moderado" },
+                      { key: "factor_coagulopatias", label: "Coagulopatías", puntos: 4, nivel: "moderado" },
+                      { key: "factor_neuropatia", label: "Neuropatía", puntos: 4, nivel: "moderado" },
+                      { key: "factor_enf_psiquiatrica", label: "Enf. psiquiátrica", puntos: 4, nivel: "moderado" },
+                      { key: "factor_obesidad", label: "Obesidad", puntos: 4, nivel: "moderado" },
+                    ];
+                    const activos = comorbilidades.filter((i) => (form as any)[i.key]).length;
+
+                    return (
+                      <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 space-y-3">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-100 uppercase tracking-wider">
+                            <i className="fa-solid fa-stethoscope text-sm text-cyan-400"></i>
+                            <span>Comorbilidades Médicas y Sistémicas</span>
+                          </div>
+                          {activos > 0 && (
+                            <span className="text-[11px] font-semibold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-0.5 rounded-full">
+                              {activos} activa{activos > 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                          {comorbilidades.map((item) => {
+                            const isChecked = Boolean((form as any)[item.key]);
+                            const isCritico = item.nivel === "critico";
+
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                onClick={() => handleToggle(item.key)}
+                                className={`group relative flex items-center justify-between gap-2.5 h-11 rounded-lg px-3 text-xs font-medium transition-all duration-150 cursor-pointer border ${
+                                  isChecked
+                                    ? isCritico
+                                      ? "bg-rose-500/20 border-rose-400/60 text-white shadow-sm ring-1 ring-rose-400/30"
+                                      : "bg-indigo-500/20 border-indigo-400/60 text-white shadow-sm ring-1 ring-indigo-400/30"
+                                    : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {/* Micro Switch Toggle */}
+                                  <div
+                                    className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                                      isChecked
+                                        ? isCritico
+                                          ? "bg-rose-500 shadow-sm shadow-rose-500/40"
+                                          : "bg-indigo-500 shadow-sm shadow-indigo-500/40"
+                                        : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                                    }`}
+                                  >
+                                    <div
+                                      className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
+                                        isChecked
+                                          ? "translate-x-3 bg-white"
+                                          : "translate-x-0 bg-white/70 group-hover:bg-white"
+                                      }`}
+                                    />
+                                  </div>
+                                  <span className="truncate font-medium">{item.label}</span>
+                                </div>
+                                <span
+                                  className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
+                                    isChecked
+                                      ? isCritico
+                                        ? "bg-rose-400/25 text-rose-200 border border-rose-300/40"
+                                        : "bg-indigo-400/25 text-indigo-200 border border-indigo-300/40"
+                                      : "bg-white/5 text-slate-300 border border-white/10 group-hover:border-white/20 group-hover:text-white"
+                                  }`}
+                                >
+                                  +{item.puntos}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 2. FILA INFERIOR: 3 TARJETAS COMPLEMENTARIAS ALINEADAS */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                     {[
-                      { key: "factor_diabetes", label: "Diabetes", puntos: 4 },
-                      { key: "factor_hipertension", label: "Hipertensión", puntos: 4 },
-                      { key: "factor_obesidad", label: "Obesidad", puntos: 4 },
-                      { key: "factor_cardiopatia", label: "Cardiopatía", puntos: 4 },
-                      { key: "factor_hepatopatia", label: "Hepatopatía", puntos: 4 },
-                      { key: "factor_enf_autoinmune", label: "Enfermedad autoinmune", puntos: 4 },
-                      { key: "factor_nefropatia", label: "Nefropatía", puntos: 4 },
-                      { key: "factor_coagulopatias", label: "Coagulopatías", puntos: 4 },
-                      { key: "factor_neuropatia", label: "Neuropatía", puntos: 4 },
-                      { key: "factor_enf_psiquiatrica", label: "Enfermedad psiquiátrica", puntos: 4 },
-                      { key: "factor_alcoholismo", label: "Alcoholismo", puntos: 4 },
-                      { key: "factor_tabaquismo", label: "Tabaquismo", puntos: 2 },
-                      { key: "factor_drogas_ilicitas", label: "Drogas ilícitas", puntos: 4 },
-                    ].map((item) => (
-                      <label key={item.key} className="flex items-center gap-2 text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:bg-white/10 transition-colors">
+                      {
+                        titulo: "Toxicomanías y Hábitos",
+                        icono: "fa-solid fa-smoking text-amber-400",
+                        items: [
+                          { key: "factor_drogas_ilicitas", label: "Otras drogas", puntos: 6, nivel: "alto" },
+                          { key: "factor_alcoholismo", label: "Alcoholismo", puntos: 4, nivel: "moderado" },
+                          { key: "factor_tabaquismo", label: "Tabaquismo", puntos: 2, nivel: "leve" },
+                        ],
+                      },
+                      {
+                        titulo: "Antecedentes Gineco-Infecciosos",
+                        icono: "fa-solid fa-microscope text-indigo-400",
+                        items: [
+                          { key: "factor_cirugias_pelvico_uterinas", label: "Cirugías pélvico uterinas", puntos: 4, nivel: "moderado" },
+                          { key: "factor_its", label: "ITS", puntos: 4, nivel: "moderado" },
+                        ],
+                      },
+                      {
+                        titulo: "Condición y Apoyo Especial",
+                        icono: "fa-solid fa-wheelchair text-rose-400",
+                        items: [
+                          { key: "factor_discapacidad", label: "Discapacidad", puntos: 12, nivel: "critico" },
+                        ],
+                      },
+                    ].map((grupo) => {
+                      const grupoActivos = grupo.items.filter((item) => (form as any)[item.key]).length;
+
+                      return (
+                        <div
+                          key={grupo.titulo}
+                          className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 space-y-3 flex flex-col justify-between"
+                        >
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                              <div className="flex items-center gap-2 text-xs font-bold text-slate-100 uppercase tracking-wider">
+                                <i className={`${grupo.icono} text-sm`}></i>
+                                <span>{grupo.titulo}</span>
+                              </div>
+                              {grupoActivos > 0 && (
+                                <span className="text-[11px] font-semibold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 rounded-full">
+                                  {grupoActivos} activo{grupoActivos > 1 ? "s" : ""}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              {grupo.items.map((item) => {
+                                const isChecked = Boolean((form as any)[item.key]);
+                                const isCritico = item.nivel === "critico";
+                                const isAlto = item.nivel === "alto";
+
+                                return (
+                                  <button
+                                    key={item.key}
+                                    type="button"
+                                    onClick={() => handleToggle(item.key)}
+                                    className={`group w-full relative flex items-center justify-between gap-2.5 h-11 rounded-lg px-3 text-xs font-medium transition-all duration-150 cursor-pointer border ${
+                                      isChecked
+                                        ? isCritico
+                                          ? "bg-rose-500/20 border-rose-400/60 text-white shadow-sm ring-1 ring-rose-400/30"
+                                          : isAlto
+                                          ? "bg-amber-500/20 border-amber-400/60 text-white shadow-sm ring-1 ring-amber-400/30"
+                                          : "bg-indigo-500/20 border-indigo-400/60 text-white shadow-sm ring-1 ring-indigo-400/30"
+                                        : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      {/* Micro Switch Toggle */}
+                                      <div
+                                        className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                                          isChecked
+                                            ? isCritico
+                                              ? "bg-rose-500 shadow-sm shadow-rose-500/40"
+                                              : isAlto
+                                              ? "bg-amber-500 shadow-sm shadow-amber-500/40"
+                                              : "bg-indigo-500 shadow-sm shadow-indigo-500/40"
+                                            : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                                        }`}
+                                      >
+                                        <div
+                                          className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
+                                            isChecked
+                                              ? "translate-x-3 bg-white"
+                                              : "translate-x-0 bg-white/70 group-hover:bg-white"
+                                          }`}
+                                        />
+                                      </div>
+                                      <span className="truncate font-medium">{item.label}</span>
+                                    </div>
+                                    <span
+                                      className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
+                                        isChecked
+                                          ? isCritico
+                                            ? "bg-rose-400/25 text-rose-200 border border-rose-300/40"
+                                            : isAlto
+                                            ? "bg-amber-400/25 text-amber-200 border border-amber-300/40"
+                                            : "bg-indigo-400/25 text-indigo-200 border border-indigo-300/40"
+                                          : "bg-white/5 text-slate-300 border border-white/10 group-hover:border-white/20 group-hover:text-white"
+                                      }`}
+                                    >
+                                      +{item.puntos}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 3. OTROS ANTECEDENTES (SWITCH + CAMPO DE TEXTO MÁXIMO 50 CARACTERES) */}
+                  <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <i className="fa-solid fa-file-pen text-base text-indigo-400"></i>
+                        <div>
+                          <p className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+                            Otros Antecedentes
+                          </p>
+                          <p className="text-xs text-slate-200">
+                            ¿La paciente presenta algún otro antecedente no especificado arriba?
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Switch de activación */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={form.tiene_otros_antecedentes}
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            tiene_otros_antecedentes: !prev.tiene_otros_antecedentes,
+                            otros_antecedentes: !prev.tiene_otros_antecedentes ? prev.otros_antecedentes : "",
+                          }))
+                        }
+                        className={`group shrink-0 flex items-center gap-2 rounded-full p-1 pr-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                          form.tiene_otros_antecedentes
+                            ? "bg-indigo-500/20 border-indigo-400/60 text-indigo-100 shadow-sm ring-1 ring-indigo-400/30"
+                            : "bg-white/5 border-white/10 text-slate-200 hover:border-white/20 hover:text-white"
+                        }`}
+                      >
+                        <div
+                          className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                            form.tiene_otros_antecedentes
+                              ? "bg-indigo-500 shadow-sm shadow-indigo-500/40"
+                              : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                          }`}
+                        >
+                          <div
+                            className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
+                              form.tiene_otros_antecedentes
+                                ? "translate-x-3 bg-white"
+                                : "translate-x-0 bg-white/70 group-hover:bg-white"
+                            }`}
+                          />
+                        </div>
+                        <span className="text-[11px] font-semibold">
+                          {form.tiene_otros_antecedentes ? "Activado" : "Desactivado"}
+                        </span>
+                      </button>
+                    </div>
+
+                    {form.tiene_otros_antecedentes && (
+                      <div className="pt-3 border-t border-white/10 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <label className="block text-xs font-semibold text-slate-100">
+                          Descripción del antecedente <span className="text-slate-300 text-xs font-normal">(máximo 50 caracteres)</span>
+                        </label>
                         <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-white/40 bg-white/10"
-                          checked={(form as any)[item.key]}
-                          onChange={() => handleToggle(item.key)}
+                          type="text"
+                          maxLength={50}
+                          value={form.otros_antecedentes}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              otros_antecedentes: e.target.value.slice(0, 50),
+                            }))
+                          }
+                          placeholder="Ej. Alergia severa a penicilina, hipotiroidismo..."
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
                         />
-                        <span className="text-slate-100 flex-1">{item.label}</span>
-                      </label>
-                    ))}
+                        <div className="flex items-center justify-between text-xs px-0.5">
+                          <span className="text-slate-300">
+                            Registro descriptivo complementario para el expediente
+                          </span>
+                          <span
+                            className={`font-mono font-semibold ${
+                              50 - (form.otros_antecedentes || "").length <= 5
+                                ? "text-rose-400"
+                                : 50 - (form.otros_antecedentes || "").length <= 15
+                                ? "text-amber-400"
+                                : "text-slate-200"
+                            }`}
+                          >
+                            {50 - (form.otros_antecedentes || "").length} caracteres restantes ({(form.otros_antecedentes || "").length}/50)
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1201,11 +1543,12 @@ export default function NuevoPaciente() {
                   onClick={() => setMostrarFactoresEpid(!mostrarFactoresEpid)}
                   className="w-full flex items-center justify-between text-sm font-semibold text-slate-100 bg-white/5 border border-white/10 rounded-lg px-4 py-3 hover:bg-white/10 transition-colors"
                 >
-                  <div className="flex items-center gap-2">
-                    <span>{mostrarFactoresEpid ? '▼' : '▶'}</span>
+                  <div className="flex items-center gap-2.5">
+                    <i className={`fa-solid ${mostrarFactoresEpid ? "fa-chevron-down" : "fa-chevron-right"} text-xs text-slate-400`}></i>
+                    <i className="fa-solid fa-virus text-base text-rose-400"></i>
                     <span>Factores epidemiológicos</span>
                   </div>
-                  <span className="text-xs text-slate-300">
+                  <span className="text-xs text-slate-200">
                     {mostrarFactoresEpid ? 'Ocultar' : 'Mostrar'}
                   </span>
                 </button>
@@ -1213,46 +1556,55 @@ export default function NuevoPaciente() {
               
               {mostrarFactoresEpid && (
                 <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
-                  <p className="text-xs text-slate-200/70 px-1">
-                    Portadora o contacto de enfermedad sujeta a vigilancia epidemiológica (Tuberculosis, VIH, Sifilis, Chagas. )
+                  <p className="text-xs text-slate-200 px-1 font-normal">
+                    Portadora o contacto de enfermedad sujeta a vigilancia epidemiológica (Tuberculosis, VIH, Sífilis, Chagas, etc.)
                   </p>
                   
-                  <div className="flex flex-col gap-2">
-                    <label className="flex items-center gap-3 text-sm bg-white/5 border border-white/10 rounded-lg px-4 py-3 cursor-pointer hover:bg-white/10 transition-colors">
-                      <input
-                        type="radio"
-                        name="factores_riesgo_epid"
-                        value="ninguno"
-                        className="h-4 w-4"
-                        checked={form.factores_riesgo_epid === 'ninguno'}
-                        onChange={() => handleChange('factores_riesgo_epid', 'ninguno')}
-                      />
-                      <span className="text-slate-100 flex-1">Ninguno</span>
-                    </label>
-                    
-                    <label className="flex items-center gap-3 text-sm bg-white/5 border border-white/10 rounded-lg px-4 py-3 cursor-pointer hover:bg-white/10 transition-colors">
-                      <input
-                        type="radio"
-                        name="factores_riesgo_epid"
-                        value="es_contacto"
-                        className="h-4 w-4"
-                        checked={form.factores_riesgo_epid === 'es_contacto'}
-                        onChange={() => handleChange('factores_riesgo_epid', 'es_contacto')}
-                      />
-                      <span className="text-slate-100 flex-1">Es contacto</span>
-                    </label>
-                    
-                    <label className="flex items-center gap-3 text-sm bg-white/5 border border-white/10 rounded-lg px-4 py-3 cursor-pointer hover:bg-white/10 transition-colors">
-                      <input
-                        type="radio"
-                        name="factores_riesgo_epid"
-                        value="es_portadora"
-                        className="h-4 w-4"
-                        checked={form.factores_riesgo_epid === 'es_portadora'}
-                        onChange={() => handleChange('factores_riesgo_epid', 'es_portadora')}
-                      />
-                      <span className="text-slate-100 flex-1">Es portadora</span>
-                    </label>
+                  {/* FILA HORIZONTAL DE 3 COLUMNAS COMPACTAS CON MICRO-SWITCH */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {[
+                      { value: "ninguno", label: "Ninguno", icono: "fa-solid fa-circle-check" },
+                      { value: "es_contacto", label: "Es contacto", icono: "fa-solid fa-triangle-exclamation" },
+                      { value: "es_portadora", label: "Es portadora", icono: "fa-solid fa-biohazard" },
+                    ].map((opt) => {
+                      const isSelected = form.factores_riesgo_epid === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => handleChange('factores_riesgo_epid', opt.value)}
+                          className={`group flex items-center gap-2.5 h-11 rounded-lg px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                            isSelected
+                              ? opt.value === "es_portadora"
+                                ? "bg-rose-500/20 border-rose-400/60 text-white shadow-sm ring-1 ring-rose-400/30"
+                                : opt.value === "es_contacto"
+                                ? "bg-amber-500/20 border-amber-400/60 text-white shadow-sm ring-1 ring-amber-400/30"
+                                : "bg-indigo-500/20 border-indigo-400/60 text-white shadow-sm ring-1 ring-indigo-400/30"
+                              : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                          }`}
+                        >
+                          <div
+                            className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                              isSelected
+                                ? opt.value === "es_portadora"
+                                  ? "bg-rose-500 shadow-sm shadow-rose-500/40"
+                                  : opt.value === "es_contacto"
+                                  ? "bg-amber-500 shadow-sm shadow-amber-500/40"
+                                  : "bg-indigo-500 shadow-sm shadow-indigo-500/40"
+                                : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                            }`}
+                          >
+                            <div
+                              className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
+                                isSelected ? "translate-x-3 bg-white" : "translate-x-0 bg-white/70 group-hover:bg-white"
+                              }`}
+                            />
+                          </div>
+                          <i className={`${opt.icono} text-xs ${isSelected ? "text-white" : "text-slate-400"}`}></i>
+                          <span className="truncate font-medium">{opt.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1261,9 +1613,14 @@ export default function NuevoPaciente() {
 
           <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-xl font-semibold">Antecedentes gineco-obstétricos</h2>
-                <p className="text-sm text-slate-200/70">Paridad y riesgos previos</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-pink-500/15 border border-pink-400/30 flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-person-pregnant text-pink-400 text-lg"></i>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">Antecedentes gineco-obstétricos</h2>
+                  <p className="text-sm text-slate-300">Paridad y riesgos previos</p>
+                </div>
               </div>
             </div>
 
@@ -1297,117 +1654,200 @@ export default function NuevoPaciente() {
               ))}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {[
-                { key: "ant_preeclampsia", label: "Antecedente de preeclampsia" },
-                { key: "ant_hemorragia", label: "Antecedente de hemorragia" },
-                { key: "ant_sepsis", label: "Antecedente de sepsis" },
-                { key: "ant_bajo_peso_macrosomia", label: "RN bajo peso / macrosomía" },
-                { key: "ant_muerte_perinatal", label: "Muerte perinatal" },
-              ].map((item) => (
-                <label key={item.key} className="flex items-center gap-2 text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-2">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-white/40 bg-white/10"
-                    checked={(form as any)[item.key]}
-                    onChange={() => handleToggle(item.key)}
-                  />
-                  <span className="text-slate-100">{item.label}</span>
-                </label>
-              ))}
+                { key: "ant_preeclampsia", label: "Antecedente de preeclampsia", puntos: 4 },
+                { key: "ant_hemorragia", label: "Antecedente de hemorragia", puntos: 4 },
+                { key: "ant_sepsis", label: "Antecedente de sepsis", puntos: 4 },
+                { key: "ant_bajo_peso_macrosomia", label: "RN bajo peso / macrosomía", puntos: 4 },
+                { key: "ant_muerte_perinatal", label: "Muerte perinatal", puntos: 4 },
+                { key: "ant_embarazo_ectopico", label: "Embarazo ectópico", puntos: 6 },
+              ].map((item) => {
+                const isChecked = Boolean((form as any)[item.key]);
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => handleToggle(item.key)}
+                    className={`group flex items-center justify-between gap-2.5 h-11 rounded-lg px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                      isChecked
+                        ? item.puntos === 6
+                          ? "bg-amber-500/20 border-amber-400/60 text-white shadow-sm ring-1 ring-amber-400/30"
+                          : "bg-indigo-500/20 border-indigo-400/60 text-white shadow-sm ring-1 ring-indigo-400/30"
+                        : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {/* Micro Switch Toggle */}
+                      <div
+                        className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                          isChecked
+                            ? item.puntos === 6
+                              ? "bg-amber-500 shadow-sm shadow-amber-500/40"
+                              : "bg-indigo-500 shadow-sm shadow-indigo-500/40"
+                            : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                        }`}
+                      >
+                        <div
+                          className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
+                            isChecked ? "translate-x-3 bg-white" : "translate-x-0 bg-white/70 group-hover:bg-white"
+                          }`}
+                        />
+                      </div>
+                      <span className="truncate font-medium">{item.label}</span>
+                    </div>
+                    <span
+                      className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
+                        isChecked
+                          ? item.puntos === 6
+                            ? "bg-amber-400/25 text-amber-200 border border-amber-300/40"
+                            : "bg-indigo-400/25 text-indigo-200 border border-indigo-300/40"
+                          : "bg-white/5 text-slate-300 border border-white/10 group-hover:border-white/20 group-hover:text-white"
+                      }`}
+                    >
+                      +{item.puntos}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-xl font-semibold">Tamizajes iniciales</h2>
-                <p className="text-sm text-slate-200/70">Detecciones del primer contacto</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-vials text-indigo-400 text-lg"></i>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">Tamizajes iniciales</h2>
+                  <p className="text-sm text-slate-300">Detecciones del primer contacto</p>
+                </div>
               </div>
               <span className="text-xs text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full">Primer contacto</span>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-start gap-3 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-emerald-50">
-                <span className="mt-0.5 text-lg">ℹ️</span>
+                <i className="fa-solid fa-circle-info mt-0.5 text-base text-emerald-300 shrink-0"></i>
                 <p className="text-sm">Captura las pruebas de VIH, VDRL, Hepatitis C, glicemia y violencia realizadas en el primer contacto con la paciente.</p>
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Prueba VIH</span>
-                <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-                  value={form.prueba_vih}
-                  onChange={(e) => handleChange("prueba_vih", e.target.value)}
-                >
-                  <option value="">Selecciona…</option>
-                  <option value="Reactiva">Reactiva</option>
-                  <option value="No reactiva">No reactiva</option>
-                </select>
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Prueba VDRL</span>
-                <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-                  value={form.prueba_vdrl}
-                  onChange={(e) => handleChange("prueba_vdrl", e.target.value)}
-                >
-                  <option value="">Selecciona…</option>
-                  <option value="Reactiva">Reactiva</option>
-                  <option value="No reactiva">No reactiva</option>
-                </select>
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Prueba Hepatitis C</span>
-                <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-                  value={form.prueba_hepatitis_c}
-                  onChange={(e) => handleChange("prueba_hepatitis_c", e.target.value)}
-                >
-                  <option value="">Selecciona…</option>
-                  <option value="Reactiva">Reactiva</option>
-                  <option value="No reactiva">No reactiva</option>
-                </select>
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Diabetes (Glicemia)</span>
-                <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-                  value={form.diabetes_glicemia}
-                  onChange={(e) => handleChange("diabetes_glicemia", e.target.value)}
-                >
-                  <option value="">Selecciona…</option>
-                  <option value="Normal">Normal</option>
-                  <option value="Resistencia a la insulina">Resistencia a la insulina</option>
-                  <option value="Diabetes">Diabetes</option>
-                </select>
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Violencia de cualquier tipo</span>
-                <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-                  value={form.violencia}
-                  onChange={(e) => handleChange("violencia", e.target.value)}
-                >
-                  <option value="">Selecciona…</option>
-                  <option value="Positiva">Positiva</option>
-                  <option value="Negativa">Negativa</option>
-                </select>
-              </label>
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {[
+                {
+                  key: "prueba_vih",
+                  label: "Prueba VIH",
+                  icono: "fa-solid fa-virus",
+                  valorActivo: "Reactiva",
+                  valorInactivo: "No reactiva",
+                  labelActivo: "Reactiva",
+                  labelInactivo: "No reactiva",
+                },
+                {
+                  key: "prueba_vdrl",
+                  label: "Prueba VDRL (Sífilis)",
+                  icono: "fa-solid fa-vial-virus",
+                  valorActivo: "Reactiva",
+                  valorInactivo: "No reactiva",
+                  labelActivo: "Reactiva",
+                  labelInactivo: "No reactiva",
+                },
+                {
+                  key: "prueba_hepatitis_c",
+                  label: "Prueba Hepatitis C",
+                  icono: "fa-solid fa-disease",
+                  valorActivo: "Reactiva",
+                  valorInactivo: "No reactiva",
+                  labelActivo: "Reactiva",
+                  labelInactivo: "No reactiva",
+                },
+                {
+                  key: "diabetes_glicemia",
+                  label: "Diabetes / Glicemia",
+                  icono: "fa-solid fa-droplet",
+                  valorActivo: "Diabetes",
+                  valorInactivo: "Normal",
+                  labelActivo: "Alterada",
+                  labelInactivo: "Normal",
+                },
+                {
+                  key: "violencia",
+                  label: "Violencia",
+                  icono: "fa-solid fa-shield-halved",
+                  valorActivo: "Positiva",
+                  valorInactivo: "Negativa",
+                  labelActivo: "Positiva",
+                  labelInactivo: "Negativa",
+                },
+              ].map((item) => {
+                const isChecked = (form as any)[item.key] === item.valorActivo;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() =>
+                      handleChange(
+                        item.key,
+                        isChecked ? item.valorInactivo : item.valorActivo
+                      )
+                    }
+                    className={`group flex items-center justify-between gap-2.5 h-12 rounded-lg px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                      isChecked
+                        ? "bg-rose-500/20 border-rose-400/60 text-white shadow-sm ring-1 ring-rose-400/30"
+                        : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {/* Micro Switch Toggle */}
+                      <div
+                        className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                          isChecked
+                            ? "bg-rose-500 shadow-sm shadow-rose-500/40"
+                            : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                        }`}
+                      >
+                        <div
+                          className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
+                            isChecked
+                              ? "translate-x-3 bg-white"
+                              : "translate-x-0 bg-white/70 group-hover:bg-white"
+                          }`}
+                        />
+                      </div>
+                      <div className="flex flex-col text-left min-w-0">
+                        <span className="truncate font-semibold text-slate-100 flex items-center gap-1.5">
+                          <i className={`${item.icono} text-xs ${isChecked ? "text-rose-300" : "text-slate-400"}`}></i>
+                          <span>{item.label}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
+                        isChecked
+                          ? "bg-rose-400/25 text-rose-200 border border-rose-300/40"
+                          : "bg-white/5 text-slate-300 border border-white/10 group-hover:border-white/20 group-hover:text-white"
+                      }`}
+                    >
+                      {isChecked ? `${item.labelActivo} (+4)` : item.labelInactivo}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-xl font-semibold">Red de apoyo y traslado</h2>
-                <p className="text-sm text-slate-200/70">Contacto de madrina y traslado</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-truck-medical text-amber-400 text-lg"></i>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">Red de apoyo y traslado</h2>
+                  <p className="text-sm text-slate-300">Contacto de madrina y traslado</p>
+                </div>
               </div>
             </div>
 
