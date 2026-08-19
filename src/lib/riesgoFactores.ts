@@ -88,13 +88,13 @@ const CRITERIOS = {
     { valor: true, puntos: 4 },
   ],
   ant_sepsis: [
-    { valor: true, puntos: 4 },
+    { valor: true, puntos: 6 },
   ],
   ant_bajo_peso_macrosomia: [
-    { valor: true, puntos: 4 },
+    { valor: true, puntos: 6 },
   ],
   ant_muerte_perinatal: [
-    { valor: true, puntos: 4 },
+    { valor: true, puntos: 6 },
   ],
   ant_embarazo_ectopico: [
     { valor: true, puntos: 6 },
@@ -281,7 +281,7 @@ export function evaluarCampoIndividual(
     return {
       campo: "Antecedente de Sepsis",
       valor: "Sí",
-      puntos: 4,
+      puntos: 6,
       tipo: "ANTECEDENTE",
     };
   }
@@ -290,7 +290,7 @@ export function evaluarCampoIndividual(
     return {
       campo: "Antecedente de Bajo Peso/Macrosomía",
       valor: "Sí",
-      puntos: 4,
+      puntos: 6,
       tipo: "ANTECEDENTE",
     };
   }
@@ -299,7 +299,7 @@ export function evaluarCampoIndividual(
     return {
       campo: "Antecedente de Muerte Perinatal",
       valor: "Sí",
-      puntos: 4,
+      puntos: 6,
       tipo: "ANTECEDENTE",
     };
   }

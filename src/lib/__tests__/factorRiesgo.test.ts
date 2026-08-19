@@ -118,17 +118,17 @@ describe("Motor de Factores de Riesgo Obstétrico (riesgoFactores)", () => {
       expect(r2.puntajeTotal).toBe(4);
     });
 
-    it("debe ponderar correctamente antecedentes graves (4 puntos c/u) y embarazo ectópico (6 puntos)", () => {
+    it("debe ponderar correctamente antecedentes graves y embarazo ectópico", () => {
       const resultado = evaluarFactoresRiesgo({
-        ant_preeclampsia: true,
-        ant_hemorragia: true,
-        ant_sepsis: true,
-        ant_bajo_peso_macrosomia: true,
-        ant_muerte_perinatal: true,
-        ant_embarazo_ectopico: true,
+        ant_preeclampsia: true, // 4 pts
+        ant_hemorragia: true,   // 4 pts
+        ant_sepsis: true,       // 6 pts
+        ant_bajo_peso_macrosomia: true, // 6 pts
+        ant_muerte_perinatal: true,     // 6 pts
+        ant_embarazo_ectopico: true,    // 6 pts
       });
-      // 5 antecedentes * 4 puntos + 6 puntos (embarazo ectópico) = 26 puntos
-      expect(resultado.puntajeTotal).toBe(26);
+      // 4 + 4 + 6 + 6 + 6 + 6 = 32 puntos
+      expect(resultado.puntajeTotal).toBe(32);
       expect(resultado.factores).toHaveLength(6);
       expect(resultado.nivel).toBe("CRITICO");
     });

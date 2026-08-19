@@ -259,6 +259,10 @@ export default function NuevoPaciente() {
     if (form.factor_enf_psiquiatrica) list.push("Enfermedad psiquiátrica");
     if (form.factor_endocrinopatia) list.push("Endocrinopatía");
     if (form.factor_neumopatia) list.push("Neumopatía");
+    if (form.ant_hemorragia) list.push("Antecedente de hemorragia");
+    if (form.ant_sepsis) list.push("Antecedente de sepsis");
+    if (form.ant_bajo_peso_macrosomia) list.push("Antecedente de bajo peso / macrosomía");
+    if (form.ant_muerte_perinatal) list.push("Antecedente de muerte perinatal");
     return list;
   }, [
     form.factor_diabetes,
@@ -272,6 +276,10 @@ export default function NuevoPaciente() {
     form.factor_enf_psiquiatrica,
     form.factor_endocrinopatia,
     form.factor_neumopatia,
+    form.ant_hemorragia,
+    form.ant_sepsis,
+    form.ant_bajo_peso_macrosomia,
+    form.ant_muerte_perinatal,
   ]);
 
   const tieneAlertaSegundoNivel = factoresSegundoNivelActivos.length > 0;
@@ -714,6 +722,24 @@ export default function NuevoPaciente() {
               </div>
             )}
 
+            {/* ALERTA DE REFERENCIA POR ANTECEDENTE DE PREECLAMPSIA */}
+            {form.ant_preeclampsia && (
+              <div className="rounded-xl border border-amber-400/50 bg-amber-500/20 p-3.5 space-y-2 shadow-lg shadow-amber-950/30 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-triangle-exclamation text-sm text-amber-400"></i>
+                  <span>Alerta de Referencia</span>
+                </div>
+                <p className="text-xs font-semibold text-amber-100 leading-snug">
+                  Referencia a segundo nivel de atención con paraclinicos desde la primera consulta + Vigilar ganancia ponderal + Vigilar proteinuria, T.A. apartir de las 20 SDG
+                </p>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  <span className="text-[10px] bg-amber-400/20 border border-amber-300/40 text-amber-200 font-medium px-2 py-0.5 rounded-full">
+                    Antecedente de preeclampsia
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* ALERTA DE NOTIFICACION POR TAMIZAJES REACTIVOS */}
             {tieneAlertaNotificacion && (
               <div className="rounded-xl border border-rose-400/60 bg-rose-500/20 p-3.5 space-y-2 shadow-lg shadow-rose-950/30 animate-in fade-in duration-200">
@@ -751,7 +777,7 @@ export default function NuevoPaciente() {
             )}
 
             {getRecomendaciones().length === 0 ? (
-              !tieneAlertaSegundoNivel && !tieneAlertaNotificacion && !form.factor_discapacidad && (
+              !tieneAlertaSegundoNivel && !form.ant_preeclampsia && !tieneAlertaNotificacion && !form.factor_discapacidad && (
                 <p className="text-sm text-slate-400 italic leading-relaxed">
                   No hay recomendaciones activas basadas en los datos capturados actualmente.
                 </p>
@@ -1658,9 +1684,9 @@ export default function NuevoPaciente() {
               {[
                 { key: "ant_preeclampsia", label: "Antecedente de preeclampsia", puntos: 4 },
                 { key: "ant_hemorragia", label: "Antecedente de hemorragia", puntos: 4 },
-                { key: "ant_sepsis", label: "Antecedente de sepsis", puntos: 4 },
-                { key: "ant_bajo_peso_macrosomia", label: "RN bajo peso / macrosomía", puntos: 4 },
-                { key: "ant_muerte_perinatal", label: "Muerte perinatal", puntos: 4 },
+                { key: "ant_sepsis", label: "Antecedente de sepsis", puntos: 6 },
+                { key: "ant_bajo_peso_macrosomia", label: "RN bajo peso / macrosomía", puntos: 6 },
+                { key: "ant_muerte_perinatal", label: "Muerte perinatal", puntos: 6 },
                 { key: "ant_embarazo_ectopico", label: "Embarazo ectópico", puntos: 6 },
               ].map((item) => {
                 const isChecked = Boolean((form as any)[item.key]);
