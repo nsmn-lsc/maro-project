@@ -303,20 +303,8 @@ export default function NuevoPaciente() {
     if (form.factor_discapacidad) {
       recs.push("Fortalecer red social, manejo conjunto con segundo nivel de atención");
     }
-    if (form.indigena) {
-      recs.push("Asegurar comunicación con enfoque multicultural y traductor si es requerido");
-    }
-    if (form.migrante) {
-      recs.push("Garantizar continuidad de atención, paciente migrante");
-    }
     if (form.edad && (parseInt(form.edad) < 19 || parseInt(form.edad) > 35)) {
       recs.push("Vigilancia estrecha por edad extrema de riesgo");
-    }
-    if (form.factor_diabetes) {
-      recs.push("Seguimiento estrecho de glicemia y ajuste de terapia médica");
-    }
-    if (form.factor_hipertension) {
-      recs.push("Monitoreo continuo de presión arterial, restricción de sodio");
     }
     if (form.factor_obesidad) {
       recs.push("Asesoría nutricional y control estricto de ganancia de peso");
@@ -351,6 +339,7 @@ export default function NuevoPaciente() {
       return {
         fpp: "",
         semanas_gestacion: "",
+        sdg_ingreso: "",
       };
     }
 
@@ -359,6 +348,7 @@ export default function NuevoPaciente() {
       return {
         fpp: "",
         semanas_gestacion: "",
+        sdg_ingreso: "",
       };
     }
 
@@ -374,6 +364,7 @@ export default function NuevoPaciente() {
     return {
       fpp: fppDate.toISOString().slice(0, 10),
       semanas_gestacion: `${weeks}.${days}`,
+      sdg_ingreso: String(weeks),
     };
   };
 
@@ -527,6 +518,17 @@ export default function NuevoPaciente() {
     
     const errAbortos = checkInt(form.abortos, "Abortos");
     if (errAbortos) { setError(errAbortos); return; }
+
+    const numG = Number(form.gestas);
+    const numP = Number(form.partos);
+    const numC = Number(form.cesareas);
+    const numA = Number(form.abortos);
+    if (numP + numC + numA !== numG) {
+      setError(
+        `Inconsistencia en antecedentes: La suma de Partos (${numP}) + Cesáreas (${numC}) + Abortos (${numA}) = ${numP + numC + numA} debe ser igual a las Gestas totales (${numG}).`
+      );
+      return;
+    }
 
     // Validación de medidas (IMC y ganancia)
     if (form.imc_inicial && form.imc_inicial.trim()) {
@@ -1123,6 +1125,7 @@ export default function NuevoPaciente() {
                       fum: value,
                       fpp: gestacionData.fpp,
                       semanas_gestacion: gestacionData.semanas_gestacion,
+                      sdg_ingreso: gestacionData.sdg_ingreso,
                     }));
                   }}
                 />
@@ -1679,6 +1682,37 @@ export default function NuevoPaciente() {
                 </label>
               ))}
             </div>
+
+            {/* Verificador visual en tiempo real de fórmula obstétrica (P + C + A = G) */}
+            {form.gestas.trim() !== "" && (form.partos.trim() !== "" || form.cesareas.trim() !== "" || form.abortos.trim() !== "") && (() => {
+              const g = Number(form.gestas) || 0;
+              const p = Number(form.partos) || 0;
+              const c = Number(form.cesareas) || 0;
+              const a = Number(form.abortos) || 0;
+              const sumaPCA = p + c + a;
+              const esValido = sumaPCA === g;
+
+              return (
+                <div className={`rounded-xl border px-3.5 py-2.5 text-xs flex items-center justify-between gap-3 transition-all ${
+                  esValido
+                    ? "bg-emerald-500/10 border-emerald-400/30 text-emerald-200"
+                    : "bg-amber-500/15 border-amber-400/40 text-amber-200"
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <i className={`fa-solid ${esValido ? "fa-circle-check text-emerald-400" : "fa-triangle-exclamation text-amber-400"}`}></i>
+                    <span>
+                      Fórmula Obstétrica: <strong>P ({p}) + C ({c}) + A ({a}) = {sumaPCA}</strong>
+                      {esValido ? " (Correcto: coincide con Gestas totales)" : ` ≠ Gestas (${g})`}
+                    </span>
+                  </div>
+                  {!esValido && (
+                    <span className="font-semibold text-amber-300 shrink-0">
+                      La suma debe ser {g}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {[

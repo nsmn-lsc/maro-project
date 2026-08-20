@@ -26,8 +26,12 @@ function calcularPuntajeConsultaParametros(input: {
   ta_sistolica: number | null;
   ta_diastolica: number | null;
   frecuencia_cardiaca: number | null;
+  frecuencia_respiratoria: number | null;
   indice_choque: number | null;
   temperatura: number | null;
+  fondo_uterino_acorde_sdg?: boolean | 0 | 1 | null;
+  ivu_repeticion?: boolean | 0 | 1 | null;
+  color_piel?: string | null;
 }): number {
   const puntajeTaSistolica = input.ta_sistolica === null
     ? 0
@@ -51,6 +55,12 @@ function calcularPuntajeConsultaParametros(input: {
       ? 4
       : 0;
 
+  const puntajeFrecuenciaRespiratoria = input.frecuencia_respiratoria === null
+    ? 0
+    : (input.frecuencia_respiratoria < 16 || input.frecuencia_respiratoria > 20)
+      ? 4
+      : 0;
+
   const puntajeIndiceChoque = input.indice_choque === null
     ? 0
     : input.indice_choque > 0.8
@@ -67,12 +77,20 @@ function calcularPuntajeConsultaParametros(input: {
         ? 2
         : 0;
 
+  const puntajeFondoUterino = input.fondo_uterino_acorde_sdg ? 4 : 0;
+  const puntajeIvu = input.ivu_repeticion ? 15 : 0;
+  const puntajeColorPiel = input.color_piel === "cianotica" ? 4 : 0;
+
   return (
     puntajeTaSistolica +
     puntajeTaDiastolica +
     puntajeFrecuenciaCardiaca +
+    puntajeFrecuenciaRespiratoria +
     puntajeIndiceChoque +
-    puntajeTemperatura
+    puntajeTemperatura +
+    puntajeFondoUterino +
+    puntajeIvu +
+    puntajeColorPiel
   );
 }
 
@@ -153,6 +171,7 @@ export async function POST(request: Request) {
     const taSistolica = toNumberOrNull(body.ta_sistolica);
     const taDiastolica = toNumberOrNull(body.ta_diastolica);
     const frecuenciaCardiaca = toNumberOrNull(body.frecuencia_cardiaca);
+    const frecuenciaRespiratoria = toNumberOrNull(body.frecuencia_respiratoria);
     const indiceChoque = toNumberOrNull(body.indice_choque);
     const temperatura = toNumberOrNull(body.temperatura);
 
@@ -160,8 +179,12 @@ export async function POST(request: Request) {
       ta_sistolica: taSistolica,
       ta_diastolica: taDiastolica,
       frecuencia_cardiaca: frecuenciaCardiaca,
+      frecuencia_respiratoria: frecuenciaRespiratoria,
       indice_choque: indiceChoque,
       temperatura,
+      fondo_uterino_acorde_sdg: body.fondo_uterino_acorde_sdg,
+      ivu_repeticion: body.ivu_repeticion,
+      color_piel: body.color_piel,
     });
 
     const pacienteRows: any = await query(

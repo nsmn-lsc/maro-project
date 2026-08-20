@@ -13,7 +13,9 @@ type Patient = {
   clues_id: string;
   unidad: string | null;
   municipio: string | null;
+  localidad?: string | null;
   region: string | null;
+  edad?: number | string | null;
   fecha_ingreso_cpn: string | null;
   fum: string | null;
   fpp: string | null;
@@ -53,6 +55,8 @@ type Patient = {
   factor_its?: boolean | number;
   factor_cirugias_pelvico_uterinas?: boolean | number;
   factor_discapacidad?: boolean | number;
+  tipo_riesgo_social?: string | null;
+  ganancia_ponderal_max?: number | string | null;
   otros_antecedentes?: string | null;
   factores_riesgo_epid?: 'ninguno' | 'es_contacto' | 'es_portadora';
   indigena?: boolean | number;
@@ -85,10 +89,10 @@ export default function PacienteDetalle() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandidoRiesgo, setExpandidoRiesgo] = useState(false);
-  const [expandidoTamizajes, setExpandidoTamizajes] = useState(false);
   const [ultimaConsulta, setUltimaConsulta] = useState<ConsultaResumen | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [alertaIndex, setAlertaIndex] = useState(0);
+  const [isAlertaHovered, setIsAlertaHovered] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("maro:user");
@@ -159,14 +163,26 @@ export default function PacienteDetalle() {
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  const infoRow = (label: string, value: string | number | null) => (
-    <div className="flex flex-col rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-      <span className="text-xs uppercase tracking-wide text-slate-300/70">{label}</span>
-      <span className="text-sm text-white">{value ?? "—"}</span>
-    </div>
-  );
-
-  const enProcesoColegiado = (ultimaConsulta?.colegiado ?? 0) === 1;
+  /** Calcula SDG actuales a partir de la FUM (notación médica: semanas.días) */
+  const calcularSdgActual = (p: Patient | null): string => {
+    if (!p) return "—";
+    if (p.fum) {
+      const fumDate = new Date(p.fum);
+      if (!Number.isNaN(fumDate.getTime())) {
+        const hoy = new Date();
+        const diffMs = hoy.getTime() - fumDate.getTime();
+        const totalDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+        const weeks = Math.floor(totalDays / 7);
+        const days = totalDays % 7;
+        if (weeks >= 0 && weeks <= 45) {
+          return `${weeks}.${days}`;
+        }
+      }
+    }
+    if (p.semanas_gestacion != null) return String(p.semanas_gestacion);
+    if (p.sdg_ingreso != null) return String(p.sdg_ingreso);
+    return "—";
+  };
 
   // Calcular factor de riesgo basado en los datos del paciente
   const resultadoRiesgo = useMemo(() => {
@@ -225,51 +241,260 @@ export default function PacienteDetalle() {
     return evaluarTamizajes(datosTamizajes);
   }, [patient]);
 
-  // Colores según nivel de riesgo
-  const colorMap = {
-    BAJO: {
-      bg: 'bg-green-500/20',
-      border: 'border-green-400/50',
-      text: 'text-white',
-      badge: 'bg-green-500',
-      icon: '✅',
-    },
-    ALTO: {
-      bg: 'bg-amber-500/20',
-      border: 'border-amber-400/50',
-      text: 'text-white',
-      badge: 'bg-amber-500',
-      icon: '⚠️',
-    },
-    MUY_ALTO: {
-      bg: 'bg-orange-500/20',
-      border: 'border-orange-400/50',
-      text: 'text-white',
-      badge: 'bg-orange-600',
-      icon: '🔴',
-    },
-    CRITICO: {
-      bg: 'bg-red-500/20',
-      border: 'border-red-500/50',
-      text: 'text-white',
-      badge: 'bg-red-700',
-      icon: '🚨',
-    },
-    SIN_HALLAZGOS: {
-      bg: 'bg-green-500/20',
-      border: 'border-green-400/50',
-      text: 'text-white',
-      badge: 'bg-green-500',
-      icon: '✅',
-    },
-    ALERTA: {
-      bg: 'bg-amber-500/20',
-      border: 'border-amber-400/50',
-      text: 'text-white',
-      badge: 'bg-amber-500',
-      icon: '⚠️',
-    },
-  };
+  // Total de puntaje acumulado
+  const puntajeTotalCombinado = useMemo(() => {
+    return (resultadoRiesgo?.puntajeTotal ?? 0) + (resultadoTamizajes?.puntajeTotal ?? 0);
+  }, [resultadoRiesgo, resultadoTamizajes]);
+
+  // Factores y comorbilidades activas
+  const antecedentesActivos = useMemo(() => {
+    if (!patient) return [];
+    const list: { label: string; puntos: number }[] = [];
+    if (patient.ant_preeclampsia) list.push({ label: "Antecedente de preeclampsia", puntos: 4 });
+    if (patient.ant_hemorragia) list.push({ label: "Antecedente de hemorragia", puntos: 4 });
+    if (patient.ant_sepsis) list.push({ label: "Antecedente de sepsis", puntos: 6 });
+    if (patient.ant_bajo_peso_macrosomia) list.push({ label: "RN bajo peso / macrosomía", puntos: 6 });
+    if (patient.ant_muerte_perinatal) list.push({ label: "Muerte perinatal", puntos: 6 });
+    if (patient.ant_embarazo_ectopico) list.push({ label: "Embarazo ectópico", puntos: 6 });
+    return list;
+  }, [patient]);
+
+  const comorbilidadesActivas = useMemo(() => {
+    if (!patient) return [];
+    const list: string[] = [];
+    if (patient.factor_diabetes) list.push("Diabetes");
+    if (patient.factor_hipertension) list.push("Hipertensión");
+    if (patient.factor_obesidad) list.push("Obesidad");
+    if (patient.factor_cardiopatia) list.push("Cardiopatía");
+    if (patient.factor_hepatopatia) list.push("Hepatopatía");
+    if (patient.factor_enf_autoinmune) list.push("Enfermedad autoinmune");
+    if (patient.factor_nefropatia) list.push("Nefropatía");
+    if (patient.factor_coagulopatias) list.push("Coagulopatías");
+    if (patient.factor_neuropatia) list.push("Neuropatía");
+    if (patient.factor_enf_psiquiatrica) list.push("Enfermedad psiquiátrica");
+    if (patient.factor_alcoholismo) list.push("Alcoholismo");
+    if (patient.factor_tabaquismo) list.push("Tabaquismo");
+    if (patient.factor_drogas_ilicitas) list.push("Drogas ilícitas");
+    if (patient.factor_endocrinopatia) list.push("Endocrinopatía");
+    if (patient.factor_neumopatia) list.push("Neumopatía");
+    if (patient.factor_its) list.push("ITS");
+    if (patient.factor_cirugias_pelvico_uterinas) list.push("Cirugías pélvico-uterinas");
+    if (patient.factor_discapacidad) list.push("Discapacidad");
+    return list;
+  }, [patient]);
+
+  // Factores que disparan la Alerta de Referencia a Segundo Nivel (idéntico a pacientes/nuevo)
+  const factoresSegundoNivelActivos = useMemo(() => {
+    if (!patient) return [];
+    const list: string[] = [];
+    if (patient.factor_diabetes) list.push("Diabetes");
+    if (patient.factor_hipertension) list.push("Hipertensión");
+    if (patient.factor_obesidad) list.push("Obesidad");
+    if (patient.factor_cardiopatia) list.push("Cardiopatía");
+    if (patient.factor_hepatopatia) list.push("Hepatopatía");
+    if (patient.factor_enf_autoinmune) list.push("Enfermedad autoinmune");
+    if (patient.factor_nefropatia) list.push("Nefropatía");
+    if (patient.factor_coagulopatias) list.push("Coagulopatías");
+    if (patient.factor_enf_psiquiatrica) list.push("Enfermedad psiquiátrica");
+    if (patient.factor_endocrinopatia) list.push("Endocrinopatía");
+    if (patient.factor_neumopatia) list.push("Neumopatía");
+    if (patient.ant_hemorragia) list.push("Antecedente de hemorragia");
+    if (patient.ant_sepsis) list.push("Antecedente de sepsis");
+    if (patient.ant_bajo_peso_macrosomia) list.push("Antecedente de bajo peso / macrosomía");
+    if (patient.ant_muerte_perinatal) list.push("Antecedente de muerte perinatal");
+    if (patient.ant_embarazo_ectopico) list.push("Antecedente de embarazo ectópico");
+    return list;
+  }, [patient]);
+
+  const tieneAlertaSegundoNivel = factoresSegundoNivelActivos.length > 0;
+
+  // Alerta de Notificación por tamizajes reactivos
+  const tamizajesReactivosActivos = useMemo(() => {
+    if (!patient) return [];
+    const list: string[] = [];
+    if (patient.prueba_vih === "Reactiva") list.push("VIH Reactiva");
+    if (patient.prueba_vdrl === "Reactiva") list.push("VDRL Reactiva");
+    if (patient.prueba_hepatitis_c === "Reactiva") list.push("Hepatitis C Reactiva");
+    return list;
+  }, [patient]);
+
+  const tieneAlertaNotificacion = tamizajesReactivosActivos.length > 0;
+
+  // Recomendaciones clínicas complementarias basadas en el perfil de la paciente
+  const recomendacionesClinicas = useMemo(() => {
+    if (!patient) return [];
+    const recs: string[] = [];
+    if (patient.tipo_riesgo_social === "Medio" || patient.tipo_riesgo_social === "Alto") {
+      recs.push("Fortalecer red social, vinculación con acción comunitaria");
+    }
+    if (patient.factor_discapacidad) {
+      recs.push("Fortalecer red social, manejo conjunto con segundo nivel de atención");
+    }
+    const edad = Number(patient.edad);
+    if (Number.isFinite(edad) && (edad < 19 || edad > 35)) {
+      recs.push("Vigilancia estrecha por edad extrema de riesgo");
+    }
+    if (patient.factor_obesidad) {
+      recs.push("Asesoría nutricional y control estricto de ganancia de peso");
+    }
+    if (patient.imc_inicial != null && String(patient.imc_inicial).trim() !== "") {
+      const imc = Number(patient.imc_inicial);
+      if (!Number.isNaN(imc) && (imc < 18.5 || imc >= 30)) {
+        recs.push("Referir a segundo nivel de atención servicio de nutrición");
+      }
+    }
+    if (patient.ganancia_ponderal_max != null && String(patient.ganancia_ponderal_max).trim() !== "") {
+      recs.push(`Ganancia de peso máxima recomendada durante el embarazo: ${patient.ganancia_ponderal_max} kg`);
+    }
+    return recs;
+  }, [patient]);
+
+  // Array de tarjetas activas para el Carrusel de Alertas y Recomendaciones
+  const cardsAlertas = useMemo(() => {
+    if (!patient) return [];
+    const cards: Array<{
+      id: string;
+      tipo: "referencia" | "preeclampsia" | "notificacion" | "discapacidad" | "recomendaciones";
+      titulo: string;
+      subtitulo?: string;
+      icono: string;
+      colorTheme: {
+        border: string;
+        bg: string;
+        textTitle: string;
+        textBody: string;
+        chipBg: string;
+        chipBorder: string;
+        chipText: string;
+      };
+      items?: string[];
+      lista?: string[];
+      texto?: string;
+    }> = [];
+
+    // 1. Alerta de Referencia a Segundo Nivel (Comorbilidades / Antecedentes)
+    if (tieneAlertaSegundoNivel) {
+      cards.push({
+        id: "referencia-segundo-nivel",
+        tipo: "referencia",
+        titulo: "Alerta de Referencia",
+        subtitulo: "Segundo Nivel",
+        icono: "fa-solid fa-triangle-exclamation",
+        colorTheme: {
+          border: "border-amber-400/60",
+          bg: "bg-amber-500/20",
+          textTitle: "text-amber-300",
+          textBody: "text-amber-100",
+          chipBg: "bg-amber-400/20",
+          chipBorder: "border-amber-300/40",
+          chipText: "text-amber-200",
+        },
+        texto: "Referencia a segundo nivel de atención con paraclinicos desde la primera consulta",
+        items: factoresSegundoNivelActivos,
+      });
+    }
+
+    // 2. Alerta de Referencia Específica por Preeclampsia
+    if (patient.ant_preeclampsia) {
+      cards.push({
+        id: "referencia-preeclampsia",
+        tipo: "preeclampsia",
+        titulo: "Alerta de Referencia",
+        subtitulo: "Preeclampsia",
+        icono: "fa-solid fa-triangle-exclamation",
+        colorTheme: {
+          border: "border-amber-400/60",
+          bg: "bg-amber-500/20",
+          textTitle: "text-amber-300",
+          textBody: "text-amber-100",
+          chipBg: "bg-amber-400/20",
+          chipBorder: "border-amber-300/40",
+          chipText: "text-amber-200",
+        },
+        texto: "Referencia a segundo nivel de atención con paraclinicos desde la primera consulta + Vigilar ganancia ponderal + Vigilar proteinuria, T.A. apartir de las 20 SDG",
+        items: ["Antecedente de preeclampsia"],
+      });
+    }
+
+    // 3. Alerta de Notificación por Tamizajes Reactivos
+    if (tieneAlertaNotificacion) {
+      cards.push({
+        id: "notificacion-tamizajes",
+        tipo: "notificacion",
+        titulo: "Alerta de Notificación",
+        subtitulo: "Tamizajes Reactivos",
+        icono: "fa-solid fa-bullhorn",
+        colorTheme: {
+          border: "border-rose-400/60",
+          bg: "bg-rose-500/20",
+          textTitle: "text-rose-300",
+          textBody: "text-rose-100",
+          chipBg: "bg-rose-400/20",
+          chipBorder: "border-rose-300/40",
+          chipText: "text-rose-200",
+        },
+        texto: "Informar inmediatamente a enlace zonal y epidemiologia regional, seguimiento normativo hasta descarte o confirmacion",
+        items: tamizajesReactivosActivos,
+      });
+    }
+
+    // 4. Alerta de Discapacidad
+    if (patient.factor_discapacidad) {
+      cards.push({
+        id: "alerta-discapacidad",
+        tipo: "discapacidad",
+        titulo: "Alerta de Discapacidad",
+        subtitulo: "Atención Especial",
+        icono: "fa-solid fa-wheelchair",
+        colorTheme: {
+          border: "border-sky-400/60",
+          bg: "bg-sky-500/20",
+          textTitle: "text-sky-300",
+          textBody: "text-sky-100",
+          chipBg: "bg-sky-400/20",
+          chipBorder: "border-sky-300/40",
+          chipText: "text-sky-200",
+        },
+        texto: "Fortalecer red social, manejo conjunto con segundo nivel de atención",
+      });
+    }
+
+    // 5. Recomendaciones Clínicas Activas
+    if (recomendacionesClinicas.length > 0) {
+      cards.push({
+        id: "recomendaciones-clinicas",
+        tipo: "recomendaciones",
+        titulo: "Recomendaciones Clínicas",
+        subtitulo: "Guías activas",
+        icono: "fa-solid fa-clipboard-check",
+        colorTheme: {
+          border: "border-emerald-400/50",
+          bg: "bg-emerald-950/40",
+          textTitle: "text-emerald-300",
+          textBody: "text-slate-200",
+          chipBg: "bg-emerald-400/20",
+          chipBorder: "border-emerald-300/40",
+          chipText: "text-emerald-200",
+        },
+        lista: recomendacionesClinicas,
+      });
+    }
+
+    return cards;
+  }, [patient, tieneAlertaSegundoNivel, factoresSegundoNivelActivos, tieneAlertaNotificacion, tamizajesReactivosActivos, recomendacionesClinicas]);
+
+  // Rotación automática cada 6 segundos si hay más de 1 alerta y no hay hover
+  useEffect(() => {
+    if (cardsAlertas.length <= 1 || isAlertaHovered) return;
+
+    const timer = setInterval(() => {
+      setAlertaIndex((prev) => (prev + 1) % cardsAlertas.length);
+    }, 6000);
+
+    return () => clearInterval(timer);
+  }, [cardsAlertas.length, isAlertaHovered]);
+
+  const enProcesoColegiado = (ultimaConsulta?.colegiado ?? 0) === 1;
 
   if (!authChecked) {
     return (
@@ -283,254 +508,554 @@ export default function PacienteDetalle() {
     <main
       className="min-h-screen relative text-white"
       style={{
-        backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(15,118,110,0.6)), url(/maro-hero.png)",
+        backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.94), rgba(15,118,110,0.65)), url(/maro-hero.png)",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
       <div className="absolute inset-0 bg-black/40 mix-blend-multiply" aria-hidden />
 
-      <div className="relative mx-auto max-w-6xl px-6 py-10 lg:py-14 space-y-8">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-emerald-200/80">Paciente{patient?.folio ? `: ${patient.folio}` : ""}</p>
-            <h1 className="text-3xl font-bold lg:text-4xl">Detalle de paciente</h1>
-            <p className="text-slate-200/80 max-w-2xl">Datos generales, acciones preventivas y detecciones.</p>
+      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+        {/* ENCABEZADO SUPERIOR */}
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs uppercase tracking-[0.2em] font-semibold text-emerald-300">
+                Expediente Obstétrico
+              </span>
+              {patient?.folio && (
+                <span className="text-xs font-bold text-emerald-200 bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-0.5 rounded-full">
+                  {patient.folio}
+                </span>
+              )}
+              {enProcesoColegiado && (
+                <span className="text-xs font-bold text-amber-200 bg-amber-500/20 border border-amber-400/40 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                  <i className="fa-solid fa-clock-rotate-left text-amber-300"></i>
+                  <span>Colegiado en Proceso</span>
+                </span>
+              )}
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              {patient?.nombre_completo || "Paciente sin nombre"}
+            </h1>
+            <p className="text-xs text-slate-300 flex items-center gap-2">
+              <i className="fa-solid fa-hospital text-emerald-400"></i>
+              <span>{patient?.unidad || "Unidad Médica"} · CLUES {patient?.clues_id || "—"}</span>
+            </p>
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex items-center gap-2">
             <Link
               href="/dashboard"
-              className="rounded-full border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-white hover:bg-white/15 hover:border-white/30 transition shadow-sm"
             >
-              ← Dashboard
+              <i className="fa-solid fa-arrow-left text-xs text-slate-300"></i>
+              <span>Dashboard</span>
             </Link>
           </div>
-        </div>
+        </header>
 
         {loading ? (
-          <p className="text-sm text-slate-200/80">Cargando…</p>
+          <div className="py-20 text-center space-y-3">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent"></div>
+            <p className="text-sm text-slate-300">Cargando expediente de la paciente…</p>
+          </div>
         ) : error ? (
-          <p className="text-sm text-red-200">{error}</p>
+          <div className="rounded-2xl border border-red-500/40 bg-red-950/40 p-6 text-sm text-red-200 flex items-center gap-3">
+            <i className="fa-solid fa-circle-exclamation text-xl text-red-400"></i>
+            <span>{error}</span>
+          </div>
         ) : !patient ? (
           <p className="text-sm text-slate-200/80">Paciente no encontrado.</p>
         ) : (
-          <div className="space-y-6">
-            {enProcesoColegiado && (
-              <section className="rounded-2xl border border-amber-400/50 bg-amber-500/15 px-4 py-3">
-                <p className="text-sm font-medium text-amber-100">
-                  ⚠️ Este caso está en proceso de colegiado por el módulo estatal{ultimaConsulta?.fecha_colegiado ? ` · Fecha: ${formatDate(ultimaConsulta.fecha_colegiado)}` : ""}.
-                </p>
-              </section>
-            )}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* ========================================================================= */}
+            {/* COLUMNA PRINCIPAL (IZQUIERDA - 7/12 o 8/12)                               */}
+            {/* ========================================================================= */}
+            <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+              {/* ACCESOS RÁPIDOS A MÓDULOS */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  {
+                    title: "Consultas",
+                    subtitle: "Seguimiento y Signos",
+                    icon: "fa-solid fa-stethoscope",
+                    href: `/pacientes/${patient.id}/consultas`,
+                    accent: "border-cyan-400/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 hover:border-cyan-300",
+                    iconColor: "text-cyan-300",
+                  },
+                  {
+                    title: "Acciones",
+                    subtitle: "Preventivas y Educación",
+                    icon: "fa-solid fa-shield-heart",
+                    href: `/pacientes/${patient.id}/acciones`,
+                    accent: "border-amber-400/40 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20 hover:border-amber-300",
+                    iconColor: "text-amber-300",
+                  },
+                  {
+                    title: "Detecciones",
+                    subtitle: "Tamizajes y Laboratorios",
+                    icon: "fa-solid fa-vial-virus",
+                    href: `/pacientes/${patient.id}/detecciones`,
+                    accent: "border-emerald-400/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 hover:border-emerald-300",
+                    iconColor: "text-emerald-300",
+                  },
+                ].map((item) => (
+                  <Link
+                    key={item.title}
+                    href={item.href}
+                    className={`group rounded-2xl border p-4 shadow-lg transition-all duration-200 flex flex-col justify-between gap-3 ${item.accent}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center text-lg">
+                        <i className={`${item.icon} ${item.iconColor}`}></i>
+                      </div>
+                      <i className="fa-solid fa-arrow-right text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition"></i>
+                    </div>
+                    <div>
+                      <p className="font-bold text-base text-white">{item.title}</p>
+                      <p className="text-xs text-slate-200/70">{item.subtitle}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
 
-            {/* DATOS GENERALES */}
-            <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Datos generales</h2>
-                {patient.folio && (
-                  <span className="text-xs text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full">
-                    {patient.folio}
+              {/* PERFIL OBSTÉTRICO Y CRONOGRAMA GESTACIONAL */}
+              <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-6 space-y-4 shadow-xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h2 className="text-lg font-semibold text-emerald-300 flex items-center gap-2">
+                    <i className="fa-solid fa-person-pregnant text-emerald-400"></i>
+                    <span>Perfil Obstétrico y Gestacional</span>
+                  </h2>
+                  <span className="text-xs font-semibold text-cyan-200 bg-cyan-500/20 border border-cyan-400/30 px-3 py-1 rounded-full">
+                    {calcularSdgActual(patient)} SDG Actuales
                   </span>
-                )}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {infoRow("Nombre", patient.nombre_completo)}
-                {infoRow("Folio", patient.folio)}
-                {infoRow("CLUES", patient.clues_id)}
-                {infoRow("Unidad", patient.unidad)}
-                {infoRow("Región", patient.region)}
-                {infoRow("Municipio", patient.municipio)}
-                {infoRow("Ingreso CPN", formatDate(patient.fecha_ingreso_cpn))}
-                {infoRow("FUM", formatDate(patient.fum))}
-                {infoRow("FPP", formatDate(patient.fpp))}
-                {infoRow("Semanas gestación", patient.semanas_gestacion)}
-                {infoRow("SDG ingreso", patient.sdg_ingreso)}
-                {infoRow("Riesgo obstétrico", patient.riesgo_obstetrico_ingreso)}
-                {infoRow("Teléfono", patient.telefono)}
-                {infoRow("Dirección", patient.direccion)}
-                {infoRow("Derechohabiencia", patient.derechohabiencia ?? null)}
-              </div>
-            </section>
+                </div>
 
-            {/* ENLACES RÁPIDOS */}
-            <section className="space-y-3">
-              <div className="grid gap-4 md:grid-cols-3">
-              {[
-                {
-                  title: "Consultas/Seguimiento",
-                  desc: "Captura consultas prenatales y signos vitales",
-                  href: `/pacientes/${patient.id}/consultas`,
-                  accent: "border-cyan-500/40 bg-cyan-500/10 text-cyan-50",
-                },
-                {
-                  title: "Acciones preventivas",
-                  desc: "Intervenciones y educación para la paciente",
-                  href: `/pacientes/${patient.id}/acciones`,
-                  accent: "border-amber-500/40 bg-amber-500/10 text-amber-50",
-                },
-                {
-                  title: "Detecciones Tercer Trimestre",
-                  desc: "Tamizajes y hallazgos relevantes en el tercer trimestre",
-                  href: `/pacientes/${patient.id}/detecciones`,
-                  accent: "border-emerald-500/40 bg-emerald-500/10 text-emerald-50",
-                },
-              ].map((item) => (
-                <Link
-                  key={item.title}
-                  href={item.href}
-                  className={`flex flex-col gap-2 rounded-2xl border px-4 py-5 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl ${item.accent}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-lg font-semibold">{item.title}</p>
-                    <span className="text-xs text-white/80">Ingresar →</span>
+                {/* Grid de Métricas Obstétricas Clave */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-400 block font-medium">FUM</span>
+                    <span className="text-sm font-semibold text-white mt-0.5 block">{formatDate(patient.fum)}</span>
                   </div>
-                  <p className="text-sm text-white/90">{item.desc}</p>
-                </Link>
-              ))}
-              </div>
-            </section>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-400 block font-medium">FPP</span>
+                    <span className="text-sm font-semibold text-emerald-300 mt-0.5 block">{formatDate(patient.fpp)}</span>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-400 block font-medium">SDG Ingreso</span>
+                    <span className="text-sm font-semibold text-white mt-0.5 block">{patient.sdg_ingreso != null ? `${patient.sdg_ingreso} sem` : patient.semanas_gestacion != null ? `${Math.floor(Number(patient.semanas_gestacion))} sem` : "—"}</span>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-400 block font-medium">Ingreso CPN</span>
+                    <span className="text-sm font-semibold text-white mt-0.5 block">{formatDate(patient.fecha_ingreso_cpn)}</span>
+                  </div>
+                </div>
 
-            {/* SECCIÓN FACTOR DE RIESGO ANTECEDENTES */}
-            {resultadoRiesgo && (
-              <section className={`rounded-2xl border-2 backdrop-blur-sm shadow-2xl ${colorMap[resultadoRiesgo.nivel].bg} ${colorMap[resultadoRiesgo.nivel].border}`}>
-                {/* HEADER COLAPSABLE */}
-                <button
-                  onClick={() => setExpandidoRiesgo(!expandidoRiesgo)}
-                  className="w-full p-4 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{colorMap[resultadoRiesgo.nivel].icon}</span>
-                    <div className="text-left">
-                      <h2 className="text-lg font-bold text-white">Factor de Riesgo Antecedentes</h2>
-                      <p className="text-[10px] text-white/80">Evaluación de antecedentes obstétricos</p>
+                {/* Fórmula Obstétrica Destacada */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2">
+                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <i className="fa-solid fa-baby text-cyan-300"></i>
+                    <span>Fórmula Obstétrica (G - P - C - A)</span>
+                  </span>
+                  <div className="grid grid-cols-4 gap-2 pt-1">
+                    <div className="bg-white/10 rounded-lg p-2.5 text-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Gestas</span>
+                      <span className="text-lg font-bold text-white">{patient.gestas ?? 0}</span>
+                    </div>
+                    <div className="bg-white/10 rounded-lg p-2.5 text-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Partos</span>
+                      <span className="text-lg font-bold text-white">{patient.partos ?? 0}</span>
+                    </div>
+                    <div className="bg-white/10 rounded-lg p-2.5 text-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Cesáreas</span>
+                      <span className="text-lg font-bold text-white">{patient.cesareas ?? 0}</span>
+                    </div>
+                    <div className="bg-white/10 rounded-lg p-2.5 text-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Abortos</span>
+                      <span className="text-lg font-bold text-white">{patient.abortos ?? 0}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-3xl font-bold text-white">{resultadoRiesgo.puntajeTotal}</div>
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white shadow-lg ${colorMap[resultadoRiesgo.nivel].badge}`}>
-                        {resultadoRiesgo.nivel}
+                </div>
+
+                {/* Datos antropométricos / adicionales */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5">
+                    <span className="text-xs text-slate-300 flex items-center gap-2">
+                      <i className="fa-solid fa-weight-scale text-slate-400"></i>
+                      <span>IMC Inicial:</span>
+                    </span>
+                    <span className="text-sm font-semibold text-white">{patient.imc_inicial ? `${patient.imc_inicial} kg/m²` : "—"}</span>
+                  </div>
+                  {patient.edad ? (
+                    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5">
+                      <span className="text-xs text-slate-300 flex items-center gap-2">
+                        <i className="fa-solid fa-user text-slate-400"></i>
+                        <span>Edad de la paciente:</span>
                       </span>
+                      <span className="text-sm font-semibold text-white">{patient.edad} años</span>
                     </div>
-                    <span className="text-white text-lg">{expandidoRiesgo ? '▼' : '▶'}</span>
-                  </div>
-                </button>
+                  ) : null}
+                </div>
+              </section>
 
-                {/* CONTENIDO EXPANDIBLE */}
-                {expandidoRiesgo && (
-                  <div className="px-4 pb-4 space-y-3 border-t border-white/20 pt-3 animate-in slide-in-from-top-2 duration-200">
-                    <p className="text-xs text-center text-white/90 bg-white/10 rounded-lg px-3 py-2">
-                      {resultadoRiesgo.descripcion}
+              {/* ANTECEDENTES Y COMORBILIDADES REGISTRADAS */}
+              <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-6 space-y-4 shadow-xl">
+                <h2 className="text-lg font-semibold text-cyan-300 flex items-center gap-2 border-b border-white/10 pb-3">
+                  <i className="fa-solid fa-notes-medical text-cyan-400"></i>
+                  <span>Antecedentes y Factores Clínicos Registrados</span>
+                </h2>
+
+                <div className="space-y-4">
+                  {/* Antecedentes Gineco-obstétricos patológicos */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      Antecedentes Gineco-Obstétricos de Riesgo:
                     </p>
-
-                    {resultadoRiesgo.factores.length > 0 && (
-                      <div className="space-y-2">
-                        <div className="text-[10px] font-semibold text-white/80">
-                          FACTORES IDENTIFICADOS ({resultadoRiesgo.factores.length}):
-                        </div>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {resultadoRiesgo.factores.map((factor, idx) => (
-                            <div
-                              key={idx}
-                              className="rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 px-2.5 py-1.5"
-                            >
-                              <div className="flex justify-between items-start gap-2">
-                                <div className="flex-1">
-                                  <div className="font-semibold text-xs text-white">{factor.campo}</div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-bold text-lg text-white">+{factor.puntos}</div>
-                                  <div className="text-[8px] text-white/60">pts</div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                    {antecedentesActivos.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic bg-white/5 rounded-lg px-3 py-2">
+                        Sin antecedentes gineco-obstétricos de riesgo registrados.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {antecedentesActivos.map((ant, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium bg-amber-500/20 border border-amber-400/50 text-amber-200 px-3 py-1 rounded-full shadow-sm"
+                          >
+                            <i className="fa-solid fa-circle-exclamation text-amber-400 text-[10px]"></i>
+                            <span>{ant.label}</span>
+                            <span className="bg-amber-400/30 text-amber-100 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                              +{ant.puntos} pts
+                            </span>
+                          </span>
+                        ))}
                       </div>
                     )}
-
-                    {/* Recomendación clínica */}
-                    <div className="rounded-lg bg-white/15 backdrop-blur-sm border border-white/30 px-3 py-2">
-                      <div className="text-[10px] font-semibold text-white mb-1.5">📋 RECOMENDACIÓN:</div>
-                      <div className="text-[10px] text-white/90">
-                        {`RECOMENDACIÓN - CASO: ${resultadoRiesgo.nivel.replaceAll('_', ' ')}`}
-                      </div>
-                    </div>
                   </div>
-                )}
-              </section>
-            )}
 
-            {/* SECCIÓN TAMIZAJES INICIALES */}
-            {resultadoTamizajes && (resultadoTamizajes.tamizajes.length > 0 || resultadoTamizajes.nivel === 'SIN_HALLAZGOS') && (
-              <section className={`rounded-2xl border-2 backdrop-blur-sm shadow-2xl ${colorMap[resultadoTamizajes.nivel].bg} ${colorMap[resultadoTamizajes.nivel].border}`}>
-                {/* HEADER COLAPSABLE */}
-                <button
-                  onClick={() => setExpandidoTamizajes(!expandidoTamizajes)}
-                  className="w-full p-4 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{colorMap[resultadoTamizajes.nivel].icon}</span>
-                    <div className="text-left">
-                      <h2 className="text-lg font-bold text-white">Factor de Riesgo Tamizajes</h2>
-                      <p className="text-[10px] text-white/80">Evaluación de tamizajes iniciales</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-3xl font-bold text-white">{resultadoTamizajes.puntajeTotal}</div>
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white shadow-lg ${colorMap[resultadoTamizajes.nivel].badge}`}>
-                        {resultadoTamizajes.nivel === 'SIN_HALLAZGOS' ? 'SIN HALLAZGOS' : 'ALERTA'}
-                      </span>
-                    </div>
-                    <span className="text-white text-lg">{expandidoTamizajes ? '▼' : '▶'}</span>
-                  </div>
-                </button>
-
-                {/* CONTENIDO EXPANDIBLE */}
-                {expandidoTamizajes && (
-                  <div className="px-4 pb-4 space-y-3 border-t border-white/20 pt-3 animate-in slide-in-from-top-2 duration-200">
-                    <p className="text-xs text-center text-white/90 bg-white/10 rounded-lg px-3 py-2">
-                      {resultadoTamizajes.descripcion}
+                  {/* Comorbilidades activas */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      Comorbilidades y Factores Crónicos:
                     </p>
-
-                    {resultadoTamizajes.tamizajes.length > 0 && (
-                      <div className="space-y-2">
-                        <div className="text-[10px] font-semibold text-white/80">
-                          HALLAZGOS EN TAMIZAJES ({resultadoTamizajes.tamizajes.length}):
-                        </div>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {resultadoTamizajes.tamizajes.map((tamizaje, idx) => (
-                            <div
-                              key={idx}
-                              className="rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 px-2.5 py-1.5"
-                            >
-                              <div className="flex justify-between items-start gap-2">
-                                <div className="flex-1">
-                                  <div className="font-semibold text-xs text-white">{tamizaje.campo}</div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-bold text-lg text-white">+{tamizaje.puntos}</div>
-                                  <div className="text-[8px] text-white/60">pts</div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                    {comorbilidadesActivas.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic bg-white/5 rounded-lg px-3 py-2">
+                        Sin comorbilidades o toxicomanías activas registradas.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {comorbilidadesActivas.map((comorb, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 px-3 py-1 rounded-full shadow-sm"
+                          >
+                            <i className="fa-solid fa-check text-cyan-400 text-[10px]"></i>
+                            <span>{comorb}</span>
+                          </span>
+                        ))}
                       </div>
                     )}
+                  </div>
 
-                    {/* Recomendación clínica para tamizajes */}
-                    <div className="rounded-lg bg-white/15 backdrop-blur-sm border border-white/30 px-3 py-2">
-                      <div className="text-[10px] font-semibold text-white mb-1.5">📋 RECOMENDACIÓN:</div>
-                      <div className="text-[10px] text-white/90">
-                        {`RECOMENDACIÓN - CASO: ${resultadoTamizajes.nivel.replaceAll('_', ' ')}`}
+                  {/* Otros factores */}
+                  {(patient.indigena || patient.migrante || (patient.factores_riesgo_epid && patient.factores_riesgo_epid !== 'ninguno') || patient.otros_antecedentes) && (
+                    <div className="space-y-2 pt-2 border-t border-white/10">
+                      <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                        Factores Epidemiológicos y Sociodemográficos:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {Boolean(patient.indigena) && (
+                          <span className="text-xs bg-indigo-500/20 border border-indigo-400/40 text-indigo-200 px-2.5 py-1 rounded-full">
+                            Población Indígena
+                          </span>
+                        )}
+                        {Boolean(patient.migrante) && (
+                          <span className="text-xs bg-indigo-500/20 border border-indigo-400/40 text-indigo-200 px-2.5 py-1 rounded-full">
+                            Población Migrante
+                          </span>
+                        )}
+                        {patient.factores_riesgo_epid && patient.factores_riesgo_epid !== 'ninguno' && (
+                          <span className="text-xs bg-purple-500/20 border border-purple-400/40 text-purple-200 px-2.5 py-1 rounded-full">
+                            Epidemiológico: {patient.factores_riesgo_epid.replaceAll('_', ' ')}
+                          </span>
+                        )}
                       </div>
+                      {patient.otros_antecedentes && (
+                        <p className="text-xs text-slate-300 bg-white/5 border border-white/10 rounded-lg p-2.5 mt-2">
+                          <strong className="text-white">Otros antecedentes:</strong> {patient.otros_antecedentes}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* IDENTIFICACIÓN, UBICACIÓN Y CONTACTO */}
+              <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-6 space-y-4 shadow-xl">
+                <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2 border-b border-white/10 pb-3">
+                  <i className="fa-solid fa-hospital-user text-indigo-400"></i>
+                  <span>Identificación, Ubicación y Contacto</span>
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Teléfono</span>
+                    <p className="text-sm font-semibold text-white flex items-center gap-2">
+                      <i className="fa-solid fa-phone text-xs text-emerald-400"></i>
+                      <span>{patient.telefono || "—"}</span>
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Derechohabiencia</span>
+                    <p className="text-sm font-semibold text-white flex items-center gap-2">
+                      <i className="fa-solid fa-id-card text-xs text-cyan-400"></i>
+                      <span>{patient.derechohabiencia || "—"}</span>
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Municipio</span>
+                    <p className="text-sm font-semibold text-white flex items-center gap-2">
+                      <i className="fa-solid fa-location-dot text-xs text-amber-400"></i>
+                      <span>{patient.municipio || "—"}</span>
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Localidad / Colonia</span>
+                    <p className="text-sm font-semibold text-white">{patient.localidad || "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1 sm:col-span-2">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Dirección</span>
+                    <p className="text-sm text-slate-200">{patient.direccion || "—"}</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* PANEL LATERAL DE RIESGO Y RECOMENDACIONES (DERECHA - 5/12 o 4/12 STICKY) */}
+            {/* ========================================================================= */}
+            <aside className="lg:col-span-5 xl:col-span-4 space-y-5 lg:sticky lg:top-6">
+              {/* TARJETA DE RESUMEN GLOBAL DE RIESGO */}
+              <div className="rounded-2xl border border-white/15 bg-slate-900/80 backdrop-blur-md p-5 space-y-4 shadow-2xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase font-bold tracking-wider text-slate-300 flex items-center gap-1.5">
+                    <i className="fa-solid fa-gauge-high text-emerald-400"></i>
+                    <span>Semáforo de Riesgo</span>
+                  </span>
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm ${
+                    puntajeTotalCombinado >= 25 ? 'bg-red-600 text-white' :
+                    puntajeTotalCombinado >= 10 ? 'bg-orange-500 text-white' :
+                    puntajeTotalCombinado >= 4 ? 'bg-amber-500 text-slate-900 font-bold' :
+                    'bg-emerald-600 text-white'
+                  }`}>
+                    {puntajeTotalCombinado >= 25 ? 'CRÍTICO' :
+                     puntajeTotalCombinado >= 10 ? 'MUY ALTO' :
+                     puntajeTotalCombinado >= 4 ? 'ALTO' : 'BAJO'}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline justify-between bg-white/5 border border-white/10 rounded-xl p-4">
+                  <div>
+                    <span className="text-xs text-slate-400 block font-medium">Puntaje Total Combinado</span>
+                    <span className="text-3xl font-black text-white">{puntajeTotalCombinado} <span className="text-sm font-normal text-slate-400">pts</span></span>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <div className="text-xs text-slate-300">
+                      Antecedentes: <strong className="text-white">{resultadoRiesgo?.puntajeTotal ?? 0} pts</strong>
+                    </div>
+                    <div className="text-xs text-slate-300">
+                      Tamizajes: <strong className="text-white">{resultadoTamizajes?.puntajeTotal ?? 0} pts</strong>
                     </div>
                   </div>
-                )}
-              </section>
-            )}
+                </div>
+              </div>
+
+              {/* CARRUSEL DE ALERTAS Y RECOMENDACIONES CLÍNICAS */}
+              {cardsAlertas.length > 0 && (() => {
+                const totalAlertas = cardsAlertas.length;
+                const safeIndex = ((alertaIndex % totalAlertas) + totalAlertas) % totalAlertas;
+                const currentCard = cardsAlertas[safeIndex];
+
+                return (
+                  <div 
+                    onMouseEnter={() => setIsAlertaHovered(true)}
+                    onMouseLeave={() => setIsAlertaHovered(false)}
+                    className={`rounded-2xl border ${currentCard.colorTheme.border} ${currentCard.colorTheme.bg} backdrop-blur-md p-4 space-y-3 shadow-xl transition-all duration-300 relative`}
+                  >
+                    {/* Header del Carrusel con Controles */}
+                    <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <i className={`${currentCard.icono} ${currentCard.colorTheme.textTitle} text-sm shrink-0`}></i>
+                        <span className={`text-xs font-bold uppercase tracking-wider ${currentCard.colorTheme.textTitle} truncate`}>
+                          {currentCard.titulo}
+                        </span>
+                        {currentCard.subtitulo && (
+                          <span className="text-[10px] text-slate-300 bg-white/10 px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-block">
+                            {currentCard.subtitulo}
+                          </span>
+                        )}
+                      </div>
+
+                      {totalAlertas > 1 && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[11px] font-semibold text-slate-300 mr-1">
+                            {safeIndex + 1} de {totalAlertas}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setAlertaIndex((prev) => (prev - 1 + totalAlertas) % totalAlertas)}
+                            className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-xs text-white transition-all cursor-pointer"
+                            title="Alerta anterior"
+                            aria-label="Alerta anterior"
+                          >
+                            <i className="fa-solid fa-chevron-left"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAlertaIndex((prev) => (prev + 1) % totalAlertas)}
+                            className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-xs text-white transition-all cursor-pointer"
+                            title="Siguiente alerta"
+                            aria-label="Siguiente alerta"
+                          >
+                            <i className="fa-solid fa-chevron-right"></i>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Contenido de la Alerta Actual */}
+                    <div className="space-y-2.5 min-h-[70px] flex flex-col justify-between animate-in fade-in duration-200">
+                      {currentCard.texto && (
+                        <p className={`text-xs font-semibold ${currentCard.colorTheme.textBody} leading-snug`}>
+                          {currentCard.texto}
+                        </p>
+                      )}
+
+                      {/* Chips / Factores asociados */}
+                      {currentCard.items && currentCard.items.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {currentCard.items.map((item, index) => (
+                            <span
+                              key={index}
+                              className={`text-[10px] ${currentCard.colorTheme.chipBg} border ${currentCard.colorTheme.chipBorder} ${currentCard.colorTheme.chipText} font-medium px-2 py-0.5 rounded-full`}
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Lista de recomendaciones estructuradas */}
+                      {currentCard.lista && currentCard.lista.length > 0 && (
+                        <ul className="space-y-1.5 pt-1 max-h-[220px] overflow-y-auto pr-1">
+                          {currentCard.lista.map((rec, index) => (
+                            <li key={index} className="text-xs text-slate-200 bg-white/5 border border-white/5 rounded-lg p-2 flex items-start gap-2">
+                              <span className="text-emerald-400 font-bold">•</span>
+                              <span>{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* Indicadores inferiores (Dots de navegación) */}
+                    {totalAlertas > 1 && (
+                      <div className="flex items-center justify-center gap-1.5 pt-2 border-t border-white/5">
+                        {cardsAlertas.map((card, idx) => (
+                          <button
+                            key={card.id}
+                            type="button"
+                            onClick={() => setAlertaIndex(idx)}
+                            className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${
+                              idx === safeIndex ? "w-5 bg-white" : "w-1.5 bg-white/30 hover:bg-white/50"
+                            }`}
+                            aria-label={`Ir a alerta ${idx + 1}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* EVALUACIÓN DE FACTORES DE RIESGO: ANTECEDENTES */}
+              {resultadoRiesgo && (
+                <div className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-4 space-y-3 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <i className="fa-solid fa-clipboard-list text-emerald-400"></i>
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">Riesgo Antecedentes</span>
+                    </div>
+                    <span className="text-xs font-extrabold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-md">
+                      +{resultadoRiesgo.puntajeTotal} pts
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {resultadoRiesgo.descripcion}
+                  </p>
+
+                  {resultadoRiesgo.factores.length > 0 ? (
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Factores Sumatorios:</span>
+                      <div className="space-y-1">
+                        {resultadoRiesgo.factores.map((f, i) => (
+                          <div key={i} className="flex items-center justify-between bg-white/5 border border-white/5 rounded-lg px-2.5 py-1.5 text-xs">
+                            <span className="text-slate-200">{f.campo}</span>
+                            <span className="font-bold text-emerald-300">+{f.puntos} pts</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-slate-400 italic">
+                      Sin factores de riesgo identificados en antecedentes.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* EVALUACIÓN DE FACTORES DE RIESGO: TAMIZAJES */}
+              {resultadoTamizajes && (
+                <div className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-4 space-y-3 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <i className="fa-solid fa-flask-vial text-cyan-400"></i>
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">Riesgo Tamizajes</span>
+                    </div>
+                    <span className={`text-xs font-extrabold px-2 py-0.5 rounded-md ${
+                      resultadoTamizajes.puntajeTotal > 0
+                        ? "bg-rose-500/20 text-rose-300"
+                        : "bg-emerald-500/20 text-emerald-300"
+                    }`}>
+                      +{resultadoTamizajes.puntajeTotal} pts
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {resultadoTamizajes.descripcion}
+                  </p>
+
+                  {resultadoTamizajes.tamizajes.length > 0 ? (
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wider">Hallazgos Reactivos:</span>
+                      <div className="space-y-1">
+                        {resultadoTamizajes.tamizajes.map((t, i) => (
+                          <div key={i} className="flex items-center justify-between bg-rose-500/10 border border-rose-400/30 rounded-lg px-2.5 py-1.5 text-xs text-rose-200">
+                            <span>{t.campo}</span>
+                            <span className="font-bold text-rose-300">+{t.puntos} pts</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-slate-400 italic">
+                      Todos los tamizajes iniciales dentro de parámetros normales.
+                    </div>
+                  )}
+                </div>
+              )}
+            </aside>
           </div>
         )}
       </div>

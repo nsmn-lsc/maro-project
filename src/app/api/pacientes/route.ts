@@ -28,13 +28,14 @@ function computeSdgNotation(totalDays: number): number {
   return weeks + days * 0.1;
 }
 
-function computeGestacionDesdeFum(fum: string | null | undefined) {
+function computeGestacionDesdeFum(fum: string | null | undefined, fechaIngreso?: string | null) {
   const fumDate = parseDateOnly(String(fum || "").trim());
   if (!fumDate) {
     return {
       fum: null,
       fpp: null,
       semanasGestacion: null,
+      sdgIngreso: null,
     };
   }
 
@@ -46,10 +47,24 @@ function computeGestacionDesdeFum(fum: string | null | undefined) {
   const diffInMs = todayUtc.getTime() - fumDate.getTime();
   const totalDays = Math.max(0, Math.floor(diffInMs / (1000 * 60 * 60 * 24)));
 
+  let sdgIngresoVal: number | null = null;
+  if (fechaIngreso) {
+    const ingresoDate = parseDateOnly(fechaIngreso);
+    if (ingresoDate) {
+      const diffIngreso = ingresoDate.getTime() - fumDate.getTime();
+      const daysIngreso = Math.max(0, Math.floor(diffIngreso / (1000 * 60 * 60 * 24)));
+      sdgIngresoVal = Math.floor(daysIngreso / 7);
+    }
+  }
+  if (sdgIngresoVal === null) {
+    sdgIngresoVal = Math.floor(totalDays / 7);
+  }
+
   return {
     fum: formatDateOnly(fumDate),
     fpp: formatDateOnly(fppDate),
     semanasGestacion: computeSdgNotation(totalDays),
+    sdgIngreso: sdgIngresoVal,
   };
 }
 
@@ -89,8 +104,15 @@ export async function GET(request: Request) {
   const auth = authResult.auth;
 
   const { searchParams } = new URL(request.url);
-  const parsed = parseInt(searchParams.get("limit") || "8", 10);
-  const limit = Number.isNaN(parsed) ? 8 : Math.min(Math.max(parsed, 1), 50);
+  const limitParam = (searchParams.get("limit") || "").toLowerCase().trim();
+  let limitClause = "";
+  if (limitParam === "all" || limitParam === "0" || limitParam === "-1") {
+    limitClause = "";
+  } else if (limitParam) {
+    const parsed = parseInt(limitParam, 10);
+    const limit = Number.isNaN(parsed) ? 1000 : Math.max(parsed, 1);
+    limitClause = `LIMIT ${limit}`;
+  }
   const summary = (searchParams.get("summary") || "").toLowerCase();
   let cluesFilter = (searchParams.get("clues_id") || "").trim().toUpperCase();
   let regionFilter = (searchParams.get("region") || "").trim().toUpperCase();
@@ -162,6 +184,9 @@ export async function GET(request: Request) {
                 COALESCE(p.factor_riesgo_antecedentes, 0) + COALESCE(p.factor_riesgo_tamizajes, 0) + COALESCE(c.puntaje_consulta_parametros, 0)
               ) >= 25 THEN 1 ELSE 0 END
             ) AS alto_riesgo,
+            SUM(CASE WHEN DATEDIFF(CURDATE(), COALESCE(c.last_consulta_fecha, p.fecha_ingreso_cpn, DATE(p.created_at))) > 30 THEN 1 ELSE 0 END) AS inasistencias_30d,
+            SUM(CASE WHEN DATEDIFF(CURDATE(), COALESCE(c.last_consulta_fecha, p.fecha_ingreso_cpn, DATE(p.created_at))) BETWEEN 21 AND 30 THEN 1 ELSE 0 END) AS proximas_vencer,
+            SUM(CASE WHEN DATEDIFF(CURDATE(), COALESCE(c.last_consulta_fecha, p.fecha_ingreso_cpn, DATE(p.created_at))) < 21 THEN 1 ELSE 0 END) AS al_corriente,
             SUM(CASE WHEN DATE(p.fecha_ingreso_cpn) BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE() THEN 1 ELSE 0 END) AS semana_ingreso,
             SUM(CASE WHEN DATE(p.created_at) BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE() THEN 1 ELSE 0 END) AS semana_sistema,
             SUM(
@@ -173,7 +198,7 @@ export async function GET(request: Request) {
             ) AS semana_actual
          FROM cat_pacientes p
          LEFT JOIN (
-             SELECT c1.id AS last_consulta_id, c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta
+             SELECT c1.id AS last_consulta_id, c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta, c1.fecha_consulta AS last_consulta_fecha
            FROM consultas_prenatales c1
            INNER JOIN (
              SELECT paciente_id, MAX(id) AS last_consulta_id
@@ -188,6 +213,9 @@ export async function GET(request: Request) {
       const metrics = rows?.[0] || {
         total: 0,
         alto_riesgo: 0,
+        inasistencias_30d: 0,
+        proximas_vencer: 0,
+        al_corriente: 0,
         semana_ingreso: 0,
         semana_sistema: 0,
         semana_actual: 0,
@@ -195,6 +223,9 @@ export async function GET(request: Request) {
       return NextResponse.json({
         total: Number(metrics.total) || 0,
         alto_riesgo: Number(metrics.alto_riesgo) || 0,
+        inasistencias_30d: Number(metrics.inasistencias_30d) || 0,
+        proximas_vencer: Number(metrics.proximas_vencer) || 0,
+        al_corriente: Number(metrics.al_corriente) || 0,
         semana_ingreso: Number(metrics.semana_ingreso) || 0,
         semana_sistema: Number(metrics.semana_sistema) || 0,
         semana_actual: Number(metrics.semana_actual) || 0,
@@ -231,10 +262,11 @@ export async function GET(request: Request) {
 
     // SELECT más completo cuando se consulta por ID (para detalle del paciente)
     const selectFields = idFilter ? `
-      p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.region, p.fecha_ingreso_cpn, 
+      p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.localidad, p.region, p.fecha_ingreso_cpn, 
       p.edad, p.indigena, p.migrante, p.derechohabiencia,
-      p.imc_inicial,
-      p.fum, p.fpp, p.semanas_gestacion, p.sdg_ingreso, p.riesgo_obstetrico_ingreso, 
+      p.imc_inicial, p.ganancia_ponderal_max, p.tipo_riesgo_social,
+      p.fum, p.fpp, p.semanas_gestacion,
+      COALESCE(p.sdg_ingreso, FLOOR(p.semanas_gestacion)) AS sdg_ingreso, p.riesgo_obstetrico_ingreso, 
       p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes, p.telefono, p.direccion,
       p.gestas, p.partos, p.cesareas, p.abortos,
       p.ant_preeclampsia, p.ant_hemorragia, p.ant_sepsis, p.ant_bajo_peso_macrosomia, p.ant_muerte_perinatal, p.ant_embarazo_ectopico,
@@ -246,10 +278,14 @@ export async function GET(request: Request) {
       p.factores_riesgo_epid,
       d.prueba_vih, d.prueba_vdrl, d.prueba_hepatitis_c, d.diabetes_glicemia, d.violencia
     ` : `
-      p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.localidad, p.fecha_ingreso_cpn, 
+      p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.localidad, p.telefono, p.madrina_nombre, p.madrina_telefono, p.fecha_ingreso_cpn, 
       p.edad, p.fum, p.fpp,
       p.imc_inicial,
-      COALESCE(c.last_consulta_sdg, p.sdg_ingreso) AS sdg_ingreso, p.semanas_gestacion, p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes,
+      COALESCE(p.sdg_ingreso, FLOOR(p.semanas_gestacion)) AS sdg_ingreso,
+      c.last_consulta_sdg AS ultima_consulta_sdg,
+      c.last_consulta_fecha AS ultima_consulta_fecha,
+      DATEDIFF(CURDATE(), COALESCE(c.last_consulta_fecha, p.fecha_ingreso_cpn, DATE(p.created_at))) AS dias_sin_consulta,
+      p.semanas_gestacion, p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes,
       p.factor_cardiopatia, p.factor_hepatopatia, p.factor_coagulopatias, p.factor_nefropatia,
         c.last_consulta_id AS ultima_consulta_id,
       COALESCE(c.puntaje_consulta_parametros, 0) AS puntaje_ultima_consulta,
@@ -265,7 +301,7 @@ export async function GET(request: Request) {
     ` : `
       FROM cat_pacientes p
       LEFT JOIN (
-          SELECT c1.id AS last_consulta_id, c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta, c1.sdg AS last_consulta_sdg
+          SELECT c1.id AS last_consulta_id, c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta, c1.sdg AS last_consulta_sdg, c1.fecha_consulta AS last_consulta_fecha
         FROM consultas_prenatales c1
         INNER JOIN (
           SELECT paciente_id, MAX(id) AS last_consulta_id
@@ -280,7 +316,7 @@ export async function GET(request: Request) {
        ${fromClause}
        ${whereClause}
        ORDER BY ${idFilter ? 'p.created_at' : 'created_at'} DESC
-       ${idFilter ? "LIMIT 1" : `LIMIT ${limit}`}`,
+       ${idFilter ? "LIMIT 1" : limitClause}`,
       params
     );
 
@@ -307,7 +343,16 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const gestacionCalculada = computeGestacionDesdeFum(body.fum);
+    let fechaIngresoCpnValidada = null;
+    if (body.fecha_ingreso_cpn) {
+      const parsedFecha = parseDateOnly(body.fecha_ingreso_cpn);
+      if (!parsedFecha) {
+        return NextResponse.json({ message: "La fecha de ingreso CPN no es válida o está fuera de rango" }, { status: 400 });
+      }
+      fechaIngresoCpnValidada = formatDateOnly(parsedFecha);
+    }
+
+    const gestacionCalculada = computeGestacionDesdeFum(body.fum, fechaIngresoCpnValidada);
 
     const nombre = (body.nombre_completo || "").trim();
     const clues = String(body.clues_id || "").trim().toUpperCase();
@@ -316,6 +361,23 @@ export async function POST(request: Request) {
     }
     if (!clues) {
       return NextResponse.json({ message: "La CLUES es obligatoria" }, { status: 400 });
+    }
+
+    // Validación de paridad obstétrica: Partos + Cesáreas + Abortos = Gestas
+    if (body.gestas !== undefined && body.gestas !== null && String(body.gestas).trim() !== "") {
+      const g = Number(body.gestas);
+      const p = Number(body.partos ?? 0);
+      const c = Number(body.cesareas ?? 0);
+      const a = Number(body.abortos ?? 0);
+      if (Number.isFinite(g) && (p + c + a !== g)) {
+        return NextResponse.json(
+          {
+            message: `Inconsistencia en la fórmula obstétrica: La suma de Partos (${p}) + Cesáreas (${c}) + Abortos (${a}) = ${p + c + a} debe ser igual a las Gestas totales (${g}).`,
+            code: "INVALID_PARITY"
+          },
+          { status: 400 }
+        );
+      }
     }
 
     if (body.curp && String(body.curp).trim() !== "") {
@@ -334,15 +396,6 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-    }
-
-    let fechaIngresoCpnValidada = null;
-    if (body.fecha_ingreso_cpn) {
-      const parsedFecha = parseDateOnly(body.fecha_ingreso_cpn);
-      if (!parsedFecha) {
-        return NextResponse.json({ message: "La fecha de ingreso CPN no es válida o está fuera de rango" }, { status: 400 });
-      }
-      fechaIngresoCpnValidada = formatDateOnly(parsedFecha);
     }
 
     const canWriteClues = await assertCluesScope(clues, auth);
@@ -404,7 +457,7 @@ export async function POST(request: Request) {
       fum: gestacionCalculada.fum,
       fpp: gestacionCalculada.fpp,
       semanas_gestacion: gestacionCalculada.semanasGestacion,
-      sdg_ingreso: body.sdg_ingreso || null,
+      sdg_ingreso: body.sdg_ingreso ? Number(body.sdg_ingreso) : gestacionCalculada.sdgIngreso,
       factores_riesgo_epid: body.factores_riesgo_epid || 'ninguno',
       imc_inicial: body.imc_inicial || null,
       ganancia_ponderal_max: body.ganancia_ponderal_max || null,
