@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 function MaroVectorLogo({ size = 80, className = "" }: { size?: number; className?: string }) {
   return (
@@ -168,39 +169,39 @@ export default function AccesoInicial() {
   }
 
   return (
-    <main className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-slate-950">
+    <main className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
       {/* Columna izquierda — Hero & Contexto Clínico (7/12 en lg) */}
       <section
-        className="relative hidden lg:flex lg:col-span-7 flex-col justify-between p-10 xl:p-14 bg-cover bg-center overflow-hidden"
+        className="relative hidden lg:flex lg:col-span-7 flex-col justify-between p-10 xl:p-14 bg-cover bg-center overflow-hidden transition-colors duration-300"
         style={{ backgroundImage: "url(/maro-hero.png)" }}
       >
-        {/* Layer de gradientes oscuros para contraste perfecto */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/30" />
-        <div className="absolute inset-0 bg-radial-at-t from-emerald-900/20 via-transparent to-transparent" />
+        {/* Layer de gradientes adaptativos para contraste perfecto en Claro y Oscuro */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-100/95 via-slate-100/80 to-slate-100/40 dark:from-slate-950 dark:via-slate-950/70 dark:to-slate-950/30 transition-all duration-300" />
+        <div className="absolute inset-0 bg-radial-at-t from-emerald-600/10 dark:from-emerald-900/20 via-transparent to-transparent pointer-events-none" />
 
         {/* Top Header Badge */}
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-slate-900/80 border border-emerald-500/30 text-emerald-300 text-xs font-semibold backdrop-blur-md shadow-lg shadow-black/40">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span>Sistema de Vigilancia</span>
+          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold backdrop-blur-md shadow-md dark:shadow-black/40 transition-colors">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
+            <span>Sistema de Vigilancia y Triage Materno</span>
           </div>
         </div>
 
         {/* Card Glassmorphic Inferior de Valor Clínico */}
-        <div className="relative z-10 bg-slate-900/85 backdrop-blur-xl p-7 xl:p-8 rounded-3xl border border-white/15 shadow-2xl shadow-black/80 space-y-6 max-w-xl">
+        <div className="relative z-10 bg-white/90 dark:bg-slate-900/85 backdrop-blur-xl p-7 xl:p-8 rounded-3xl border border-slate-200/90 dark:border-white/15 shadow-xl dark:shadow-2xl dark:shadow-black/80 space-y-6 max-w-xl transition-colors">
           {/* Logo & Identidad Institucional */}
-          <div className="flex items-center gap-5 border-b border-white/10 pb-5">
-            <div className="relative shrink-0 p-2 rounded-2xl bg-emerald-500/10 border border-emerald-400/25">
+          <div className="flex items-center gap-5 border-b border-slate-200 dark:border-white/10 pb-5">
+            <div className="relative shrink-0 p-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-400/25">
               <MaroVectorLogo size={80} />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h2 className="text-3xl font-black tracking-tight text-white">MARO</h2>
-                <span className="text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">MARO</h2>
+                <span className="text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-400/30">
                   Salud Materna
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium mt-1">
                 Modelo de Atención y Reducción del Riesgo Obstétrico
               </p>
             </div>
@@ -208,44 +209,49 @@ export default function AccesoInicial() {
 
           {/* Micro-indicadores de valor */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-3.5 space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 text-xs">
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/5 rounded-2xl p-3.5 space-y-1 transition-colors">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/30 dark:border-emerald-400/30 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-xs">
                 <i className="fa-solid fa-heart-pulse"></i>
               </div>
-              <span className="text-[11px] font-bold text-white block">Triage Materno</span>
-              <p className="text-[10px] text-slate-400 leading-tight">Identificación oportuna y semaforización de riesgo.</p>
+              <span className="text-[11px] font-bold text-slate-900 dark:text-white block">Triage Materno</span>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Identificación oportuna y semaforización de riesgo.</p>
             </div>
 
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-3.5 space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300 text-xs">
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/5 rounded-2xl p-3.5 space-y-1 transition-colors">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/15 dark:bg-amber-500/20 border border-amber-500/30 dark:border-amber-400/30 flex items-center justify-center text-amber-700 dark:text-amber-300 text-xs">
                 <i className="fa-solid fa-user-doctor"></i>
               </div>
-              <span className="text-[11px] font-bold text-white block">Atención Especializada</span>
-              <p className="text-[10px] text-slate-400 leading-tight">Coordinación médica para casos prioritarios.</p>
+              <span className="text-[11px] font-bold text-slate-900 dark:text-white block">Atención Especializada</span>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Coordinación médica para casos prioritarios.</p>
             </div>
 
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-3.5 space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300 text-xs">
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/5 rounded-2xl p-3.5 space-y-1 transition-colors">
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/15 dark:bg-cyan-500/20 border border-cyan-500/30 dark:border-cyan-400/30 flex items-center justify-center text-cyan-700 dark:text-cyan-300 text-xs">
                 <i className="fa-solid fa-notes-medical"></i>
               </div>
-              <span className="text-[11px] font-bold text-white block">Seguimiento Continuo</span>
-              <p className="text-[10px] text-slate-400 leading-tight">Acompañamiento y control durante el embarazo.</p>
+              <span className="text-[11px] font-bold text-slate-900 dark:text-white block">Seguimiento Continuo</span>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Acompañamiento y control durante el embarazo.</p>
             </div>
           </div>
 
           {/* Status Bar */}
-          <div className="pt-2 flex items-center justify-between text-xs text-slate-400">
+          <div className="pt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-              <span className="font-semibold text-slate-300">Servidor Activo</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Servidores Activos 24/7</span>
             </div>
-            <span className="text-[11px] text-slate-500">Módulos: Unidad · Región · Estatal</span>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">Módulos: Unidad · Región · Estatal</span>
           </div>
         </div>
       </section>
 
       {/* Columna derecha — Formulario de Acceso (5/12 en lg) */}
-      <section className="relative lg:col-span-5 flex items-center justify-center p-6 sm:p-10 lg:p-12 overflow-hidden bg-slate-950">
+      <section className="relative lg:col-span-5 flex items-center justify-center p-6 sm:p-10 lg:p-12 overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+        {/* Selector de tema claro/oscuro flotante */}
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-30">
+          <ThemeToggle />
+        </div>
+
         {/* Glow ambient background effects */}
         <div className="absolute -top-32 -right-32 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -255,26 +261,26 @@ export default function AccesoInicial() {
           {/* Header con Isotipo Vectorial SVG Imponente */}
           <header className="text-center space-y-3">
             <div className="flex justify-center mb-1">
-              <div className="p-4 sm:p-5 rounded-3xl bg-slate-900/90 border-2 border-emerald-500/30 shadow-2xl shadow-emerald-950/70 inline-flex items-center justify-center hover:scale-105 transition-all duration-300">
+              <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-emerald-500/30 shadow-xl dark:shadow-2xl shadow-slate-200/50 dark:shadow-emerald-950/70 inline-flex items-center justify-center hover:scale-105 transition-all duration-300">
                 <MaroVectorLogo size={118} />
               </div>
             </div>
             <div>
               <div className="flex items-center justify-center gap-2 mb-1">
-                <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">MARO</h1>
-                <span className="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">MARO</h1>
+                <span className="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
                   Salud Materna
                 </span>
               </div>
-              <h2 className="text-base font-bold text-slate-200">Acceso Institucional</h2>
-              <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200">Acceso Institucional</h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">
                 Ingrese sus credenciales autorizadas para continuar
               </p>
             </div>
           </header>
 
           {/* Card Formulario */}
-          <div className="bg-slate-900/80 backdrop-blur-xl p-7 sm:p-8 rounded-3xl shadow-2xl border border-white/10 space-y-5">
+          <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl p-7 sm:p-8 rounded-3xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-white/10 space-y-5 transition-colors">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -284,7 +290,7 @@ export default function AccesoInicial() {
             >
               {/* Campo Usuario */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                   Usuario Institucional
                 </label>
                 <div className="relative">
@@ -293,7 +299,7 @@ export default function AccesoInicial() {
                   </div>
                   <input
                     type="text"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-white/10 rounded-xl text-white text-xs sm:text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-xs sm:text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
                     value={usuario}
                     onChange={(e) => setUsuario(e.target.value)}
                     placeholder="Clave de usuario"
@@ -305,7 +311,7 @@ export default function AccesoInicial() {
 
               {/* Campo Contraseña */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                   Contraseña
                 </label>
                 <div className="relative">
@@ -314,7 +320,7 @@ export default function AccesoInicial() {
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
-                    className="w-full pl-10 pr-11 py-3 bg-slate-950/80 border border-white/10 rounded-xl text-white text-xs sm:text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 transition-all"
+                    className="w-full pl-10 pr-11 py-3 bg-slate-50 dark:bg-slate-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-xs sm:text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••"
@@ -324,7 +330,7 @@ export default function AccesoInicial() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors cursor-pointer"
                     tabIndex={-1}
                     aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                   >
@@ -335,8 +341,8 @@ export default function AccesoInicial() {
 
               {/* Banner de Error */}
               {error && (
-                <div className="flex items-start gap-2.5 p-3 bg-rose-500/15 border border-rose-400/30 rounded-xl text-rose-200 text-xs font-semibold animate-in fade-in duration-150">
-                  <i className="fa-solid fa-circle-exclamation text-rose-400 text-sm mt-0.5 shrink-0"></i>
+                <div className="flex items-start gap-2.5 p-3 bg-rose-500/15 border border-rose-400/30 rounded-xl text-rose-700 dark:text-rose-200 text-xs font-semibold animate-in fade-in duration-150">
+                  <i className="fa-solid fa-circle-exclamation text-rose-500 dark:text-rose-400 text-sm mt-0.5 shrink-0"></i>
                   <span className="leading-snug">{error}</span>
                 </div>
               )}
@@ -345,7 +351,7 @@ export default function AccesoInicial() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-11 sm:h-12 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-950/60 hover:shadow-emerald-600/30 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-11 sm:h-12 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-900/20 dark:shadow-emerald-950/60 hover:shadow-emerald-600/30 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
@@ -365,7 +371,7 @@ export default function AccesoInicial() {
           {/* Footer Institucional */}
           <footer className="text-center text-[11px] text-slate-500 space-y-1">
             <p className="flex items-center justify-center gap-1.5">
-              <i className="fa-solid fa-shield-halved text-emerald-500/70"></i>
+              <i className="fa-solid fa-shield-halved text-emerald-600 dark:text-emerald-500/70"></i>
               <span>Acceso institucional seguro</span>
             </p>
             <p>© 2026 Sistema MARO · Todos los derechos reservados</p>

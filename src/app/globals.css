@@ -1,47 +1,50 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --maro-bg: #ffffff;
+  --maro-bg-soft: #fff1f2;
+  --maro-border: #cbd5e1;
+  --maro-border-strong: #94a3b8;
+  --maro-text: #1e293b;
+  --maro-muted: #64748b;
+  --maro-focus: #10b981;
+  --maro-focus-soft: rgba(16, 185, 129, 0.25);
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #020617;
+  --foreground: #f8fafc;
+  --maro-bg: #0f172a;
+  --maro-bg-soft: #1e293b;
+  --maro-border: rgba(255, 255, 255, 0.12);
+  --maro-border-strong: rgba(255, 255, 255, 0.2);
+  --maro-text: #f8fafc;
+  --maro-muted: #94a3b8;
+  --maro-focus: #10b981;
+  --maro-focus-soft: rgba(16, 185, 129, 0.35);
+  color-scheme: dark;
 }
 
-body {
-  background: var(--background);
+html, body {
+  background-color: var(--background);
   color: var(--foreground);
+  min-height: 100%;
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* INPUTS A PRUEBA DE USUARIOS */
+/* INPUTS BASE */
 .input-base {
   width: 100%;
   padding: 0.75rem;
   border-radius: 0.375rem;
-  background: #ffffff;
-  color: #000000;
-  border: 1px solid #ccc;
-}
-/* ======================================================
-   TEMA GLOBAL MARO – FORMULARIOS CLÍNICOS Y OPERATIVOS
-   Blindaje contra SO / Dark mode / High Contrast
-====================================================== */
-
-:root {
-  /* Paleta MARO */
-  --maro-bg: #ffffff;
-  --maro-bg-soft: #fff1f2;      /* rosa pálido */
-  --maro-border: #cbd5e1;       /* slate-300 */
-  --maro-border-strong: #94a3b8;/* slate-400 */
-  --maro-text: #1e293b;         /* slate-800 */
-  --maro-muted: #64748b;        /* slate-500 */
-  --maro-focus: #f43f5e;        /* rose-500 */
-  --maro-focus-soft: rgba(244, 63, 94, 0.25);
+  background: var(--maro-bg);
+  color: var(--maro-text);
+  border: 1px solid var(--maro-border);
 }
 
 /* =========================
@@ -53,19 +56,6 @@ select,
 textarea,
 button {
   font-family: inherit;
-  color-scheme: light !important;
-}
-
-/* =========================
-   Inputs / Textareas
-========================= */
-
-input,
-textarea {
-  background-color: var(--maro-bg) !important;
-  color: var(--maro-text) !important;
-  border: 1px solid var(--maro-border) !important;
-  border-radius: 0.5rem;
 }
 
 /* Placeholder */
@@ -77,56 +67,27 @@ textarea::placeholder {
 /* Focus */
 input:focus,
 textarea:focus {
-  outline: none !important;
-  border-color: var(--maro-focus) !important;
-  box-shadow: 0 0 0 2px var(--maro-focus-soft) !important;
+  outline: none;
+  border-color: var(--maro-focus);
+  box-shadow: 0 0 0 2px var(--maro-focus-soft);
 }
 
-/* =========================
-   Selects (el mayor problema)
-========================= */
-
-select {
-  background-color: var(--maro-bg) !important;
-  color: var(--maro-text) !important;
-  border: 1px solid var(--maro-border-strong) !important;
-  border-radius: 0.5rem;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  -moz-appearance: none !important;
-  padding-right: 2.25rem;
-}
-
-/* Opciones */
+/* Opciones de selects */
 select option {
-  background-color: #ffffff;
-  color: #1e293b;
+  background-color: var(--maro-bg);
+  color: var(--maro-text);
 }
 
-/* Focus */
-select:focus {
-  outline: none !important;
-  border-color: var(--maro-focus) !important;
-  box-shadow: 0 0 0 2px var(--maro-focus-soft) !important;
-}
-
-/* =========================
-   Checkboxes y radios
-========================= */
-
+/* Checkboxes y radios */
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--maro-focus);
 }
 
-/* =========================
-   Disabled (muy importante)
-========================= */
-
+/* Disabled */
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background-color: #f1f5f9 !important; /* slate-100 */
-  color: #94a3b8 !important;
+  opacity: 0.6;
   cursor: not-allowed;
 }

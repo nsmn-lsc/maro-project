@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Consulta {
   id: number;
@@ -391,7 +392,7 @@ export default function ConsultasPaciente() {
 
   if (!authChecked) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white flex items-center justify-center">
         Validando acceso...
       </main>
     );
@@ -523,66 +524,81 @@ export default function ConsultasPaciente() {
   };
 
   return (
-    <main
-      className="min-h-screen relative text-white"
-      style={{
-        backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,118,110,0.65)), url(/maro-hero.png)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      <div className="absolute inset-0 bg-black/40 mix-blend-multiply" aria-hidden />
+    <main className="min-h-screen relative transition-colors duration-300">
+      {/* CAPA DE FONDO FIJA - MODO CLARO */}
+      <div
+        className="fixed inset-0 z-0 dark:hidden"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(241, 245, 249, 0.88), rgba(204, 251, 241, 0.75)), url(/maro-hero.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        aria-hidden="true"
+      />
+      {/* CAPA DE FONDO FIJA - MODO OSCURO */}
+      <div
+        className="fixed inset-0 z-0 hidden dark:block"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,118,110,0.65)), url(/maro-hero.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        aria-hidden="true"
+      />
 
-      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
         {/* ENCABEZADO SUPERIOR */}
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs uppercase tracking-[0.2em] font-semibold text-emerald-300">
+              <span className="text-xs uppercase tracking-[0.2em] font-bold text-emerald-700 dark:text-emerald-300">
                 Seguimiento Prenatal
               </span>
               {pacienteData.folio && (
-                <span className="text-xs bg-white/10 border border-white/10 text-slate-200 px-2.5 py-0.5 rounded-full font-mono">
+                <span className="text-xs bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-200 px-2.5 py-0.5 rounded-full font-mono font-bold">
                   Folio: {pacienteData.folio}
                 </span>
               )}
               {sdgActualCalculada && (
-                <span className="text-xs bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                  <i className="fa-solid fa-person-pregnant text-emerald-300"></i>
+                <span className="text-xs bg-teal-100 dark:bg-emerald-500/20 border border-teal-300 dark:border-emerald-400/40 text-teal-900 dark:text-emerald-200 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                  <i className="fa-solid fa-person-pregnant text-teal-600 dark:text-emerald-300"></i>
                   <span>{sdgActualCalculada}</span>
                 </span>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-              <i className="fa-solid fa-stethoscope text-emerald-400"></i>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+              <i className="fa-solid fa-stethoscope text-emerald-600 dark:text-emerald-400"></i>
               <span>Consultas y Seguimiento Clínico</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
               {pacienteData.nombre_completo ? `Paciente: ${pacienteData.nombre_completo}` : "Captura y monitoreo de parámetros clínicos"}
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
+            <ThemeToggle />
             <Link
               href={`/pacientes/${pacienteId}`}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-white transition-colors cursor-pointer"
             >
-              <i className="fa-solid fa-user"></i>
+              <i className="fa-solid fa-user text-slate-500 dark:text-slate-300"></i>
               <span>Detalle de Paciente</span>
             </Link>
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-white transition-colors cursor-pointer"
             >
-              <i className="fa-solid fa-table-columns"></i>
+              <i className="fa-solid fa-table-columns text-slate-500 dark:text-slate-300"></i>
               <span>Dashboard</span>
             </Link>
           </div>
         </header>
 
         {error && (
-          <div className="rounded-xl border border-rose-500/50 bg-rose-500/20 p-4 text-sm text-rose-200 flex items-center gap-3 animate-in fade-in">
-            <i className="fa-solid fa-triangle-exclamation text-rose-400 text-lg"></i>
+          <div className="rounded-xl border border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-500/20 p-4 text-sm text-rose-900 dark:text-rose-200 flex items-center gap-3 animate-in fade-in">
+            <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-lg"></i>
             <span>{error}</span>
           </div>
         )}
@@ -594,15 +610,15 @@ export default function ConsultasPaciente() {
           <div className="lg:col-span-8 space-y-6">
             
             {/* FORMULARIO DE NUEVA CONSULTA */}
-            <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-6 space-y-5 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-5 shadow-xl transition-colors">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0">
-                    <i className="fa-solid fa-file-medical text-emerald-400 text-lg"></i>
+                  <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-emerald-500/20 border border-teal-300 dark:border-emerald-400/40 flex items-center justify-center shrink-0">
+                    <i className="fa-solid fa-file-medical text-teal-700 dark:text-emerald-400 text-lg"></i>
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-white">Registro de Nueva Consulta</h2>
-                    <p className="text-xs text-slate-300">Captura de signos vitales, parámetros somáticos y triage de alarma</p>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Registro de Nueva Consulta</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300">Captura de signos vitales, parámetros somáticos y triage de alarma</p>
                   </div>
                 </div>
               </div>
@@ -611,18 +627,18 @@ export default function ConsultasPaciente() {
                 
                 {/* BLOQUE 1: SIGNOS VITALES Y SOMÁTICOS */}
                 <div className="space-y-3">
-                  <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-2">
-                    <i className="fa-solid fa-heart-pulse text-emerald-400"></i>
+                  <h3 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-2">
+                    <i className="fa-solid fa-heart-pulse text-emerald-600 dark:text-emerald-400"></i>
                     <span>1. Signos Vitales y Parámetros Somáticos</span>
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {/* Fecha de Consulta */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Fecha de Consulta *</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Fecha de Consulta *</span>
                       <input
                         type="date"
-                        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:ring-2 focus:ring-emerald-500/50"
+                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500/50"
                         value={form.fecha_consulta}
                         onChange={(e) => handleChange("fecha_consulta", e.target.value)}
                         required
@@ -631,125 +647,125 @@ export default function ConsultasPaciente() {
 
                     {/* T/A Sistólica */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">T/A Sistólica (mmHg)</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">T/A Sistólica (mmHg)</span>
                       <input
                         type="number"
-                        className={`w-full rounded-lg px-3 py-2 text-white text-xs transition-all ${
+                        className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           taSistolicaAlerta
-                            ? "border-2 border-rose-400 bg-rose-500/25 ring-2 ring-rose-500/40"
+                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-500/25 ring-2 ring-rose-400 text-rose-950 dark:text-white font-bold"
                             : taSistolicaAdvertencia
-                            ? "border-2 border-amber-400 bg-amber-500/25 ring-2 ring-amber-500/40"
-                            : "border border-white/10 bg-white/5"
+                            ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 ring-2 ring-amber-400 text-amber-950 dark:text-white font-bold"
+                            : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
                         }`}
                         value={form.ta_sistolica}
                         onChange={(e) => handleChange("ta_sistolica", e.target.value)}
                         placeholder="Ej. 110"
                       />
                       {taSistolicaAlerta && (
-                        <p className="text-[10px] text-rose-300 font-semibold">⚠️ T/A Sistólica Crítica</p>
+                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-bold">⚠️ T/A Sistólica Crítica</p>
                       )}
                     </label>
 
                     {/* T/A Diastólica */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">T/A Diastólica (mmHg)</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">T/A Diastólica (mmHg)</span>
                       <input
                         type="number"
-                        className={`w-full rounded-lg px-3 py-2 text-white text-xs transition-all ${
+                        className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           taDiastolicaAlerta
-                            ? "border-2 border-rose-400 bg-rose-500/25 ring-2 ring-rose-500/40"
+                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-500/25 ring-2 ring-rose-400 text-rose-950 dark:text-white font-bold"
                             : taDiastolicaAdvertencia
-                            ? "border-2 border-amber-400 bg-amber-500/25 ring-2 ring-amber-500/40"
-                            : "border border-white/10 bg-white/5"
+                            ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 ring-2 ring-amber-400 text-amber-950 dark:text-white font-bold"
+                            : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
                         }`}
                         value={form.ta_diastolica}
                         onChange={(e) => handleChange("ta_diastolica", e.target.value)}
                         placeholder="Ej. 70"
                       />
                       {taDiastolicaAlerta && (
-                        <p className="text-[10px] text-rose-300 font-semibold">⚠️ T/A Diastólica Crítica</p>
+                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-bold">⚠️ T/A Diastólica Crítica</p>
                       )}
                     </label>
 
                     {/* Frecuencia Cardíaca */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">FC (lpm)</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">FC (lpm)</span>
                       <input
                         type="number"
-                        className={`w-full rounded-lg px-3 py-2 text-white text-xs transition-all ${
+                        className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           frecuenciaCardiacaAlerta
-                            ? "border-2 border-rose-400 bg-rose-500/25 ring-2 ring-rose-500/40"
-                            : "border border-white/10 bg-white/5"
+                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-500/25 ring-2 ring-rose-400 text-rose-950 dark:text-white font-bold"
+                            : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
                         }`}
                         value={form.frecuencia_cardiaca}
                         onChange={(e) => handleChange("frecuencia_cardiaca", e.target.value)}
                         placeholder="Ej. 80"
                       />
                       {frecuenciaCardiacaAlerta && (
-                        <p className="text-[10px] text-rose-300 font-semibold">⚠️ FC fuera de rango</p>
+                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-bold">⚠️ FC fuera de rango</p>
                       )}
                     </label>
 
                     {/* Frecuencia Respiratoria */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">FR (rpm)</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">FR (rpm)</span>
                       <input
                         type="number"
-                        className={`w-full rounded-lg px-3 py-2 text-white text-xs transition-all ${
+                        className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           frecuenciaRespiratoriaAlerta
-                            ? "!bg-red-600 !border-red-400 border-2 font-bold ring-2 ring-red-500/50 shadow-lg shadow-red-950/50"
-                            : "border border-white/10 bg-white/5"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                            : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
                         }`}
                         value={form.frecuencia_respiratoria}
                         onChange={(e) => handleChange("frecuencia_respiratoria", e.target.value)}
                         placeholder="Ej. 18"
                       />
                       {frecuenciaRespiratoriaAlerta && (
-                        <p className="text-[10px] text-red-400 font-bold">🚨 &lt; 16 o &gt; 20 FR = 4 Pts (Emergencia Obstétrica)</p>
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 &lt; 16 o &gt; 20 FR = 4 Pts (Emergencia Obstétrica)</p>
                       )}
                     </label>
 
                     {/* Temperatura */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Temperatura (°C)</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Temperatura (°C)</span>
                       <input
                         type="number"
                         step="0.1"
-                        className={`w-full rounded-lg px-3 py-2 text-white text-xs transition-all ${
+                        className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           temperaturaAlerta
-                            ? "border-2 border-rose-400 bg-rose-500/25 ring-2 ring-rose-500/40"
+                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-500/25 ring-2 ring-rose-400 text-rose-950 dark:text-white font-bold"
                             : temperaturaAdvertencia
-                            ? "border-2 border-amber-400 bg-amber-500/25 ring-2 ring-amber-500/40"
-                            : "border border-white/10 bg-white/5"
+                            ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 ring-2 ring-amber-400 text-amber-950 dark:text-white font-bold"
+                            : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
                         }`}
                         value={form.temperatura}
                         onChange={(e) => handleChange("temperatura", e.target.value)}
                         placeholder="Ej. 36.5"
                       />
                       {temperaturaAlerta && (
-                        <p className="text-[10px] text-rose-300 font-semibold">⚠️ Temperatura Crítica</p>
+                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-bold">⚠️ Temperatura Crítica</p>
                       )}
                     </label>
 
                     {/* Índice de Choque */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Índice Choque (FC/TAS)</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Índice Choque (FC/TAS)</span>
                       <input
                         type="number"
                         step="0.01"
-                        className={`w-full rounded-lg px-3 py-2 text-white text-xs transition-all ${
+                        className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           indiceChoqueAlerta
-                            ? "border-2 border-rose-400 bg-rose-500/25 ring-2 ring-rose-500/40 font-bold"
+                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-500/25 ring-2 ring-rose-400 text-rose-950 dark:text-white font-bold"
                             : indiceChoqueAdvertencia
-                            ? "border-2 border-amber-400 bg-amber-500/25 ring-2 ring-amber-500/40 font-bold"
-                            : "border border-white/10 bg-white/5"
+                            ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 ring-2 ring-amber-400 text-amber-950 dark:text-white font-bold"
+                            : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
                         }`}
                         value={form.indice_choque}
                         onChange={(e) => handleChange("indice_choque", e.target.value)}
                         placeholder="Auto o manual"
                       />
                       {indiceChoqueAlerta && (
-                        <p className="text-[10px] text-rose-300 font-semibold">⚠️ Choque &gt; 0.8 (+4 pts)</p>
+                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-bold">⚠️ Choque &gt; 0.8 (+4 pts)</p>
                       )}
                     </label>
 
@@ -760,25 +776,25 @@ export default function ConsultasPaciente() {
                         onClick={() => handleChange("fondo_uterino_acorde_sdg", !form.fondo_uterino_acorde_sdg)}
                         className={`group flex items-center gap-3 h-10 rounded-xl px-3.5 text-xs font-medium transition-all duration-150 border cursor-pointer ${
                           form.fondo_uterino_acorde_sdg
-                            ? "bg-rose-500/20 border-rose-400/60 text-white shadow-sm ring-1 ring-rose-400/30"
-                            : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                            ? "bg-rose-100 dark:bg-rose-500/20 border-rose-400 dark:border-rose-400/60 text-rose-950 dark:text-white shadow-xs ring-1 ring-rose-400/30"
+                            : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
                         <div
                           className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
                             form.fondo_uterino_acorde_sdg
                               ? "bg-rose-500 shadow-sm shadow-rose-500/40"
-                              : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                              : "bg-slate-300 dark:bg-white/15 border border-slate-400 dark:border-white/20 group-hover:bg-slate-400 dark:group-hover:bg-white/25"
                           }`}
                         >
                           <div
                             className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
-                              form.fondo_uterino_acorde_sdg ? "translate-x-3 bg-white" : "translate-x-0 bg-white/70 group-hover:bg-white"
+                              form.fondo_uterino_acorde_sdg ? "translate-x-3 bg-white" : "translate-x-0 bg-white"
                             }`}
                           />
                         </div>
-                        <i className={`fa-solid fa-ruler-vertical text-sm ${form.fondo_uterino_acorde_sdg ? "text-rose-300" : "text-slate-400"}`}></i>
-                        <span className="font-semibold">Fondo uterino no acorde a SDG (+4 pts)</span>
+                        <i className={`fa-solid fa-ruler-vertical text-sm ${form.fondo_uterino_acorde_sdg ? "text-rose-700 dark:text-rose-300" : "text-slate-400"}`}></i>
+                        <span className="font-bold">Fondo uterino no acorde a SDG (+4 pts)</span>
                       </button>
 
                       <button
@@ -786,32 +802,32 @@ export default function ConsultasPaciente() {
                         onClick={() => handleChange("ivu_repeticion", !form.ivu_repeticion)}
                         className={`group flex flex-col gap-1.5 min-h-[40px] rounded-xl p-2.5 text-xs font-medium transition-all duration-150 border cursor-pointer ${
                           form.ivu_repeticion
-                            ? "!bg-red-600 !border-red-400 border-2 text-white font-bold ring-2 ring-red-500/50 shadow-lg shadow-red-950/50"
-                            : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                            ? "!bg-rose-600 !border-rose-500 border-2 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                            : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
                         <div className="flex items-center gap-3 w-full">
                           <div
                             className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
                               form.ivu_repeticion
-                                ? "bg-white shadow-sm shadow-black/40"
-                                : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                                ? "bg-white shadow-sm"
+                                : "bg-slate-300 dark:bg-white/15 border border-slate-400 dark:border-white/20 group-hover:bg-slate-400 dark:group-hover:bg-white/25"
                             }`}
                           >
                             <div
                               className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
-                                form.ivu_repeticion ? "translate-x-3 bg-red-600" : "translate-x-0 bg-white/70 group-hover:bg-white"
+                                form.ivu_repeticion ? "translate-x-3 bg-rose-600" : "translate-x-0 bg-white"
                               }`}
                             />
                           </div>
                           <i className={`fa-solid fa-bacteria text-sm ${form.ivu_repeticion ? "text-white" : "text-slate-400"}`}></i>
-                          <span className="font-semibold flex-1 text-left">
+                          <span className="font-bold flex-1 text-left">
                             IVU o Cervicovaginitis de repetición (+15 pts)
                           </span>
                         </div>
                         {form.ivu_repeticion && (
-                          <div className="w-full text-left text-[11px] text-white font-normal bg-red-700/80 p-2 rounded-lg border border-red-300/40 leading-snug">
-                            ⚠️ (Envio inmediato a Segundo Nivel de Atencion con urocultivo, cultivo vaginal con antibiograma, Riesgo de parto pretermino)
+                          <div className="w-full text-left text-[11px] text-white font-normal bg-rose-700 p-2 rounded-lg border border-rose-300/40 leading-snug">
+                            ⚠️ (Envío inmediato a Segundo Nivel de Atención con urocultivo, cultivo vaginal con antibiograma, Riesgo de parto pretérmino)
                           </div>
                         )}
                       </button>
@@ -820,120 +836,120 @@ export default function ConsultasPaciente() {
                 </div>
 
                 {/* BLOQUE 2: TRIAGE OBSTÉTRICO (SIGNOS DE ALARMA MARO) */}
-                <div className="space-y-3 pt-3 border-t border-white/10">
-                  <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
-                    <i className="fa-solid fa-triangle-exclamation text-amber-400"></i>
+                <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-white/10">
+                  <h3 className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                    <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i>
                     <span>2. Triage Obstétrico (Signos de Alarma)</span>
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {/* Estado de Conciencia */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Estado de Conciencia</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Estado de Conciencia</span>
                       <select
-                        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:ring-2 focus:ring-emerald-500/50"
+                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500/50"
                         value={form.estado_conciencia}
                         onChange={(e) => handleChange("estado_conciencia", e.target.value)}
                       >
-                        <option value="" className="bg-slate-900">Seleccione</option>
-                        <option value="conciente" className="bg-slate-900">Consciente</option>
-                        <option value="alteraciones" className="bg-slate-900 text-amber-300 font-semibold">Alteraciones</option>
+                        <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                        <option value="conciente" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Consciente</option>
+                        <option value="alteraciones" className="bg-amber-100 text-amber-950 dark:bg-slate-900 dark:text-amber-300 font-bold">Alteraciones</option>
                       </select>
                     </label>
 
                     {/* Hemorragia */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Hemorragia</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Hemorragia</span>
                       <select
                         className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           form.hemorragia === "visible o abundante"
-                            ? "!bg-red-600 !border-red-400 border-2 text-white font-bold ring-2 ring-red-500/50 shadow-lg shadow-red-950/50"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
                             : form.hemorragia === "no visible o moderada" || form.hemorragia === "no visible o escasa"
-                            ? "border-2 border-amber-400 bg-amber-500/25 text-amber-100 font-semibold ring-2 ring-amber-500/30"
-                            : "bg-white/5 border border-white/10 text-white"
+                            ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                            : "bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
                         }`}
                         value={form.hemorragia}
                         onChange={(e) => handleChange("hemorragia", e.target.value)}
                       >
-                        <option value="" className="bg-slate-900 text-white font-normal">Seleccione</option>
-                        <option value="sin hemorragia" className="bg-slate-900 text-white font-normal">Sin hemorragia</option>
-                        <option value="visible o abundante" className="bg-red-600 text-white font-bold">Visible o abundante (Emergencia)</option>
-                        <option value="no visible o moderada" className="bg-slate-900 text-white font-normal">No visible o moderada</option>
-                        <option value="no visible o escasa" className="bg-slate-900 text-white font-normal">No visible o escasa</option>
+                        <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                        <option value="sin hemorragia" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Sin hemorragia</option>
+                        <option value="visible o abundante" className="bg-rose-600 text-white font-bold">Visible o abundante (Emergencia)</option>
+                        <option value="no visible o moderada" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">No visible o moderada</option>
+                        <option value="no visible o escasa" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">No visible o escasa</option>
                       </select>
                       {form.hemorragia === "visible o abundante" && (
-                        <p className="text-[10px] text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
                       )}
                     </label>
 
                     {/* Respiración */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Respiración</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Respiración</span>
                       <select
-                        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:ring-2 focus:ring-emerald-500/50"
+                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500/50"
                         value={form.respiracion}
                         onChange={(e) => handleChange("respiracion", e.target.value)}
                       >
-                        <option value="" className="bg-slate-900">Seleccione</option>
-                        <option value="normal" className="bg-slate-900">Normal</option>
-                        <option value="alterada" className="bg-slate-900 text-amber-300 font-semibold">Alterada</option>
+                        <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                        <option value="normal" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Normal</option>
+                        <option value="alterada" className="bg-amber-100 text-amber-950 dark:bg-slate-900 dark:text-amber-300 font-bold">Alterada</option>
                       </select>
                     </label>
 
                     {/* Color de Piel */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Color de Piel</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Color de Piel</span>
                       <select
                         className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           form.color_piel === "cianotica"
-                            ? "!bg-red-600 !border-red-400 border-2 text-white font-bold ring-2 ring-red-500/50 shadow-lg shadow-red-950/50"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
                             : form.color_piel === "palida"
-                            ? "border-2 border-amber-400 bg-amber-500/25 text-amber-100 font-semibold ring-2 ring-amber-500/30"
-                            : "bg-white/5 border border-white/10 text-white"
+                            ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                            : "bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
                         }`}
                         value={form.color_piel}
                         onChange={(e) => handleChange("color_piel", e.target.value)}
                       >
-                        <option value="" className="bg-slate-900 text-white font-normal">Seleccione</option>
-                        <option value="normal" className="bg-slate-900 text-white font-normal">Normal</option>
-                        <option value="palida" className="bg-slate-900 text-amber-200">Pálida</option>
-                        <option value="cianotica" className="bg-red-600 text-white font-bold">Cianótica (+4 pts)</option>
+                        <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                        <option value="normal" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Normal</option>
+                        <option value="palida" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Pálida</option>
+                        <option value="cianotica" className="bg-rose-600 text-white font-bold">Cianótica (+4 pts)</option>
                       </select>
                       {form.color_piel === "cianotica" && (
-                        <p className="text-[10px] text-red-400 font-bold">🚨 ¡Cianótica! (+4 pts - Emergencia)</p>
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Cianótica! (+4 pts - Emergencia)</p>
                       )}
                     </label>
                   </div>
                 </div>
 
                 {/* BLOQUE 3: DIAGNÓSTICO, PLAN Y REFERENCIA */}
-                <div className="space-y-3 pt-3 border-t border-white/10">
-                  <h3 className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2">
-                    <i className="fa-solid fa-clipboard-user text-cyan-400"></i>
+                <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-white/10">
+                  <h3 className="text-xs font-bold text-teal-800 dark:text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+                    <i className="fa-solid fa-clipboard-user text-teal-600 dark:text-cyan-400"></i>
                     <span>3. Diagnóstico, Plan y Referencia</span>
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Diagnóstico */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Diagnóstico</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Diagnóstico</span>
                       <select
-                        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-teal-500/50"
                         value={form.diagnostico}
                         onChange={(e) => handleChange("diagnostico", e.target.value)}
                       >
-                        <option value="" className="bg-slate-900">Seleccione un diagnóstico</option>
-                        <option value="seguimiento_embarazo" className="bg-slate-900">Seguimiento de embarazo</option>
-                        <option value="puerperio" className="bg-slate-900 font-semibold text-purple-300">Puerperio (Requiere formulario específico)</option>
+                        <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione un diagnóstico</option>
+                        <option value="seguimiento_embarazo" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seguimiento de embarazo</option>
+                        <option value="puerperio" className="bg-purple-50 text-purple-950 dark:bg-slate-900 font-bold dark:text-purple-300">Puerperio (Requiere formulario específico)</option>
                       </select>
                     </label>
 
                     {/* Fecha de Referencia */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Fecha de referencia a 2º o 3º nivel</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Fecha de referencia a 2º o 3º nivel</span>
                       <input
                         type="date"
-                        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-teal-500/50"
                         value={form.fecha_referencia}
                         onChange={(e) => handleChange("fecha_referencia", e.target.value)}
                       />
@@ -941,9 +957,9 @@ export default function ConsultasPaciente() {
 
                     {/* Área de Referencia */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Área o Especialidad de referencia</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Área o Especialidad de referencia</span>
                       <input
-                        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-teal-500/50"
                         value={form.area_referencia}
                         onChange={(e) => handleChange("area_referencia", e.target.value)}
                         placeholder="Ej. Gineco-obstetricia / Medicina Materno-Fetal"
@@ -952,10 +968,10 @@ export default function ConsultasPaciente() {
 
                     {/* Plan de manejo */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-200 font-medium">Plan de Manejo</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Plan de Manejo</span>
                       <textarea
                         rows={2}
-                        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-teal-500/50"
                         value={form.plan}
                         onChange={(e) => handleChange("plan", e.target.value)}
                         placeholder="Indicaciones terapéuticas, fármacos, citas..."
@@ -964,10 +980,10 @@ export default function ConsultasPaciente() {
 
                     {/* Notas adicionales */}
                     <label className="space-y-1 text-xs sm:col-span-2">
-                      <span className="text-slate-200 font-medium">Notas clínicas adicionales</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Notas clínicas adicionales</span>
                       <textarea
                         rows={2}
-                        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-teal-500/50"
                         value={form.notas}
                         onChange={(e) => handleChange("notas", e.target.value)}
                         placeholder="Observaciones de enfermería o evolución médica..."
@@ -977,10 +993,10 @@ export default function ConsultasPaciente() {
                 </div>
 
                 {/* BOTONES DE ACCIÓN */}
-                <div className="flex items-center gap-3 pt-3 border-t border-white/10">
+                <div className="flex items-center gap-3 pt-3 border-t border-slate-200 dark:border-white/10">
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-6 py-2.5 text-sm font-bold text-slate-950 transition-all shadow-lg shadow-emerald-950/40 cursor-pointer disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-6 py-2.5 text-sm font-bold text-white transition-all shadow-md cursor-pointer disabled:opacity-60"
                     disabled={saving}
                   >
                     <i className="fa-solid fa-floppy-disk"></i>
@@ -988,7 +1004,7 @@ export default function ConsultasPaciente() {
                   </button>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-all cursor-pointer"
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/20 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 px-5 py-2.5 text-sm font-bold text-slate-700 dark:text-white transition-all cursor-pointer"
                     onClick={() => setForm(initialForm)}
                   >
                     <i className="fa-solid fa-rotate-left"></i>
@@ -1000,35 +1016,35 @@ export default function ConsultasPaciente() {
             </section>
 
             {/* HISTORIAL DE CONSULTAS PREVIAS */}
-            <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-6 space-y-4 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3 flex-wrap gap-2">
+            <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl transition-colors">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center shrink-0">
-                    <i className="fa-solid fa-clock-rotate-left text-cyan-300"></i>
+                  <div className="w-9 h-9 rounded-xl bg-teal-100 dark:bg-cyan-500/20 border border-teal-300 dark:border-cyan-400/40 flex items-center justify-center shrink-0">
+                    <i className="fa-solid fa-clock-rotate-left text-teal-700 dark:text-cyan-300"></i>
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-white">Historial de Consultas</h2>
-                    <p className="text-xs text-slate-300">Evolución cronológica de la paciente</p>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Historial de Consultas</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300">Evolución cronológica de la paciente</p>
                   </div>
                 </div>
-                <span className="text-xs text-emerald-200 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full font-bold">
+                <span className="text-xs text-emerald-900 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-400/30 px-3 py-1 rounded-full font-bold">
                   {consultas.length} consulta(s) registrada(s)
                 </span>
               </div>
 
               {loading ? (
-                <div className="py-8 text-center text-slate-300 text-sm flex items-center justify-center gap-2">
-                  <i className="fa-solid fa-spinner fa-spin text-emerald-400"></i>
+                <div className="py-8 text-center text-slate-600 dark:text-slate-300 text-sm flex items-center justify-center gap-2">
+                  <i className="fa-solid fa-spinner fa-spin text-emerald-600 dark:text-emerald-400"></i>
                   <span>Cargando consultas...</span>
                 </div>
               ) : consultas.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-xs italic bg-white/5 rounded-xl border border-white/5">
+                <div className="py-8 text-center text-slate-500 dark:text-slate-400 text-xs italic bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5">
                   Aún no hay consultas registradas para esta paciente.
                 </div>
               ) : (
-                <div className="overflow-x-auto max-h-[500px] overflow-y-auto rounded-xl border border-white/10">
+                <div className="overflow-x-auto max-h-[500px] overflow-y-auto rounded-xl border border-slate-200 dark:border-white/10">
                   <table className="min-w-full text-xs text-left">
-                    <thead className="sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10 border-b border-white/10 text-slate-300">
+                    <thead className="sticky top-0 bg-slate-100 dark:bg-slate-900/95 backdrop-blur-sm z-10 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 font-bold">
                       <tr>
                         <th className="py-2.5 px-3">Fecha</th>
                         <th className="py-2.5 px-3">SDG</th>
@@ -1044,37 +1060,37 @@ export default function ConsultasPaciente() {
                         <th className="py-2.5 px-3">Plan / Notas</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
                       {consultas.map((c) => {
                         const totalScore = c.puntaje_total_consulta ?? 0;
                         return (
-                          <tr key={c.id} className="hover:bg-white/5 transition-colors">
-                            <td className="py-2 px-3 text-white font-medium whitespace-nowrap">{formatDate(c.fecha_consulta)}</td>
-                            <td className="py-2 px-3 text-white font-bold">{c.sdg != null ? `${c.sdg} sem` : "—"}</td>
-                            <td className="py-2 px-3 text-slate-200 whitespace-nowrap">
+                          <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td className="py-2 px-3 text-slate-900 dark:text-white font-medium whitespace-nowrap">{formatDate(c.fecha_consulta)}</td>
+                            <td className="py-2 px-3 text-slate-900 dark:text-white font-bold">{c.sdg != null ? `${c.sdg} sem` : "—"}</td>
+                            <td className="py-2 px-3 text-slate-700 dark:text-slate-200 whitespace-nowrap">
                               {c.ta_sistolica ?? "—"}/{c.ta_diastolica ?? "—"}
                             </td>
-                            <td className="py-2 px-3 text-slate-200">{c.frecuencia_cardiaca ?? "—"}</td>
-                            <td className="py-2 px-3 text-slate-200">{c.frecuencia_respiratoria ?? "—"}</td>
-                            <td className="py-2 px-3 text-slate-200">{c.temperatura != null ? `${c.temperatura}°C` : "—"}</td>
-                            <td className="py-2 px-3 text-slate-200">{c.indice_choque ?? "—"}</td>
+                            <td className="py-2 px-3 text-slate-700 dark:text-slate-200">{c.frecuencia_cardiaca ?? "—"}</td>
+                            <td className="py-2 px-3 text-slate-700 dark:text-slate-200">{c.frecuencia_respiratoria ?? "—"}</td>
+                            <td className="py-2 px-3 text-slate-700 dark:text-slate-200">{c.temperatura != null ? `${c.temperatura}°C` : "—"}</td>
+                            <td className="py-2 px-3 text-slate-700 dark:text-slate-200">{c.indice_choque ?? "—"}</td>
                             <td className="py-2 px-3">
                               <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
                                 totalScore >= 25
-                                  ? "bg-rose-500/25 text-rose-200 border border-rose-400/40"
+                                  ? "bg-rose-100 dark:bg-rose-500/25 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-400/40 font-black"
                                   : totalScore >= 10
-                                  ? "bg-orange-500/25 text-orange-200 border border-orange-400/40"
+                                  ? "bg-orange-100 dark:bg-orange-500/25 text-orange-900 dark:text-orange-200 border border-orange-300 dark:border-orange-400/40 font-black"
                                   : totalScore >= 4
-                                  ? "bg-amber-500/25 text-amber-200 border border-amber-400/40"
-                                  : "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40"
+                                  ? "bg-amber-100 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-400/40 font-black"
+                                  : "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-400/40 font-bold"
                               }`}>
                                 {totalScore} pts
                               </span>
                             </td>
-                            <td className="py-2 px-3 text-slate-300 max-w-[120px] truncate">{c.hemorragia || "—"}</td>
-                            <td className="py-2 px-3 text-slate-300">{c.color_piel || "—"}</td>
-                            <td className="py-2 px-3 text-slate-300 whitespace-nowrap">{formatDiagnostico(c.diagnostico)}</td>
-                            <td className="py-2 px-3 text-slate-300 max-w-[160px] truncate" title={c.plan || c.notas || ""}>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300 max-w-[120px] truncate">{c.hemorragia || "—"}</td>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{c.color_piel || "—"}</td>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">{formatDiagnostico(c.diagnostico)}</td>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300 max-w-[160px] truncate" title={c.plan || c.notas || ""}>
                               {c.plan || c.notas || "—"}
                             </td>
                           </tr>
@@ -1092,27 +1108,27 @@ export default function ConsultasPaciente() {
           <aside className="lg:col-span-4 space-y-5 lg:sticky lg:top-6">
             
             {/* SEMÁFORO DE RIESGO TOTAL COMBINADO EN TIEMPO REAL */}
-            <div className={`rounded-2xl border-2 p-5 shadow-2xl backdrop-blur-md transition-all duration-200 ${
+            <div className={`rounded-2xl border-2 p-5 shadow-xl transition-all duration-200 ${
               puntajeRiesgoTotal >= 25
-                ? 'bg-rose-500/20 border-rose-500/70 shadow-rose-950/40'
+                ? 'bg-rose-50 border-rose-300 dark:bg-rose-500/20 dark:border-rose-500/70 shadow-rose-950/20'
                 : puntajeRiesgoTotal >= 10
-                ? 'bg-orange-500/20 border-orange-400/70 shadow-orange-950/40'
+                ? 'bg-orange-50 border-orange-300 dark:bg-orange-500/20 dark:border-orange-400/70 shadow-orange-950/20'
                 : puntajeRiesgoTotal >= 4
-                ? 'bg-amber-500/20 border-amber-400/70 shadow-amber-950/40'
-                : 'bg-emerald-500/20 border-emerald-400/70 shadow-emerald-950/40'
+                ? 'bg-amber-50 border-amber-300 dark:bg-amber-500/20 dark:border-amber-400/70 shadow-amber-950/20'
+                : 'bg-emerald-50 border-emerald-300 dark:bg-emerald-500/20 dark:border-emerald-400/70 shadow-emerald-950/20'
             }`}>
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-200">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
                   Semáforo de Riesgo en Vivo
                 </span>
-                <span className={`px-3 py-1 rounded-full text-xs font-black tracking-wider ${
+                <span className={`px-3 py-1 rounded-full text-xs font-black tracking-wider shadow-xs ${
                   puntajeRiesgoTotal >= 25
-                    ? 'bg-rose-500 text-white animate-pulse'
+                    ? 'bg-rose-600 text-white animate-pulse'
                     : puntajeRiesgoTotal >= 10
-                    ? 'bg-orange-500 text-slate-950'
+                    ? 'bg-orange-500 text-white dark:text-slate-950'
                     : puntajeRiesgoTotal >= 4
                     ? 'bg-amber-400 text-slate-950'
-                    : 'bg-emerald-400 text-slate-950'
+                    : 'bg-emerald-600 text-white dark:bg-emerald-400 dark:text-slate-950'
                 }`}>
                   {puntajeRiesgoTotal >= 25 ? 'CRÍTICO' :
                    puntajeRiesgoTotal >= 10 ? 'MUY ALTO' :
@@ -1122,35 +1138,35 @@ export default function ConsultasPaciente() {
 
               <div className="pt-3 flex items-baseline justify-between">
                 <div>
-                  <span className="text-xs text-slate-300 block font-medium">Puntaje Total MARO</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-300 block font-medium">Puntaje Total MARO</span>
                   <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-4xl font-black text-white">{puntajeRiesgoTotal}</span>
-                    <span className="text-xs font-semibold text-slate-300">puntos</span>
+                    <span className="text-4xl font-black text-slate-900 dark:text-white">{puntajeRiesgoTotal}</span>
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-300">puntos</span>
                   </div>
                 </div>
 
                 <div className="text-right space-y-1 text-xs">
-                  <div className="text-slate-300">
-                    Antecedentes: <strong className="text-white">{pacienteData.factor_riesgo_antecedentes || 0} pts</strong>
+                  <div className="text-slate-600 dark:text-slate-300">
+                    Antecedentes: <strong className="text-slate-900 dark:text-white font-bold">{pacienteData.factor_riesgo_antecedentes || 0} pts</strong>
                   </div>
-                  <div className="text-slate-300">
-                    Tamizajes: <strong className="text-white">{pacienteData.factor_riesgo_tamizajes || 0} pts</strong>
+                  <div className="text-slate-600 dark:text-slate-300">
+                    Tamizajes: <strong className="text-slate-900 dark:text-white font-bold">{pacienteData.factor_riesgo_tamizajes || 0} pts</strong>
                   </div>
-                  <div className="text-slate-300">
-                    Cita Actual: <strong className="text-emerald-300">+{puntajeConsultaParametros} pts</strong>
+                  <div className="text-slate-600 dark:text-slate-300">
+                    Cita Actual: <strong className="text-emerald-700 dark:text-emerald-300 font-bold">+{puntajeConsultaParametros} pts</strong>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* HALLAZGOS ACTIVOS EN LA CAPTURA */}
-            <div className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-5 space-y-3 shadow-xl">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-5 space-y-3 shadow-xl transition-colors">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <i className="fa-solid fa-list-check text-cyan-400 text-sm"></i>
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">Hallazgos en Consulta</span>
+                  <i className="fa-solid fa-list-check text-teal-600 dark:text-cyan-400 text-sm"></i>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Hallazgos en Consulta</span>
                 </div>
-                <span className="text-xs font-bold text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-bold text-teal-800 dark:text-cyan-300 bg-teal-100 dark:bg-cyan-500/20 px-2 py-0.5 rounded-md">
                   +{puntajeConsultaParametros} pts
                 </span>
               </div>
@@ -1158,53 +1174,53 @@ export default function ConsultasPaciente() {
               {hallazgosConsulta.length > 0 ? (
                 <div className="space-y-2 pt-1">
                   {hallazgosConsulta.map((h, i) => (
-                    <div key={i} className="flex items-center justify-between bg-white/5 border border-white/5 rounded-xl p-2.5 text-xs">
+                    <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl p-2.5 text-xs">
                       <div>
-                        <span className="text-white font-semibold block">{h.campo}</span>
-                        <span className="text-[10px] text-slate-300 block">{h.criterio}</span>
+                        <span className="text-slate-900 dark:text-white font-semibold block">{h.campo}</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-300 block">{h.criterio}</span>
                       </div>
-                      <span className="font-extrabold text-amber-300 text-sm">+{h.puntos} pts</span>
+                      <span className="font-black text-amber-800 dark:text-amber-300 text-sm">+{h.puntos} pts</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl bg-emerald-500/10 border border-emerald-400/20 p-3 text-xs text-emerald-200 text-center flex items-center justify-center gap-2">
-                  <i className="fa-solid fa-circle-check text-emerald-400"></i>
+                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-400/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 text-center flex items-center justify-center gap-2">
+                  <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
                   <span>Sin hallazgos de riesgo en los parámetros capturados</span>
                 </div>
               )}
             </div>
 
-              {/* ALERTA DE IVU O CERVICOVAGINITIS DE REPETICIÓN */}
-              {form.ivu_repeticion && (
-                <div className="rounded-2xl border-2 border-red-400 bg-red-600/30 backdrop-blur-md p-4 space-y-2.5 shadow-xl animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between gap-2 border-b border-red-300/20 pb-2">
-                    <div className="flex items-center gap-2 text-white font-extrabold text-xs uppercase tracking-wider">
-                      <i className="fa-solid fa-triangle-exclamation text-red-300 text-sm animate-pulse"></i>
-                      <span>Alerta: IVU de Repetición</span>
-                    </div>
-                    <span className="text-xs font-black bg-red-500 text-white px-2 py-0.5 rounded-full border border-red-300/40">
-                      +15 pts
-                    </span>
+            {/* ALERTA DE IVU O CERVICOVAGINITIS DE REPETICIÓN */}
+            {form.ivu_repeticion && (
+              <div className="rounded-2xl border-2 border-rose-400 bg-rose-50 dark:bg-rose-600/30 p-4 space-y-2.5 shadow-xl animate-in fade-in duration-200">
+                <div className="flex items-center justify-between gap-2 border-b border-rose-300 dark:border-rose-300/20 pb-2">
+                  <div className="flex items-center gap-2 text-rose-900 dark:text-white font-extrabold text-xs uppercase tracking-wider">
+                    <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-300 text-sm animate-pulse"></i>
+                    <span>Alerta: IVU de Repetición</span>
                   </div>
-                  <p className="text-xs font-bold text-red-100 leading-snug">
-                    Envío inmediato a Segundo Nivel de Atención con urocultivo, cultivo vaginal con antibiograma.
-                  </p>
-                  <div className="text-[11px] text-red-200/90 font-medium bg-red-950/40 p-2 rounded-lg border border-red-400/30 flex items-center gap-2">
-                    <i className="fa-solid fa-person-pregnant text-red-300"></i>
-                    <span>Alto riesgo de parto pretérmino asociado.</span>
-                  </div>
+                  <span className="text-xs font-black bg-rose-600 text-white px-2 py-0.5 rounded-full border border-rose-300/40">
+                    +15 pts
+                  </span>
                 </div>
-              )}
+                <p className="text-xs font-bold text-rose-950 dark:text-rose-100 leading-snug">
+                  Envío inmediato a Segundo Nivel de Atención con urocultivo, cultivo vaginal con antibiograma.
+                </p>
+                <div className="text-[11px] text-rose-900 dark:text-rose-200/90 font-medium bg-rose-100 dark:bg-red-950/40 p-2 rounded-lg border border-rose-300 dark:border-red-400/30 flex items-center gap-2">
+                  <i className="fa-solid fa-person-pregnant text-rose-600 dark:text-rose-300"></i>
+                  <span>Alto riesgo de parto pretérmino asociado.</span>
+                </div>
+              </div>
+            )}
 
-              {/* ALERTA DE ESCALAMIENTO / RIESGO MAYOR */}
+            {/* ALERTA DE ESCALAMIENTO / RIESGO MAYOR */}
             {(tieneEscalamientoForzado || puntajeRiesgoTotal >= 25) && (
-              <div className="rounded-2xl border-2 border-rose-400/80 bg-rose-500/25 p-4 space-y-2.5 shadow-xl animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider">
-                  <i className="fa-solid fa-triangle-exclamation text-rose-400 text-sm"></i>
+              <div className="rounded-2xl border-2 border-rose-400/80 bg-rose-50 dark:bg-rose-500/25 p-4 space-y-2.5 shadow-xl animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-sm"></i>
                   <span>Aviso de Escalamiento Estatal</span>
                 </div>
-                <p className="text-xs font-semibold text-rose-100 leading-snug">
+                <p className="text-xs font-semibold text-rose-950 dark:text-rose-100 leading-snug">
                   {puntajeRiesgoTotal >= 25 
                     ? "Puntaje total ≥ 25 puntos. Al guardar esta consulta, el caso pasará automáticamente a nivel estatal para determinación colegiada."
                     : "Paciente con antecedentes mayores de alto riesgo. Notificación automática activa."
@@ -1213,7 +1229,7 @@ export default function ConsultasPaciente() {
                 {criteriosEscalamientoActivos.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {criteriosEscalamientoActivos.map((crit, idx) => (
-                      <span key={idx} className="text-[10px] bg-rose-400/20 border border-rose-300/40 text-rose-200 font-medium px-2 py-0.5 rounded-full">
+                      <span key={idx} className="text-[10px] bg-rose-100 dark:bg-rose-400/20 border border-rose-300 dark:border-rose-300/40 text-rose-900 dark:text-rose-200 font-bold px-2 py-0.5 rounded-full">
                         {crit}
                       </span>
                     ))}
@@ -1223,26 +1239,26 @@ export default function ConsultasPaciente() {
             )}
 
             {/* RESUMEN DE PERFIL DE LA PACIENTE */}
-            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-4 space-y-3 shadow-xl text-xs">
-              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block border-b border-white/10 pb-2">
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-white/5 p-4 space-y-3 shadow-xl text-xs transition-colors">
+              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block border-b border-slate-200 dark:border-white/10 pb-2">
                 Datos Clínicos del Expediente
               </span>
-              <div className="grid grid-cols-2 gap-2 text-slate-300">
-                <div className="bg-white/5 p-2 rounded-lg">
-                  <span className="text-[10px] text-slate-400 block">FUM</span>
-                  <span className="font-semibold text-white">{formatDate(pacienteData.fum)}</span>
+              <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-300">
+                <div className="bg-slate-50 dark:bg-white/5 p-2 rounded-lg border border-slate-200 dark:border-white/5">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">FUM</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{formatDate(pacienteData.fum)}</span>
                 </div>
-                <div className="bg-white/5 p-2 rounded-lg">
-                  <span className="text-[10px] text-slate-400 block">FPP</span>
-                  <span className="font-semibold text-white">{formatDate(pacienteData.fpp)}</span>
+                <div className="bg-slate-50 dark:bg-white/5 p-2 rounded-lg border border-slate-200 dark:border-white/5">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">FPP</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{formatDate(pacienteData.fpp)}</span>
                 </div>
-                <div className="bg-white/5 p-2 rounded-lg">
-                  <span className="text-[10px] text-slate-400 block">SDG Ingreso</span>
-                  <span className="font-semibold text-white">{pacienteData.sdg_ingreso != null ? `${pacienteData.sdg_ingreso} sem` : "—"}</span>
+                <div className="bg-slate-50 dark:bg-white/5 p-2 rounded-lg border border-slate-200 dark:border-white/5">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">SDG Ingreso</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{pacienteData.sdg_ingreso != null ? `${pacienteData.sdg_ingreso} sem` : "—"}</span>
                 </div>
-                <div className="bg-white/5 p-2 rounded-lg">
-                  <span className="text-[10px] text-slate-400 block">IMC Inicial</span>
-                  <span className="font-semibold text-white">{pacienteData.imc_inicial ? `${pacienteData.imc_inicial} kg/m²` : "—"}</span>
+                <div className="bg-slate-50 dark:bg-white/5 p-2 rounded-lg border border-slate-200 dark:border-white/5">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">IMC Inicial</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{pacienteData.imc_inicial ? `${pacienteData.imc_inicial} kg/m²` : "—"}</span>
                 </div>
               </div>
             </div>
@@ -1255,20 +1271,20 @@ export default function ConsultasPaciente() {
       {/* MODAL DE CONFIRMACIÓN PARA PUERPERIO */}
       {showPuerperioModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-gradient-to-br from-purple-900/95 to-purple-800/95 backdrop-blur-lg border border-purple-300/30 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
+          <div className="bg-white dark:bg-gradient-to-br dark:from-purple-900/95 dark:to-purple-800/95 border border-purple-300/40 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl bg-purple-400/20 flex items-center justify-center text-purple-200 text-2xl">
+              <div className="h-12 w-12 rounded-xl bg-purple-100 dark:bg-purple-400/20 flex items-center justify-center text-purple-700 dark:text-purple-200 text-2xl">
                 🤰
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-white">Diagnóstico: Puerperio</h3>
-                <p className="text-sm text-purple-100/80">Captura adicional requerida</p>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Diagnóstico: Puerperio</h3>
+                <p className="text-sm text-purple-700 dark:text-purple-100/80">Captura adicional requerida</p>
               </div>
             </div>
             
-            <div className="bg-purple-950/30 border border-purple-300/20 rounded-lg p-4">
-              <p className="text-white/90 text-sm leading-relaxed">
-                Has registrado un diagnóstico de <strong className="text-purple-200">Puerperio</strong>. 
+            <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-300/20 rounded-lg p-4">
+              <p className="text-slate-800 dark:text-white/90 text-sm leading-relaxed">
+                Has registrado un diagnóstico de <strong className="text-purple-800 dark:text-purple-200">Puerperio</strong>. 
                 Serás redirigido a un formulario específico para capturar los datos adicionales 
                 requeridos para el seguimiento de puerperio.
               </p>
@@ -1276,21 +1292,23 @@ export default function ConsultasPaciente() {
 
             <div className="flex gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => {
                   setShowPuerperioModal(false);
                   setPendingPuerperioRedirect(null);
                 }}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-white/20 text-white hover:bg-white/10 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-slate-300 dark:border-white/20 text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 font-semibold transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={() => {
                   if (pendingPuerperioRedirect) {
                     router.push(pendingPuerperioRedirect);
                   }
                 }}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-purple-500 hover:bg-purple-600 text-white font-medium shadow-lg shadow-purple-500/30 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold shadow-lg shadow-purple-500/30 transition-colors cursor-pointer"
               >
                 Continuar →
               </button>
@@ -1302,11 +1320,11 @@ export default function ConsultasPaciente() {
       {/* MODAL DE CONFIRMACIÓN DE GUARDADO */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-2xl border border-emerald-300/30 bg-slate-900/95 shadow-2xl">
-            <div className="border-b border-white/10 px-6 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/85">Confirmación</p>
-              <h3 className="mt-1 text-xl font-semibold text-white">¿Guardar esta consulta prenatal?</h3>
-              <p className="mt-1 text-sm text-slate-300/80">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-200 dark:border-emerald-300/30 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
+            <div className="border-b border-slate-200 dark:border-white/10 px-6 py-4 bg-slate-50 dark:bg-slate-800/50">
+              <p className="text-xs uppercase tracking-[0.2em] font-bold text-emerald-700 dark:text-emerald-300/85">Confirmación</p>
+              <h3 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">¿Guardar esta consulta prenatal?</h3>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300/80">
                 Revisa los datos clave antes de continuar.
               </p>
             </div>
@@ -1314,40 +1332,40 @@ export default function ConsultasPaciente() {
             <div className="px-6 py-4">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Folio</dt>
-                  <dd className="text-white mt-0.5">{pacienteData.folio || "—"}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide font-medium">Folio</dt>
+                  <dd className="text-slate-900 dark:text-white font-bold mt-0.5">{pacienteData.folio || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Fecha consulta</dt>
-                  <dd className="text-white mt-0.5">{form.fecha_consulta || "No capturada"}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide font-medium">Fecha consulta</dt>
+                  <dd className="text-slate-900 dark:text-white font-bold mt-0.5">{form.fecha_consulta || "No capturada"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">T/A</dt>
-                  <dd className="text-white mt-0.5">{form.ta_sistolica || "—"}/{form.ta_diastolica || "—"} mmHg</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide font-medium">T/A</dt>
+                  <dd className="text-slate-900 dark:text-white font-bold mt-0.5">{form.ta_sistolica || "—"}/{form.ta_diastolica || "—"} mmHg</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Frecuencia cardiaca</dt>
-                  <dd className="text-white mt-0.5">{form.frecuencia_cardiaca || "—"} lpm</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide font-medium">Frecuencia cardiaca</dt>
+                  <dd className="text-slate-900 dark:text-white font-bold mt-0.5">{form.frecuencia_cardiaca || "—"} lpm</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Índice choque</dt>
-                  <dd className="text-white mt-0.5">{form.indice_choque || "—"}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide font-medium">Índice choque</dt>
+                  <dd className="text-slate-900 dark:text-white font-bold mt-0.5">{form.indice_choque || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Temperatura</dt>
-                  <dd className="text-white mt-0.5">{form.temperatura || "—"} °C</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide font-medium">Temperatura</dt>
+                  <dd className="text-slate-900 dark:text-white font-bold mt-0.5">{form.temperatura || "—"} °C</dd>
                 </div>
-                <div className="col-span-2 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2">
-                  <dt className="text-amber-200 text-xs uppercase tracking-wide">Riesgo MARO estimado</dt>
-                  <dd className="text-amber-100 mt-0.5">
-                    Total estimado: <strong>{puntajeRiesgoTotal}</strong> puntos
+                <div className="col-span-2 rounded-lg border border-amber-300 dark:border-amber-500/35 bg-amber-50 dark:bg-amber-500/10 px-3 py-2">
+                  <dt className="text-amber-900 dark:text-amber-200 text-xs uppercase tracking-wide font-bold">Riesgo MARO estimado</dt>
+                  <dd className="text-amber-950 dark:text-amber-100 mt-0.5">
+                    Total estimado: <strong className="font-black">{puntajeRiesgoTotal}</strong> puntos
                     {puntajeRiesgoTotal >= 25 ? " (posible alerta estatal)" : ""}
                   </dd>
                 </div>
                 {tieneEscalamientoForzado && (
-                  <div className="col-span-2 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2">
-                    <dt className="text-red-200 text-xs uppercase tracking-wide">Advertencia de escalamiento</dt>
-                    <dd className="text-red-100 mt-0.5">
+                  <div className="col-span-2 rounded-lg border border-rose-300 dark:border-red-400/40 bg-rose-50 dark:bg-red-500/10 px-3 py-2">
+                    <dt className="text-rose-900 dark:text-red-200 text-xs uppercase tracking-wide font-bold">Advertencia de escalamiento</dt>
+                    <dd className="text-rose-950 dark:text-red-100 mt-0.5">
                       Criterios activos: <strong>{criteriosEscalamientoActivos.join(", ")}</strong>. Este caso será enviado a nivel estatal al guardar la consulta.
                     </dd>
                   </div>
@@ -1355,11 +1373,11 @@ export default function ConsultasPaciente() {
               </dl>
             </div>
 
-            <div className="flex gap-3 border-t border-white/10 px-6 py-4">
+            <div className="flex gap-3 border-t border-slate-200 dark:border-white/10 px-6 py-4 bg-slate-50 dark:bg-slate-800/50">
               <button
                 type="button"
                 onClick={executeSave}
-                className="flex-1 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-emerald-400"
+                className="flex-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 cursor-pointer"
                 disabled={saving}
               >
                 {saving ? "Guardando..." : "Guardar consulta"}
@@ -1367,7 +1385,7 @@ export default function ConsultasPaciente() {
               <button
                 type="button"
                 onClick={() => setShowConfirmModal(false)}
-                className="flex-1 rounded-lg border border-white/20 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+                className="flex-1 rounded-lg border border-slate-300 dark:border-white/20 bg-white dark:bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
                 disabled={saving}
               >
                 Revisar captura
@@ -1385,14 +1403,14 @@ export default function ConsultasPaciente() {
               <div className="flex items-center gap-3">
                 <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-red-500 text-white text-2xl animate-pulse">!</span>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-red-100/90">Alerta prioritaria</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-red-100/90 font-bold">Alerta prioritaria</p>
                   <h3 className="text-xl font-bold text-white">Escalamiento automático a nivel estatal</h3>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setAlertaRiesgoEstatal(null)}
-                className="rounded-lg border border-white/25 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10"
+                className="rounded-lg border border-white/25 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10 cursor-pointer"
               >
                 Cerrar
               </button>
@@ -1404,7 +1422,7 @@ export default function ConsultasPaciente() {
 
             {tieneEscalamientoForzado && (
               <div className="mt-3 rounded-lg border border-red-300/35 bg-red-950/35 px-3 py-2">
-                <p className="text-xs uppercase tracking-[0.18em] text-red-100/80">Criterios activos</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-red-100/80 font-bold">Criterios activos</p>
                 <p className="mt-1 text-sm text-red-50">
                   {criteriosEscalamientoActivos.join(", ")}
                 </p>

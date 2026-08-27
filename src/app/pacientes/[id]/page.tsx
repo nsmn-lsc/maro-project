@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { evaluarFactoresRiesgo, DatosFactoresPaciente } from "@/lib/riesgoFactores";
 import { evaluarTamizajes, DatosTamizajes } from "@/lib/riesgoTamizajes";
 
@@ -381,15 +382,15 @@ export default function PacienteDetalle() {
         subtitulo: "Segundo Nivel",
         icono: "fa-solid fa-triangle-exclamation",
         colorTheme: {
-          border: "border-amber-400/60",
-          bg: "bg-amber-500/20",
-          textTitle: "text-amber-300",
-          textBody: "text-amber-100",
-          chipBg: "bg-amber-400/20",
-          chipBorder: "border-amber-300/40",
-          chipText: "text-amber-200",
+          border: "border-amber-400/60 dark:border-amber-400/60",
+          bg: "bg-amber-50 dark:bg-amber-500/20",
+          textTitle: "text-amber-800 dark:text-amber-300",
+          textBody: "text-amber-950 dark:text-amber-100",
+          chipBg: "bg-amber-100 dark:bg-amber-400/20",
+          chipBorder: "border-amber-300 dark:border-amber-300/40",
+          chipText: "text-amber-900 dark:text-amber-200",
         },
-        texto: "Referencia a segundo nivel de atención con paraclinicos desde la primera consulta",
+        texto: "Referencia a segundo nivel de atención con paraclínicos desde la primera consulta",
         items: factoresSegundoNivelActivos,
       });
     }
@@ -403,15 +404,15 @@ export default function PacienteDetalle() {
         subtitulo: "Preeclampsia",
         icono: "fa-solid fa-triangle-exclamation",
         colorTheme: {
-          border: "border-amber-400/60",
-          bg: "bg-amber-500/20",
-          textTitle: "text-amber-300",
-          textBody: "text-amber-100",
-          chipBg: "bg-amber-400/20",
-          chipBorder: "border-amber-300/40",
-          chipText: "text-amber-200",
+          border: "border-amber-400/60 dark:border-amber-400/60",
+          bg: "bg-amber-50 dark:bg-amber-500/20",
+          textTitle: "text-amber-800 dark:text-amber-300",
+          textBody: "text-amber-950 dark:text-amber-100",
+          chipBg: "bg-amber-100 dark:bg-amber-400/20",
+          chipBorder: "border-amber-300 dark:border-amber-300/40",
+          chipText: "text-amber-900 dark:text-amber-200",
         },
-        texto: "Referencia a segundo nivel de atención con paraclinicos desde la primera consulta + Vigilar ganancia ponderal + Vigilar proteinuria, T.A. apartir de las 20 SDG",
+        texto: "Referencia a segundo nivel de atención con paraclínicos desde la primera consulta + Vigilar ganancia ponderal + Vigilar proteinuria, T.A. a partir de las 20 SDG",
         items: ["Antecedente de preeclampsia"],
       });
     }
@@ -425,15 +426,15 @@ export default function PacienteDetalle() {
         subtitulo: "Tamizajes Reactivos",
         icono: "fa-solid fa-bullhorn",
         colorTheme: {
-          border: "border-rose-400/60",
-          bg: "bg-rose-500/20",
-          textTitle: "text-rose-300",
-          textBody: "text-rose-100",
-          chipBg: "bg-rose-400/20",
-          chipBorder: "border-rose-300/40",
-          chipText: "text-rose-200",
+          border: "border-rose-400/60 dark:border-rose-400/60",
+          bg: "bg-rose-50 dark:bg-rose-500/20",
+          textTitle: "text-rose-800 dark:text-rose-300",
+          textBody: "text-rose-950 dark:text-rose-100",
+          chipBg: "bg-rose-100 dark:bg-rose-400/20",
+          chipBorder: "border-rose-300 dark:border-rose-300/40",
+          chipText: "text-rose-900 dark:text-rose-200",
         },
-        texto: "Informar inmediatamente a enlace zonal y epidemiologia regional, seguimiento normativo hasta descarte o confirmacion",
+        texto: "Informar inmediatamente a enlace zonal y epidemiología regional, seguimiento normativo hasta descarte o confirmación",
         items: tamizajesReactivosActivos,
       });
     }
@@ -447,13 +448,13 @@ export default function PacienteDetalle() {
         subtitulo: "Atención Especial",
         icono: "fa-solid fa-wheelchair",
         colorTheme: {
-          border: "border-sky-400/60",
-          bg: "bg-sky-500/20",
-          textTitle: "text-sky-300",
-          textBody: "text-sky-100",
-          chipBg: "bg-sky-400/20",
-          chipBorder: "border-sky-300/40",
-          chipText: "text-sky-200",
+          border: "border-sky-400/60 dark:border-sky-400/60",
+          bg: "bg-sky-50 dark:bg-sky-500/20",
+          textTitle: "text-sky-800 dark:text-sky-300",
+          textBody: "text-sky-950 dark:text-sky-100",
+          chipBg: "bg-sky-100 dark:bg-sky-400/20",
+          chipBorder: "border-sky-300 dark:border-sky-300/40",
+          chipText: "text-sky-900 dark:text-sky-200",
         },
         texto: "Fortalecer red social, manejo conjunto con segundo nivel de atención",
       });
@@ -468,13 +469,13 @@ export default function PacienteDetalle() {
         subtitulo: "Guías activas",
         icono: "fa-solid fa-clipboard-check",
         colorTheme: {
-          border: "border-emerald-400/50",
-          bg: "bg-emerald-950/40",
-          textTitle: "text-emerald-300",
-          textBody: "text-slate-200",
-          chipBg: "bg-emerald-400/20",
-          chipBorder: "border-emerald-300/40",
-          chipText: "text-emerald-200",
+          border: "border-emerald-400/50 dark:border-emerald-400/50",
+          bg: "bg-emerald-50 dark:bg-emerald-950/40",
+          textTitle: "text-emerald-800 dark:text-emerald-300",
+          textBody: "text-slate-800 dark:text-slate-200",
+          chipBg: "bg-emerald-100 dark:bg-emerald-400/20",
+          chipBorder: "border-emerald-300 dark:border-emerald-300/40",
+          chipText: "text-emerald-900 dark:text-emerald-200",
         },
         lista: recomendacionesClinicas,
       });
@@ -498,58 +499,73 @@ export default function PacienteDetalle() {
 
   if (!authChecked) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+      <main className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white">
         Validando acceso...
       </main>
     );
   }
 
   return (
-    <main
-      className="min-h-screen relative text-white"
-      style={{
-        backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.94), rgba(15,118,110,0.65)), url(/maro-hero.png)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      <div className="absolute inset-0 bg-black/40 mix-blend-multiply" aria-hidden />
+    <main className="min-h-screen relative transition-colors duration-300">
+      {/* CAPA DE FONDO FIJA - MODO CLARO */}
+      <div
+        className="fixed inset-0 z-0 dark:hidden"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(241, 245, 249, 0.88), rgba(204, 251, 241, 0.75)), url(/maro-hero.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        aria-hidden="true"
+      />
+      {/* CAPA DE FONDO FIJA - MODO OSCURO */}
+      <div
+        className="fixed inset-0 z-0 hidden dark:block"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.94), rgba(15,118,110,0.65)), url(/maro-hero.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        aria-hidden="true"
+      />
 
-      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
         {/* ENCABEZADO SUPERIOR */}
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs uppercase tracking-[0.2em] font-semibold text-emerald-300">
+              <span className="text-xs uppercase tracking-[0.2em] font-bold text-emerald-700 dark:text-emerald-300">
                 Expediente Obstétrico
               </span>
               {patient?.folio && (
-                <span className="text-xs font-bold text-emerald-200 bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-0.5 rounded-full">
+                <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-400/40 px-2.5 py-0.5 rounded-full font-mono">
                   {patient.folio}
                 </span>
               )}
               {enProcesoColegiado && (
-                <span className="text-xs font-bold text-amber-200 bg-amber-500/20 border border-amber-400/40 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
-                  <i className="fa-solid fa-clock-rotate-left text-amber-300"></i>
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-400/40 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                  <i className="fa-solid fa-clock-rotate-left text-amber-600 dark:text-amber-300"></i>
                   <span>Colegiado en Proceso</span>
                 </span>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
               {patient?.nombre_completo || "Paciente sin nombre"}
             </h1>
-            <p className="text-xs text-slate-300 flex items-center gap-2">
-              <i className="fa-solid fa-hospital text-emerald-400"></i>
+            <p className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+              <i className="fa-solid fa-hospital text-emerald-600 dark:text-emerald-400"></i>
               <span>{patient?.unidad || "Unidad Médica"} · CLUES {patient?.clues_id || "—"}</span>
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            <ThemeToggle />
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-white hover:bg-white/15 hover:border-white/30 transition shadow-sm"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/20 bg-slate-100 dark:bg-white/5 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-white/15 hover:border-slate-400 dark:hover:border-white/30 transition shadow-sm cursor-pointer"
             >
-              <i className="fa-solid fa-arrow-left text-xs text-slate-300"></i>
+              <i className="fa-solid fa-arrow-left text-xs text-slate-500 dark:text-slate-300"></i>
               <span>Dashboard</span>
             </Link>
           </div>
@@ -557,16 +573,16 @@ export default function PacienteDetalle() {
 
         {loading ? (
           <div className="py-20 text-center space-y-3">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent"></div>
-            <p className="text-sm text-slate-300">Cargando expediente de la paciente…</p>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></div>
+            <p className="text-sm text-slate-600 dark:text-slate-300">Cargando expediente de la paciente…</p>
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-red-500/40 bg-red-950/40 p-6 text-sm text-red-200 flex items-center gap-3">
-            <i className="fa-solid fa-circle-exclamation text-xl text-red-400"></i>
+          <div className="rounded-2xl border border-red-400/40 bg-rose-50 dark:bg-red-950/40 p-6 text-sm text-rose-800 dark:text-red-200 flex items-center gap-3">
+            <i className="fa-solid fa-circle-exclamation text-xl text-rose-600 dark:text-red-400"></i>
             <span>{error}</span>
           </div>
         ) : !patient ? (
-          <p className="text-sm text-slate-200/80">Paciente no encontrado.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">Paciente no encontrado.</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* ========================================================================= */}
@@ -581,139 +597,139 @@ export default function PacienteDetalle() {
                     subtitle: "Seguimiento y Signos",
                     icon: "fa-solid fa-stethoscope",
                     href: `/pacientes/${patient.id}/consultas`,
-                    accent: "border-cyan-400/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 hover:border-cyan-300",
-                    iconColor: "text-cyan-300",
+                    accent: "border-teal-300 dark:border-cyan-400/40 bg-white/95 dark:bg-cyan-500/10 text-teal-950 dark:text-cyan-100 hover:bg-teal-50 dark:hover:bg-cyan-500/20 hover:border-teal-400 dark:hover:border-cyan-300",
+                    iconBox: "bg-teal-100 dark:bg-white/10 text-teal-700 dark:text-cyan-300",
                   },
                   {
                     title: "Acciones",
                     subtitle: "Preventivas y Educación",
                     icon: "fa-solid fa-shield-heart",
                     href: `/pacientes/${patient.id}/acciones`,
-                    accent: "border-amber-400/40 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20 hover:border-amber-300",
-                    iconColor: "text-amber-300",
+                    accent: "border-amber-300 dark:border-amber-400/40 bg-white/95 dark:bg-amber-500/10 text-amber-950 dark:text-amber-100 hover:bg-amber-50 dark:hover:bg-amber-500/20 hover:border-amber-400 dark:hover:border-amber-300",
+                    iconBox: "bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-300",
                   },
                   {
                     title: "Detecciones",
                     subtitle: "Tamizajes y Laboratorios",
                     icon: "fa-solid fa-vial-virus",
                     href: `/pacientes/${patient.id}/detecciones`,
-                    accent: "border-emerald-400/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 hover:border-emerald-300",
-                    iconColor: "text-emerald-300",
+                    accent: "border-emerald-300 dark:border-emerald-400/40 bg-white/95 dark:bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 hover:border-emerald-400 dark:hover:border-emerald-300",
+                    iconBox: "bg-emerald-100 dark:bg-white/10 text-emerald-700 dark:text-emerald-300",
                   },
                 ].map((item) => (
                   <Link
                     key={item.title}
                     href={item.href}
-                    className={`group rounded-2xl border p-4 shadow-lg transition-all duration-200 flex flex-col justify-between gap-3 ${item.accent}`}
+                    className={`group rounded-2xl border p-4 shadow-md dark:shadow-lg transition-all duration-200 flex flex-col justify-between gap-3 ${item.accent}`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center text-lg">
-                        <i className={`${item.icon} ${item.iconColor}`}></i>
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-lg ${item.iconBox}`}>
+                        <i className={item.icon}></i>
                       </div>
                       <i className="fa-solid fa-arrow-right text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition"></i>
                     </div>
                     <div>
-                      <p className="font-bold text-base text-white">{item.title}</p>
-                      <p className="text-xs text-slate-200/70">{item.subtitle}</p>
+                      <p className="font-bold text-base text-slate-900 dark:text-white">{item.title}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">{item.subtitle}</p>
                     </div>
                   </Link>
                 ))}
               </div>
 
               {/* PERFIL OBSTÉTRICO Y CRONOGRAMA GESTACIONAL */}
-              <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-6 space-y-4 shadow-xl">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <h2 className="text-lg font-semibold text-emerald-300 flex items-center gap-2">
-                    <i className="fa-solid fa-person-pregnant text-emerald-400"></i>
+              <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl transition-colors">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+                  <h2 className="text-lg font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                    <i className="fa-solid fa-person-pregnant text-emerald-600 dark:text-emerald-400"></i>
                     <span>Perfil Obstétrico y Gestacional</span>
                   </h2>
-                  <span className="text-xs font-semibold text-cyan-200 bg-cyan-500/20 border border-cyan-400/30 px-3 py-1 rounded-full">
+                  <span className="text-xs font-bold text-teal-900 dark:text-cyan-200 bg-teal-100 dark:bg-cyan-500/20 border border-teal-300 dark:border-cyan-400/30 px-3 py-1 rounded-full">
                     {calcularSdgActual(patient)} SDG Actuales
                   </span>
                 </div>
 
                 {/* Grid de Métricas Obstétricas Clave */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
-                    <span className="text-[11px] uppercase tracking-wider text-slate-400 block font-medium">FUM</span>
-                    <span className="text-sm font-semibold text-white mt-0.5 block">{formatDate(patient.fum)}</span>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 text-center">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-medium">FUM</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 block">{formatDate(patient.fum)}</span>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
-                    <span className="text-[11px] uppercase tracking-wider text-slate-400 block font-medium">FPP</span>
-                    <span className="text-sm font-semibold text-emerald-300 mt-0.5 block">{formatDate(patient.fpp)}</span>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 text-center">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-medium">FPP</span>
+                    <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300 mt-0.5 block">{formatDate(patient.fpp)}</span>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
-                    <span className="text-[11px] uppercase tracking-wider text-slate-400 block font-medium">SDG Ingreso</span>
-                    <span className="text-sm font-semibold text-white mt-0.5 block">{patient.sdg_ingreso != null ? `${patient.sdg_ingreso} sem` : patient.semanas_gestacion != null ? `${Math.floor(Number(patient.semanas_gestacion))} sem` : "—"}</span>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 text-center">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-medium">SDG Ingreso</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 block">{patient.sdg_ingreso != null ? `${patient.sdg_ingreso} sem` : patient.semanas_gestacion != null ? `${Math.floor(Number(patient.semanas_gestacion))} sem` : "—"}</span>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
-                    <span className="text-[11px] uppercase tracking-wider text-slate-400 block font-medium">Ingreso CPN</span>
-                    <span className="text-sm font-semibold text-white mt-0.5 block">{formatDate(patient.fecha_ingreso_cpn)}</span>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 text-center">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-medium">Ingreso CPN</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 block">{formatDate(patient.fecha_ingreso_cpn)}</span>
                   </div>
                 </div>
 
                 {/* Fórmula Obstétrica Destacada */}
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2">
-                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <i className="fa-solid fa-baby text-cyan-300"></i>
+                <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-4 space-y-2">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <i className="fa-solid fa-baby text-teal-600 dark:text-cyan-300"></i>
                     <span>Fórmula Obstétrica (G - P - C - A)</span>
                   </span>
                   <div className="grid grid-cols-4 gap-2 pt-1">
-                    <div className="bg-white/10 rounded-lg p-2.5 text-center">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Gestas</span>
-                      <span className="text-lg font-bold text-white">{patient.gestas ?? 0}</span>
+                    <div className="bg-white dark:bg-white/10 border border-slate-200 dark:border-white/5 rounded-lg p-2.5 text-center shadow-xs">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Gestas</span>
+                      <span className="text-lg font-black text-slate-900 dark:text-white">{patient.gestas ?? 0}</span>
                     </div>
-                    <div className="bg-white/10 rounded-lg p-2.5 text-center">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Partos</span>
-                      <span className="text-lg font-bold text-white">{patient.partos ?? 0}</span>
+                    <div className="bg-white dark:bg-white/10 border border-slate-200 dark:border-white/5 rounded-lg p-2.5 text-center shadow-xs">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Partos</span>
+                      <span className="text-lg font-black text-slate-900 dark:text-white">{patient.partos ?? 0}</span>
                     </div>
-                    <div className="bg-white/10 rounded-lg p-2.5 text-center">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Cesáreas</span>
-                      <span className="text-lg font-bold text-white">{patient.cesareas ?? 0}</span>
+                    <div className="bg-white dark:bg-white/10 border border-slate-200 dark:border-white/5 rounded-lg p-2.5 text-center shadow-xs">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Cesáreas</span>
+                      <span className="text-lg font-black text-slate-900 dark:text-white">{patient.cesareas ?? 0}</span>
                     </div>
-                    <div className="bg-white/10 rounded-lg p-2.5 text-center">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Abortos</span>
-                      <span className="text-lg font-bold text-white">{patient.abortos ?? 0}</span>
+                    <div className="bg-white dark:bg-white/10 border border-slate-200 dark:border-white/5 rounded-lg p-2.5 text-center shadow-xs">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Abortos</span>
+                      <span className="text-lg font-black text-slate-900 dark:text-white">{patient.abortos ?? 0}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Datos antropométricos / adicionales */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5">
-                    <span className="text-xs text-slate-300 flex items-center gap-2">
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3.5 py-2.5">
+                    <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
                       <i className="fa-solid fa-weight-scale text-slate-400"></i>
                       <span>IMC Inicial:</span>
                     </span>
-                    <span className="text-sm font-semibold text-white">{patient.imc_inicial ? `${patient.imc_inicial} kg/m²` : "—"}</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">{patient.imc_inicial ? `${patient.imc_inicial} kg/m²` : "—"}</span>
                   </div>
                   {patient.edad ? (
-                    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5">
-                      <span className="text-xs text-slate-300 flex items-center gap-2">
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3.5 py-2.5">
+                      <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
                         <i className="fa-solid fa-user text-slate-400"></i>
                         <span>Edad de la paciente:</span>
                       </span>
-                      <span className="text-sm font-semibold text-white">{patient.edad} años</span>
+                      <span className="text-sm font-bold text-slate-900 dark:text-white">{patient.edad} años</span>
                     </div>
                   ) : null}
                 </div>
               </section>
 
               {/* ANTECEDENTES Y COMORBILIDADES REGISTRADAS */}
-              <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-6 space-y-4 shadow-xl">
-                <h2 className="text-lg font-semibold text-cyan-300 flex items-center gap-2 border-b border-white/10 pb-3">
-                  <i className="fa-solid fa-notes-medical text-cyan-400"></i>
+              <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl transition-colors">
+                <h2 className="text-lg font-bold text-teal-800 dark:text-cyan-300 flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-3">
+                  <i className="fa-solid fa-notes-medical text-teal-600 dark:text-cyan-400"></i>
                   <span>Antecedentes y Factores Clínicos Registrados</span>
                 </h2>
 
                 <div className="space-y-4">
                   {/* Antecedentes Gineco-obstétricos patológicos */}
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                       Antecedentes Gineco-Obstétricos de Riesgo:
                     </p>
                     {antecedentesActivos.length === 0 ? (
-                      <p className="text-xs text-slate-400 italic bg-white/5 rounded-lg px-3 py-2">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 italic bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg px-3 py-2">
                         Sin antecedentes gineco-obstétricos de riesgo registrados.
                       </p>
                     ) : (
@@ -721,11 +737,11 @@ export default function PacienteDetalle() {
                         {antecedentesActivos.map((ant, i) => (
                           <span
                             key={i}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium bg-amber-500/20 border border-amber-400/50 text-amber-200 px-3 py-1 rounded-full shadow-sm"
+                            className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-400/50 text-amber-900 dark:text-amber-200 px-3 py-1 rounded-full shadow-xs"
                           >
-                            <i className="fa-solid fa-circle-exclamation text-amber-400 text-[10px]"></i>
+                            <i className="fa-solid fa-circle-exclamation text-amber-600 dark:text-amber-400 text-[10px]"></i>
                             <span>{ant.label}</span>
-                            <span className="bg-amber-400/30 text-amber-100 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                            <span className="bg-amber-200 dark:bg-amber-400/30 text-amber-950 dark:text-amber-100 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
                               +{ant.puntos} pts
                             </span>
                           </span>
@@ -736,11 +752,11 @@ export default function PacienteDetalle() {
 
                   {/* Comorbilidades activas */}
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                       Comorbilidades y Factores Crónicos:
                     </p>
                     {comorbilidadesActivas.length === 0 ? (
-                      <p className="text-xs text-slate-400 italic bg-white/5 rounded-lg px-3 py-2">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 italic bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg px-3 py-2">
                         Sin comorbilidades o toxicomanías activas registradas.
                       </p>
                     ) : (
@@ -748,9 +764,9 @@ export default function PacienteDetalle() {
                         {comorbilidadesActivas.map((comorb, i) => (
                           <span
                             key={i}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 px-3 py-1 rounded-full shadow-sm"
+                            className="inline-flex items-center gap-1.5 text-xs font-bold bg-teal-50 dark:bg-cyan-500/20 border border-teal-300 dark:border-cyan-400/40 text-teal-950 dark:text-cyan-200 px-3 py-1 rounded-full shadow-xs"
                           >
-                            <i className="fa-solid fa-check text-cyan-400 text-[10px]"></i>
+                            <i className="fa-solid fa-check text-teal-600 dark:text-cyan-400 text-[10px]"></i>
                             <span>{comorb}</span>
                           </span>
                         ))}
@@ -760,30 +776,30 @@ export default function PacienteDetalle() {
 
                   {/* Otros factores */}
                   {(patient.indigena || patient.migrante || (patient.factores_riesgo_epid && patient.factores_riesgo_epid !== 'ninguno') || patient.otros_antecedentes) && (
-                    <div className="space-y-2 pt-2 border-t border-white/10">
-                      <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                    <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/10">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                         Factores Epidemiológicos y Sociodemográficos:
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {Boolean(patient.indigena) && (
-                          <span className="text-xs bg-indigo-500/20 border border-indigo-400/40 text-indigo-200 px-2.5 py-1 rounded-full">
+                          <span className="text-xs font-bold bg-indigo-100 dark:bg-indigo-500/20 border border-indigo-300 dark:border-indigo-400/40 text-indigo-950 dark:text-indigo-200 px-2.5 py-1 rounded-full">
                             Población Indígena
                           </span>
                         )}
                         {Boolean(patient.migrante) && (
-                          <span className="text-xs bg-indigo-500/20 border border-indigo-400/40 text-indigo-200 px-2.5 py-1 rounded-full">
+                          <span className="text-xs font-bold bg-indigo-100 dark:bg-indigo-500/20 border border-indigo-300 dark:border-indigo-400/40 text-indigo-950 dark:text-indigo-200 px-2.5 py-1 rounded-full">
                             Población Migrante
                           </span>
                         )}
                         {patient.factores_riesgo_epid && patient.factores_riesgo_epid !== 'ninguno' && (
-                          <span className="text-xs bg-purple-500/20 border border-purple-400/40 text-purple-200 px-2.5 py-1 rounded-full">
+                          <span className="text-xs font-bold bg-purple-100 dark:bg-purple-500/20 border border-purple-300 dark:border-purple-400/40 text-purple-950 dark:text-purple-200 px-2.5 py-1 rounded-full">
                             Epidemiológico: {patient.factores_riesgo_epid.replaceAll('_', ' ')}
                           </span>
                         )}
                       </div>
                       {patient.otros_antecedentes && (
-                        <p className="text-xs text-slate-300 bg-white/5 border border-white/10 rounded-lg p-2.5 mt-2">
-                          <strong className="text-white">Otros antecedentes:</strong> {patient.otros_antecedentes}
+                        <p className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2.5 mt-2">
+                          <strong className="text-slate-900 dark:text-white">Otros antecedentes:</strong> {patient.otros_antecedentes}
                         </p>
                       )}
                     </div>
@@ -792,40 +808,40 @@ export default function PacienteDetalle() {
               </section>
 
               {/* IDENTIFICACIÓN, UBICACIÓN Y CONTACTO */}
-              <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-6 space-y-4 shadow-xl">
-                <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2 border-b border-white/10 pb-3">
-                  <i className="fa-solid fa-hospital-user text-indigo-400"></i>
+              <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl transition-colors">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-3">
+                  <i className="fa-solid fa-hospital-user text-indigo-600 dark:text-indigo-400"></i>
                   <span>Identificación, Ubicación y Contacto</span>
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Teléfono</span>
-                    <p className="text-sm font-semibold text-white flex items-center gap-2">
-                      <i className="fa-solid fa-phone text-xs text-emerald-400"></i>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Teléfono</span>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <i className="fa-solid fa-phone text-xs text-emerald-600 dark:text-emerald-400"></i>
                       <span>{patient.telefono || "—"}</span>
                     </p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Derechohabiencia</span>
-                    <p className="text-sm font-semibold text-white flex items-center gap-2">
-                      <i className="fa-solid fa-id-card text-xs text-cyan-400"></i>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Derechohabiencia</span>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <i className="fa-solid fa-id-card text-xs text-teal-600 dark:text-cyan-400"></i>
                       <span>{patient.derechohabiencia || "—"}</span>
                     </p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Municipio</span>
-                    <p className="text-sm font-semibold text-white flex items-center gap-2">
-                      <i className="fa-solid fa-location-dot text-xs text-amber-400"></i>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Municipio</span>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <i className="fa-solid fa-location-dot text-xs text-amber-600 dark:text-amber-400"></i>
                       <span>{patient.municipio || "—"}</span>
                     </p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Localidad / Colonia</span>
-                    <p className="text-sm font-semibold text-white">{patient.localidad || "—"}</p>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Localidad / Colonia</span>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{patient.localidad || "—"}</p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1 sm:col-span-2">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Dirección</span>
-                    <p className="text-sm text-slate-200">{patient.direccion || "—"}</p>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 space-y-1 sm:col-span-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Dirección</span>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{patient.direccion || "—"}</p>
                   </div>
                 </div>
               </section>
@@ -836,17 +852,17 @@ export default function PacienteDetalle() {
             {/* ========================================================================= */}
             <aside className="lg:col-span-5 xl:col-span-4 space-y-5 lg:sticky lg:top-6">
               {/* TARJETA DE RESUMEN GLOBAL DE RIESGO */}
-              <div className="rounded-2xl border border-white/15 bg-slate-900/80 backdrop-blur-md p-5 space-y-4 shadow-2xl">
+              <div className="rounded-2xl border border-slate-200 dark:border-white/15 bg-white/95 dark:bg-slate-900/80 p-5 space-y-4 shadow-xl transition-colors">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase font-bold tracking-wider text-slate-300 flex items-center gap-1.5">
-                    <i className="fa-solid fa-gauge-high text-emerald-400"></i>
+                  <span className="text-xs uppercase font-bold tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <i className="fa-solid fa-gauge-high text-emerald-600 dark:text-emerald-400"></i>
                     <span>Semáforo de Riesgo</span>
                   </span>
-                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm ${
-                    puntajeTotalCombinado >= 25 ? 'bg-red-600 text-white' :
-                    puntajeTotalCombinado >= 10 ? 'bg-orange-500 text-white' :
-                    puntajeTotalCombinado >= 4 ? 'bg-amber-500 text-slate-900 font-bold' :
-                    'bg-emerald-600 text-white'
+                  <span className={`text-xs font-black px-2.5 py-0.5 rounded-full shadow-xs ${
+                    puntajeTotalCombinado >= 25 ? 'bg-rose-100 text-rose-900 border border-rose-300 dark:bg-rose-600 dark:text-white' :
+                    puntajeTotalCombinado >= 10 ? 'bg-orange-100 text-orange-900 border border-orange-300 dark:bg-orange-500 dark:text-white' :
+                    puntajeTotalCombinado >= 4 ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-500 dark:text-slate-900' :
+                    'bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-600 dark:text-white'
                   }`}>
                     {puntajeTotalCombinado >= 25 ? 'CRÍTICO' :
                      puntajeTotalCombinado >= 10 ? 'MUY ALTO' :
@@ -854,17 +870,17 @@ export default function PacienteDetalle() {
                   </span>
                 </div>
 
-                <div className="flex items-baseline justify-between bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className="flex items-baseline justify-between bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-4">
                   <div>
-                    <span className="text-xs text-slate-400 block font-medium">Puntaje Total Combinado</span>
-                    <span className="text-3xl font-black text-white">{puntajeTotalCombinado} <span className="text-sm font-normal text-slate-400">pts</span></span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Puntaje Total Combinado</span>
+                    <span className="text-3xl font-black text-slate-900 dark:text-white">{puntajeTotalCombinado} <span className="text-sm font-normal text-slate-500 dark:text-slate-400">pts</span></span>
                   </div>
                   <div className="text-right space-y-1">
-                    <div className="text-xs text-slate-300">
-                      Antecedentes: <strong className="text-white">{resultadoRiesgo?.puntajeTotal ?? 0} pts</strong>
+                    <div className="text-xs text-slate-600 dark:text-slate-300">
+                      Antecedentes: <strong className="text-slate-900 dark:text-white font-bold">{resultadoRiesgo?.puntajeTotal ?? 0} pts</strong>
                     </div>
-                    <div className="text-xs text-slate-300">
-                      Tamizajes: <strong className="text-white">{resultadoTamizajes?.puntajeTotal ?? 0} pts</strong>
+                    <div className="text-xs text-slate-600 dark:text-slate-300">
+                      Tamizajes: <strong className="text-slate-900 dark:text-white font-bold">{resultadoTamizajes?.puntajeTotal ?? 0} pts</strong>
                     </div>
                   </div>
                 </div>
@@ -880,17 +896,17 @@ export default function PacienteDetalle() {
                   <div 
                     onMouseEnter={() => setIsAlertaHovered(true)}
                     onMouseLeave={() => setIsAlertaHovered(false)}
-                    className={`rounded-2xl border ${currentCard.colorTheme.border} ${currentCard.colorTheme.bg} backdrop-blur-md p-4 space-y-3 shadow-xl transition-all duration-300 relative`}
+                    className={`rounded-2xl border ${currentCard.colorTheme.border} ${currentCard.colorTheme.bg} p-4 space-y-3 shadow-md transition-all duration-300 relative`}
                   >
                     {/* Header del Carrusel con Controles */}
-                    <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-200 dark:border-white/10 pb-2.5">
                       <div className="flex items-center gap-2 min-w-0">
                         <i className={`${currentCard.icono} ${currentCard.colorTheme.textTitle} text-sm shrink-0`}></i>
                         <span className={`text-xs font-bold uppercase tracking-wider ${currentCard.colorTheme.textTitle} truncate`}>
                           {currentCard.titulo}
                         </span>
                         {currentCard.subtitulo && (
-                          <span className="text-[10px] text-slate-300 bg-white/10 px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-block">
+                          <span className="text-[10px] text-slate-700 dark:text-slate-300 bg-white/70 dark:bg-white/10 px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-block font-medium">
                             {currentCard.subtitulo}
                           </span>
                         )}
@@ -898,13 +914,13 @@ export default function PacienteDetalle() {
 
                       {totalAlertas > 1 && (
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[11px] font-semibold text-slate-300 mr-1">
+                          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mr-1">
                             {safeIndex + 1} de {totalAlertas}
                           </span>
                           <button
                             type="button"
                             onClick={() => setAlertaIndex((prev) => (prev - 1 + totalAlertas) % totalAlertas)}
-                            className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-xs text-white transition-all cursor-pointer"
+                            className="w-6 h-6 rounded-lg bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-slate-300 dark:border-white/10 flex items-center justify-center text-xs text-slate-700 dark:text-white transition-all cursor-pointer"
                             title="Alerta anterior"
                             aria-label="Alerta anterior"
                           >
@@ -913,7 +929,7 @@ export default function PacienteDetalle() {
                           <button
                             type="button"
                             onClick={() => setAlertaIndex((prev) => (prev + 1) % totalAlertas)}
-                            className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-xs text-white transition-all cursor-pointer"
+                            className="w-6 h-6 rounded-lg bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-slate-300 dark:border-white/10 flex items-center justify-center text-xs text-slate-700 dark:text-white transition-all cursor-pointer"
                             title="Siguiente alerta"
                             aria-label="Siguiente alerta"
                           >
@@ -937,7 +953,7 @@ export default function PacienteDetalle() {
                           {currentCard.items.map((item, index) => (
                             <span
                               key={index}
-                              className={`text-[10px] ${currentCard.colorTheme.chipBg} border ${currentCard.colorTheme.chipBorder} ${currentCard.colorTheme.chipText} font-medium px-2 py-0.5 rounded-full`}
+                              className={`text-[10px] ${currentCard.colorTheme.chipBg} border ${currentCard.colorTheme.chipBorder} ${currentCard.colorTheme.chipText} font-semibold px-2 py-0.5 rounded-full`}
                             >
                               {item}
                             </span>
@@ -949,8 +965,8 @@ export default function PacienteDetalle() {
                       {currentCard.lista && currentCard.lista.length > 0 && (
                         <ul className="space-y-1.5 pt-1 max-h-[220px] overflow-y-auto pr-1">
                           {currentCard.lista.map((rec, index) => (
-                            <li key={index} className="text-xs text-slate-200 bg-white/5 border border-white/5 rounded-lg p-2 flex items-start gap-2">
-                              <span className="text-emerald-400 font-bold">•</span>
+                            <li key={index} className="text-xs text-slate-800 dark:text-slate-200 bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg p-2 flex items-start gap-2">
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">•</span>
                               <span>{rec}</span>
                             </li>
                           ))}
@@ -960,14 +976,14 @@ export default function PacienteDetalle() {
 
                     {/* Indicadores inferiores (Dots de navegación) */}
                     {totalAlertas > 1 && (
-                      <div className="flex items-center justify-center gap-1.5 pt-2 border-t border-white/5">
+                      <div className="flex items-center justify-center gap-1.5 pt-2 border-t border-slate-200 dark:border-white/5">
                         {cardsAlertas.map((card, idx) => (
                           <button
                             key={card.id}
                             type="button"
                             onClick={() => setAlertaIndex(idx)}
                             className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${
-                              idx === safeIndex ? "w-5 bg-white" : "w-1.5 bg-white/30 hover:bg-white/50"
+                              idx === safeIndex ? "w-5 bg-slate-800 dark:bg-white" : "w-1.5 bg-slate-400 dark:bg-white/30 hover:bg-slate-600 dark:hover:bg-white/50"
                             }`}
                             aria-label={`Ir a alerta ${idx + 1}`}
                           />
@@ -980,35 +996,35 @@ export default function PacienteDetalle() {
 
               {/* EVALUACIÓN DE FACTORES DE RIESGO: ANTECEDENTES */}
               {resultadoRiesgo && (
-                <div className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-4 space-y-3 shadow-xl">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-4 space-y-3 shadow-xl transition-colors">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5">
                     <div className="flex items-center gap-2">
-                      <i className="fa-solid fa-clipboard-list text-emerald-400"></i>
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">Riesgo Antecedentes</span>
+                      <i className="fa-solid fa-clipboard-list text-emerald-600 dark:text-emerald-400"></i>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Riesgo Antecedentes</span>
                     </div>
-                    <span className="text-xs font-extrabold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-md">
+                    <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 px-2 py-0.5 rounded-md">
                       +{resultadoRiesgo.puntajeTotal} pts
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                     {resultadoRiesgo.descripcion}
                   </p>
 
                   {resultadoRiesgo.factores.length > 0 ? (
                     <div className="space-y-1.5 pt-1">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Factores Sumatorios:</span>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Factores Sumatorios:</span>
                       <div className="space-y-1">
                         {resultadoRiesgo.factores.map((f, i) => (
-                          <div key={i} className="flex items-center justify-between bg-white/5 border border-white/5 rounded-lg px-2.5 py-1.5 text-xs">
-                            <span className="text-slate-200">{f.campo}</span>
-                            <span className="font-bold text-emerald-300">+{f.puntos} pts</span>
+                          <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg px-2.5 py-1.5 text-xs">
+                            <span className="text-slate-800 dark:text-slate-200">{f.campo}</span>
+                            <span className="font-bold text-emerald-700 dark:text-emerald-300">+{f.puntos} pts</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-slate-400 italic">
+                    <div className="bg-slate-50 dark:bg-white/5 rounded-lg px-3 py-2 text-xs text-slate-500 dark:text-slate-400 italic">
                       Sin factores de riesgo identificados en antecedentes.
                     </div>
                   )}
@@ -1017,39 +1033,39 @@ export default function PacienteDetalle() {
 
               {/* EVALUACIÓN DE FACTORES DE RIESGO: TAMIZAJES */}
               {resultadoTamizajes && (
-                <div className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-4 space-y-3 shadow-xl">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-4 space-y-3 shadow-xl transition-colors">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5">
                     <div className="flex items-center gap-2">
-                      <i className="fa-solid fa-flask-vial text-cyan-400"></i>
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">Riesgo Tamizajes</span>
+                      <i className="fa-solid fa-flask-vial text-teal-600 dark:text-cyan-400"></i>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Riesgo Tamizajes</span>
                     </div>
-                    <span className={`text-xs font-extrabold px-2 py-0.5 rounded-md ${
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
                       resultadoTamizajes.puntajeTotal > 0
-                        ? "bg-rose-500/20 text-rose-300"
-                        : "bg-emerald-500/20 text-emerald-300"
+                        ? "bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300"
+                        : "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300"
                     }`}>
                       +{resultadoTamizajes.puntajeTotal} pts
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                     {resultadoTamizajes.descripcion}
                   </p>
 
                   {resultadoTamizajes.tamizajes.length > 0 ? (
                     <div className="space-y-1.5 pt-1">
-                      <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wider">Hallazgos Reactivos:</span>
+                      <span className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">Hallazgos Reactivos:</span>
                       <div className="space-y-1">
                         {resultadoTamizajes.tamizajes.map((t, i) => (
-                          <div key={i} className="flex items-center justify-between bg-rose-500/10 border border-rose-400/30 rounded-lg px-2.5 py-1.5 text-xs text-rose-200">
+                          <div key={i} className="flex items-center justify-between bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-400/30 rounded-lg px-2.5 py-1.5 text-xs text-rose-950 dark:text-rose-200">
                             <span>{t.campo}</span>
-                            <span className="font-bold text-rose-300">+{t.puntos} pts</span>
+                            <span className="font-bold text-rose-800 dark:text-rose-300">+{t.puntos} pts</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-slate-400 italic">
+                    <div className="bg-slate-50 dark:bg-white/5 rounded-lg px-3 py-2 text-xs text-slate-500 dark:text-slate-400 italic">
                       Todos los tamizajes iniciales dentro de parámetros normales.
                     </div>
                   )}

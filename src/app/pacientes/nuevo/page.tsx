@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ContadorRiesgo from "@/app/components/ContadorRiesgo";
 import { useSaveFactorRiesgoPaciente } from "@/lib/hooks/useSaveFactorRiesgoPaciente";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type SessionInfo = {
   nivel?: number;
@@ -644,32 +645,44 @@ export default function NuevoPaciente() {
 
   return (
     <main
-      className="min-h-screen relative text-white"
-      style={{
-        backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.94), rgba(16,185,129,0.55)), url(/maro-hero.png)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
+      className="min-h-screen relative text-slate-900 dark:text-white transition-colors duration-300"
     >
-      <div className="absolute inset-0 bg-black/30" aria-hidden />
+      {/* Background decorativo fixed con imagen visible en tema claro y oscuro */}
+      <div
+        className="fixed inset-0 bg-cover bg-center pointer-events-none z-0 dark:hidden"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(241, 245, 249, 0.72), rgba(204, 251, 241, 0.55)), url(/maro-hero.png)",
+        }}
+      />
+      <div
+        className="fixed inset-0 bg-cover bg-center pointer-events-none z-0 hidden dark:block"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(6, 78, 59, 0.65)), url(/maro-hero.png)",
+        }}
+      />
 
-      <div className="relative w-full max-w-none px-6 lg:px-16 py-10 lg:py-14 space-y-8">
-        <header className="space-y-3">
-          <p className="text-sm uppercase tracking-[0.25em] text-emerald-200/80">Pacientes</p>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl font-bold lg:text-4xl">Nuevo paciente</h1>
-            <span className="text-sm text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-full">
-              {session.clues ? `CLUES ${session.clues}` : "Sesión"}
-            </span>
+      <div className="relative z-10 w-full max-w-none px-6 lg:px-16 py-10 lg:py-14 space-y-8">
+        <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="space-y-2">
+            <p className="text-xs sm:text-sm uppercase tracking-[0.25em] font-bold text-emerald-600 dark:text-emerald-300">Pacientes</p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-extrabold lg:text-4xl text-slate-900 dark:text-white tracking-tight">Nuevo paciente</h1>
+              <span className="text-xs sm:text-sm text-emerald-800 dark:text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-full font-mono font-bold">
+                {session.clues ? `CLUES ${session.clues}` : "Sesión"}
+              </span>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm max-w-3xl">
+              Captura completa de datos para catálogo de pacientes así como tamizajes iniciales primer contacto
+            </p>
           </div>
-          <p className="text-slate-200/80 max-w-3xl">
-            Captura completa de datos para catalogo de pacientes asi como tamizajes iniciales primer contacto
-          </p>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <ThemeToggle />
+          </div>
         </header>
 
         {/* Modal de Error */}
         {error && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
             <div className="w-full max-w-md rounded-2xl border border-rose-500/50 bg-slate-900 shadow-2xl p-6">
               <div className="flex items-center gap-4 text-rose-400 mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -677,7 +690,7 @@ export default function NuevoPaciente() {
                 </svg>
                 <h2 className="text-xl font-bold">Error en el registro</h2>
               </div>
-              <p className="text-slate-200 mb-6">{error}</p>
+              <p className="text-slate-700 dark:text-slate-200 mb-6">{error}</p>
               <button
                 type="button"
                 onClick={() => setError(null)}
@@ -692,30 +705,30 @@ export default function NuevoPaciente() {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
           {/* PANEL DE RECOMENDACIONES CLÍNICAS */}
-          <aside className="lg:col-span-1 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-6 space-y-4 shadow-xl lg:sticky lg:top-6">
-            <h3 className="text-lg font-semibold text-emerald-300 flex items-center gap-2">
-              <i className="fa-solid fa-clipboard-check text-emerald-400"></i>
+          <aside className="lg:col-span-1 rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl lg:sticky lg:top-6 transition-colors">
+            <h3 className="text-lg font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+              <i className="fa-solid fa-clipboard-check text-emerald-600 dark:text-emerald-400"></i>
               <span>Recomendaciones</span>
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed border-b border-white/10 pb-3">
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed border-b border-slate-200 dark:border-white/10 pb-3">
               Guías y acciones sugeridas en tiempo real según el perfil clínico de la paciente.
             </p>
 
             {/* ALERTA DE SEGUNDO NIVEL POR FACTORES DE RIESGO SELECCIONADOS */}
             {tieneAlertaSegundoNivel && (
-              <div className="rounded-xl border border-amber-400/50 bg-amber-500/20 p-3.5 space-y-2 shadow-lg shadow-amber-950/30 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider">
-                  <i className="fa-solid fa-triangle-exclamation text-sm text-amber-400"></i>
+              <div className="rounded-xl border border-amber-500/40 dark:border-amber-400/50 bg-amber-50 dark:bg-amber-500/20 p-3.5 space-y-2 shadow-sm animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-triangle-exclamation text-sm text-amber-600 dark:text-amber-400"></i>
                   <span>Alerta de Referencia</span>
                 </div>
-                <p className="text-xs font-semibold text-amber-100 leading-snug">
-                  Referencia a segundo nivel de atención con paraclinicos desde la primera consulta
+                <p className="text-xs font-semibold text-amber-950 dark:text-amber-100 leading-snug">
+                  Referencia a segundo nivel de atención con paraclínicos desde la primera consulta
                 </p>
                 <div className="flex flex-wrap gap-1 pt-1">
                   {factoresSegundoNivelActivos.map((factor, index) => (
                     <span
                       key={index}
-                      className="text-[10px] bg-amber-400/20 border border-amber-300/40 text-amber-200 font-medium px-2 py-0.5 rounded-full"
+                      className="text-[10px] bg-amber-100 dark:bg-amber-400/20 border border-amber-300 dark:border-amber-300/40 text-amber-900 dark:text-amber-200 font-medium px-2 py-0.5 rounded-full"
                     >
                       {factor}
                     </span>
@@ -726,16 +739,16 @@ export default function NuevoPaciente() {
 
             {/* ALERTA DE REFERENCIA POR ANTECEDENTE DE PREECLAMPSIA */}
             {form.ant_preeclampsia && (
-              <div className="rounded-xl border border-amber-400/50 bg-amber-500/20 p-3.5 space-y-2 shadow-lg shadow-amber-950/30 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider">
-                  <i className="fa-solid fa-triangle-exclamation text-sm text-amber-400"></i>
+              <div className="rounded-xl border border-amber-500/40 dark:border-amber-400/50 bg-amber-50 dark:bg-amber-500/20 p-3.5 space-y-2 shadow-sm animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-triangle-exclamation text-sm text-amber-600 dark:text-amber-400"></i>
                   <span>Alerta de Referencia</span>
                 </div>
-                <p className="text-xs font-semibold text-amber-100 leading-snug">
-                  Referencia a segundo nivel de atención con paraclinicos desde la primera consulta + Vigilar ganancia ponderal + Vigilar proteinuria, T.A. apartir de las 20 SDG
+                <p className="text-xs font-semibold text-amber-950 dark:text-amber-100 leading-snug">
+                  Referencia a segundo nivel de atención con paraclínicos desde la primera consulta + Vigilar ganancia ponderal + Vigilar proteinuria, T.A. a partir de las 20 SDG
                 </p>
                 <div className="flex flex-wrap gap-1 pt-1">
-                  <span className="text-[10px] bg-amber-400/20 border border-amber-300/40 text-amber-200 font-medium px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] bg-amber-100 dark:bg-amber-400/20 border border-amber-300 dark:border-amber-300/40 text-amber-900 dark:text-amber-200 font-medium px-2 py-0.5 rounded-full">
                     Antecedente de preeclampsia
                   </span>
                 </div>
@@ -744,19 +757,19 @@ export default function NuevoPaciente() {
 
             {/* ALERTA DE NOTIFICACION POR TAMIZAJES REACTIVOS */}
             {tieneAlertaNotificacion && (
-              <div className="rounded-xl border border-rose-400/60 bg-rose-500/20 p-3.5 space-y-2 shadow-lg shadow-rose-950/30 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider">
-                  <i className="fa-solid fa-bullhorn text-sm text-rose-400"></i>
+              <div className="rounded-xl border border-rose-500/40 dark:border-rose-400/60 bg-rose-50 dark:bg-rose-500/20 p-3.5 space-y-2 shadow-sm animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-bullhorn text-sm text-rose-600 dark:text-rose-400"></i>
                   <span>Alerta de Notificación</span>
                 </div>
-                <p className="text-xs font-semibold text-rose-100 leading-snug">
-                  Informar inmediatamente a enlace zonal y epidemiologia regional, seguimiento normativo hasta descarte o confirmacion
+                <p className="text-xs font-semibold text-rose-950 dark:text-rose-100 leading-snug">
+                  Informar inmediatamente a enlace zonal y epidemiología regional, seguimiento normativo hasta descarte o confirmación
                 </p>
                 <div className="flex flex-wrap gap-1 pt-1">
                   {tamizajesReactivosActivos.map((tamizaje, index) => (
                     <span
                       key={index}
-                      className="text-[10px] bg-rose-400/20 border border-rose-300/40 text-rose-200 font-medium px-2 py-0.5 rounded-full"
+                      className="text-[10px] bg-rose-100 dark:bg-rose-400/20 border border-rose-300 dark:border-rose-300/40 text-rose-900 dark:text-rose-200 font-medium px-2 py-0.5 rounded-full"
                     >
                       {tamizaje}
                     </span>
@@ -767,12 +780,12 @@ export default function NuevoPaciente() {
 
             {/* ALERTA DE DISCAPACIDAD */}
             {form.factor_discapacidad && (
-              <div className="rounded-xl border border-sky-400/60 bg-sky-500/20 p-3.5 space-y-2 shadow-lg shadow-sky-950/30 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 text-sky-300 font-bold text-xs uppercase tracking-wider">
-                  <i className="fa-solid fa-wheelchair text-sm text-sky-400"></i>
+              <div className="rounded-xl border border-sky-500/40 dark:border-sky-400/60 bg-sky-50 dark:bg-sky-500/20 p-3.5 space-y-2 shadow-sm animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-sky-800 dark:text-sky-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-wheelchair text-sm text-sky-600 dark:text-sky-400"></i>
                   <span>Alerta de Discapacidad</span>
                 </div>
-                <p className="text-xs font-semibold text-sky-100 leading-snug">
+                <p className="text-xs font-semibold text-sky-950 dark:text-sky-100 leading-snug">
                   Fortalecer red social, manejo conjunto con segundo nivel de atención
                 </p>
               </div>
@@ -780,15 +793,15 @@ export default function NuevoPaciente() {
 
             {getRecomendaciones().length === 0 ? (
               !tieneAlertaSegundoNivel && !form.ant_preeclampsia && !tieneAlertaNotificacion && !form.factor_discapacidad && (
-                <p className="text-sm text-slate-400 italic leading-relaxed">
+                <p className="text-sm text-slate-500 dark:text-slate-400 italic leading-relaxed">
                   No hay recomendaciones activas basadas en los datos capturados actualmente.
                 </p>
               )
             ) : (
               <ul className="space-y-3">
                 {getRecomendaciones().map((rec, index) => (
-                  <li key={index} className="text-sm text-slate-200 bg-white/5 border border-white/5 rounded-xl p-3 flex gap-2.5 items-start">
-                    <span className="text-emerald-400 mt-0.5 font-bold">•</span>
+                  <li key={index} className="text-sm text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl p-3 flex gap-2.5 items-start">
+                    <span className="text-emerald-600 dark:text-emerald-400 mt-0.5 font-bold">•</span>
                     <span>{rec}</span>
                   </li>
                 ))}
@@ -796,8 +809,8 @@ export default function NuevoPaciente() {
             )}
             
             {/* SUMATORIA Y CONTADOR DE RIESGOS INLINE */}
-            <div className="pt-4 border-t border-white/10 space-y-3">
-              <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Puntaje y Hallazgos</h4>
+            <div className="pt-4 border-t border-slate-200 dark:border-white/10 space-y-3">
+              <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Puntaje y Hallazgos</h4>
               <ContadorRiesgo 
                 formData={form} 
                 isInline={true}
@@ -813,28 +826,28 @@ export default function NuevoPaciente() {
             onSubmit={handleSubmit}
             className="lg:col-span-4 space-y-6"
           >
-          <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
+          <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl dark:shadow-2xl transition-colors">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center shrink-0">
                   <i className="fa-solid fa-id-card text-emerald-400 text-lg"></i>
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Identificación</h2>
-                  <p className="text-sm text-slate-300">Datos personales y de contacto</p>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Identificación</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">Datos personales y de contacto</p>
                 </div>
               </div>
-              <span className="text-xs text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full">Obligatorio *</span>
+              <span className="text-xs text-emerald-800 dark:text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full font-bold">Obligatorio *</span>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
               <label className="space-y-1 text-sm lg:col-span-2">
-                <span className="text-slate-100">Nombre completo *</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Nombre completo *</span>
                 <input
-                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.nombre_completo.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-white/10"
+                      : "border-slate-300 dark:border-white/10"
                   }`}
                   value={form.nombre_completo}
                   onChange={(e) => handleChange("nombre_completo", e.target.value)}
@@ -845,23 +858,23 @@ export default function NuevoPaciente() {
                 )}
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Folio {loadingFolio && "(generando...)"}</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Folio {loadingFolio && "(generando...)"}</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white cursor-not-allowed"
+                  className="w-full rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-600 dark:text-slate-300 cursor-not-allowed"
                   value={form.folio}
                   readOnly
                   disabled
                   placeholder={loadingFolio ? "Generando folio..." : "Se generará automáticamente"}
                 />
-                <p className="text-xs text-slate-300/70">Generado automáticamente: CLUES-###</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Generado automáticamente: CLUES-###</p>
               </label>
 
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">CURP</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">CURP</span>
                 <input
-                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     !form.curp
-                      ? "border-white/10"
+                      ? "border-slate-300 dark:border-white/10"
                       : form.curp.length === 18 && /^[A-ZÑ]{4}\d{6}[HMX][A-ZÑ]{5}[A-Z0-9][A-Z0-9]$/.test(form.curp)
                       ? "border-emerald-500/50 focus:border-emerald-500"
                       : "border-rose-500/50 focus:border-rose-500"
@@ -890,14 +903,14 @@ export default function NuevoPaciente() {
                 )}
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Edad *</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Edad *</span>
                 <input
                   type="number"
                   min={10}
-                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.edad.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-white/10"
+                      : "border-slate-300 dark:border-white/10"
                   }`}
                   value={form.edad}
                   onChange={(e) => handleChange("edad", e.target.value)}
@@ -919,24 +932,24 @@ export default function NuevoPaciente() {
                       onClick={() => handleToggle(item.key)}
                       className={`group flex items-center gap-2.5 h-10 rounded-lg px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
                         isChecked
-                          ? "bg-emerald-500/20 border-emerald-400/60 text-white shadow-sm ring-1 ring-emerald-400/30"
-                          : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                          ? "bg-emerald-50 dark:bg-emerald-500/20 border-emerald-500/50 dark:border-emerald-400/60 text-emerald-950 dark:text-emerald-100 font-semibold shadow-sm ring-1 ring-emerald-500/40 dark:ring-emerald-400/30"
+                          : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:text-slate-900 dark:hover:text-white"
                       }`}
                     >
                       <div
                         className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
                           isChecked
                             ? "bg-emerald-500 shadow-sm shadow-emerald-500/40"
-                            : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                            : "bg-slate-200 dark:bg-white/15 border border-slate-300 dark:border-white/20 group-hover:bg-slate-300 dark:group-hover:bg-white/25"
                         }`}
                       >
                         <div
                           className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
-                            isChecked ? "translate-x-3 bg-white" : "translate-x-0 bg-white/70 group-hover:bg-white"
+                            isChecked ? "translate-x-3 bg-white" : "translate-x-0 bg-slate-400 dark:bg-white/70 group-hover:bg-slate-500 dark:group-hover:bg-white"
                           }`}
                         />
                       </div>
-                      <i className={`${item.icon} ${isChecked ? "text-emerald-300" : "text-slate-400"}`}></i>
+                      <i className={`${item.icon} ${isChecked ? "text-emerald-600 dark:text-emerald-300" : "text-slate-400"}`}></i>
                       <span className="truncate">{item.label}</span>
                     </button>
                   );
@@ -944,12 +957,12 @@ export default function NuevoPaciente() {
               </div>
 
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Derechohabiencia *</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Derechohabiencia *</span>
                 <select
-                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.derechohabiencia.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-white/10"
+                      : "border-slate-300 dark:border-white/10"
                   }`}
                   value={form.derechohabiencia}
                   onChange={(e) => handleChange("derechohabiencia", e.target.value)}
@@ -967,24 +980,24 @@ export default function NuevoPaciente() {
               </label>
 
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Región</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Región</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.region}
                   onChange={(e) => handleChange("region", e.target.value)}
                   placeholder={session.region || ""}
                   readOnly
                   disabled
                 />
-                <p className="text-xs text-slate-300/70">Controlado por la sesión</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Controlado por la sesión</p>
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">CLUES *</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">CLUES *</span>
                 <input
-                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.clues_id.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-white/10"
+                      : "border-slate-300 dark:border-white/10"
                   }`}
                   value={form.clues_id}
                   onChange={(e) => handleChange("clues_id", e.target.value.toUpperCase())}
@@ -995,38 +1008,38 @@ export default function NuevoPaciente() {
                 {attemptedSubmit && !form.clues_id.trim() && (
                   <p className="text-xs text-rose-400 mt-1 font-medium">✗ La CLUES es obligatoria</p>
                 )}
-                <p className="text-xs text-slate-300/70">Controlado por la sesión</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Controlado por la sesión</p>
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Unidad</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Unidad</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.unidad}
                   onChange={(e) => handleChange("unidad", e.target.value)}
                   readOnly
                   disabled
                 />
-                <p className="text-xs text-slate-300/70">Controlado por la sesión</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Controlado por la sesión</p>
               </label>
 
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Municipio</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Municipio</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.municipio}
                   onChange={(e) => handleChange("municipio", e.target.value)}
                   readOnly
                   disabled
                 />
-                <p className="text-xs text-slate-300/70">Controlado por la sesión</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Controlado por la sesión</p>
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Localidad *</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Localidad *</span>
                 <input
-                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.localidad.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-white/10"
+                      : "border-slate-300 dark:border-white/10"
                   }`}
                   value={form.localidad}
                   onChange={(e) => handleChange("localidad", e.target.value)}
@@ -1036,12 +1049,12 @@ export default function NuevoPaciente() {
                 )}
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Colonia *</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Colonia *</span>
                 <input
-                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.colonia.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-white/10"
+                      : "border-slate-300 dark:border-white/10"
                   }`}
                   value={form.colonia}
                   onChange={(e) => handleChange("colonia", e.target.value)}
@@ -1052,12 +1065,12 @@ export default function NuevoPaciente() {
               </label>
 
               <label className="space-y-1 text-sm lg:col-span-2">
-                <span className="text-slate-100">Dirección *</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Dirección *</span>
                 <input
-                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.direccion.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-white/10"
+                      : "border-slate-300 dark:border-white/10"
                   }`}
                   value={form.direccion}
                   onChange={(e) => handleChange("direccion", e.target.value)}
@@ -1067,9 +1080,9 @@ export default function NuevoPaciente() {
                 )}
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Teléfono</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Teléfono</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.telefono}
                   onChange={(e) => handleChange("telefono", e.target.value)}
                 />
@@ -1077,28 +1090,28 @@ export default function NuevoPaciente() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
+          <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl dark:shadow-2xl transition-colors">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center shrink-0">
                   <i className="fa-solid fa-notes-medical text-cyan-400 text-lg"></i>
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Ingreso CPN y riesgo</h2>
-                  <p className="text-sm text-slate-300">Datos clínicos iniciales</p>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Ingreso CPN y riesgo</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">Datos clínicos iniciales</p>
                 </div>
               </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Fecha ingreso CPN *</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Fecha ingreso CPN *</span>
                 <input
                   type="date"
-                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.fecha_ingreso_cpn.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-white/10"
+                      : "border-slate-300 dark:border-white/10"
                   }`}
                   value={form.fecha_ingreso_cpn}
                   onChange={(e) => handleChange("fecha_ingreso_cpn", e.target.value)}
@@ -1108,13 +1121,13 @@ export default function NuevoPaciente() {
                 )}
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">FUM *</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">FUM *</span>
                 <input
                   type="date"
-                  className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.fum.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-white/10"
+                      : "border-slate-300 dark:border-white/10"
                   }`}
                   value={form.fum}
                   onChange={(e) => {
@@ -1134,31 +1147,31 @@ export default function NuevoPaciente() {
                 )}
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Semanas gestación</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Semanas gestación</span>
                 <input
                   type="number"
                   step="0.1"
                   min={0}
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.semanas_gestacion}
                   readOnly
                   placeholder="Se calcula desde la FUM"
                 />
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">FPP</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">FPP</span>
                 <input
                   type="date"
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.fpp}
                   readOnly
                 />
               </label>
 
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Tipo de riesgo social</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Tipo de riesgo social</span>
                 <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.tipo_riesgo_social}
                   onChange={(e) => handleChange("tipo_riesgo_social", e.target.value)}
                 >
@@ -1169,11 +1182,11 @@ export default function NuevoPaciente() {
               </label>
 
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">IMC inicial</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">IMC inicial</span>
                 <input
                   type="number"
                   step="0.1"
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.imc_inicial}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -1187,20 +1200,20 @@ export default function NuevoPaciente() {
                 />
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Ganancia ponderal máx Kg.</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Ganancia ponderal máx Kg.</span>
                 <input
                   type="number"
                   step="0.01"
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.ganancia_ponderal_max}
                   readOnly
                   placeholder="Se calcula desde IMC inicial"
                 />
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Hospital de referencia</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Hospital de referencia</span>
                 <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white transition-all focus:border-emerald-500 focus:ring-emerald-500"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all focus:border-emerald-500 focus:ring-emerald-500"
                   value={form.hospital_referencia}
                   onChange={(e) => handleChange("hospital_referencia", e.target.value)}
                 >
@@ -1214,9 +1227,9 @@ export default function NuevoPaciente() {
               </label>
 
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Tipo de localidad</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Tipo de localidad</span>
                 <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.tipo_localidad}
                   onChange={(e) => handleChange("tipo_localidad", e.target.value)}
                 >
@@ -1232,7 +1245,7 @@ export default function NuevoPaciente() {
                 <button
                   type="button"
                   onClick={() => setMostrarFactoresRiesgo(!mostrarFactoresRiesgo)}
-                  className="w-full flex items-center justify-between text-sm font-semibold text-slate-100 bg-white/5 border border-white/10 rounded-xl px-4 py-3 hover:bg-white/10 transition-colors"
+                  className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 dark:text-slate-100 font-medium bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl px-4 py-3 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
                     <i className={`fa-solid ${mostrarFactoresRiesgo ? "fa-chevron-down" : "fa-chevron-right"} text-xs text-slate-400`}></i>
@@ -1250,12 +1263,12 @@ export default function NuevoPaciente() {
                         form.factor_its, form.factor_cirugias_pelvico_uterinas, form.factor_discapacidad,
                       ].filter(Boolean).length;
                       return totalSeleccionados > 0 ? (
-                        <span className="text-[11px] bg-amber-500/20 border border-amber-400/40 text-amber-200 font-semibold px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] bg-amber-100 dark:bg-amber-500/20 border border-amber-400/60 text-amber-900 dark:text-amber-200 font-bold px-2.5 py-0.5 rounded-full">
                           {totalSeleccionados} {totalSeleccionados === 1 ? 'seleccionado' : 'seleccionados'}
                         </span>
                       ) : null;
                     })()}
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       {mostrarFactoresRiesgo ? 'Ocultar' : 'Mostrar'}
                     </span>
                   </div>
@@ -1283,14 +1296,14 @@ export default function NuevoPaciente() {
                     const activos = comorbilidades.filter((i) => (form as any)[i.key]).length;
 
                     return (
-                      <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 space-y-3">
-                        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                          <div className="flex items-center gap-2 text-xs font-bold text-slate-100 uppercase tracking-wider">
+                      <div className="rounded-xl border border-slate-300 dark:border-white/10 bg-white/5 p-4 space-y-3">
+                        <div className="flex items-center justify-between border-b border-slate-300 dark:border-white/10 pb-2.5">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-100 font-medium uppercase tracking-wider">
                             <i className="fa-solid fa-stethoscope text-sm text-cyan-400"></i>
                             <span>Comorbilidades Médicas y Sistémicas</span>
                           </div>
                           {activos > 0 && (
-                            <span className="text-[11px] font-semibold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-0.5 rounded-full">
+                            <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-400/60 px-2.5 py-0.5 rounded-full">
                               {activos} activa{activos > 1 ? "s" : ""}
                             </span>
                           )}
@@ -1309,9 +1322,9 @@ export default function NuevoPaciente() {
                                 className={`group relative flex items-center justify-between gap-2.5 h-11 rounded-lg px-3 text-xs font-medium transition-all duration-150 cursor-pointer border ${
                                   isChecked
                                     ? isCritico
-                                      ? "bg-rose-500/20 border-rose-400/60 text-white shadow-sm ring-1 ring-rose-400/30"
-                                      : "bg-indigo-500/20 border-indigo-400/60 text-white shadow-sm ring-1 ring-indigo-400/30"
-                                    : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                                      ? "bg-rose-50 dark:bg-rose-500/20 border-rose-500/50 dark:border-rose-400/60 text-rose-950 dark:text-rose-100 font-semibold shadow-sm ring-1 ring-rose-500/40 dark:ring-rose-400/30"
+                                      : "bg-indigo-50 dark:bg-indigo-500/20 border-indigo-500/50 dark:border-indigo-400/60 text-indigo-950 dark:text-indigo-100 font-semibold shadow-sm ring-1 ring-indigo-500/40 dark:ring-indigo-400/30"
+                                    : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:text-slate-900 dark:hover:text-white"
                                 }`}
                               >
                                 <div className="flex items-center gap-2.5 min-w-0">
@@ -1322,14 +1335,14 @@ export default function NuevoPaciente() {
                                         ? isCritico
                                           ? "bg-rose-500 shadow-sm shadow-rose-500/40"
                                           : "bg-indigo-500 shadow-sm shadow-indigo-500/40"
-                                        : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                                        : "bg-slate-200 dark:bg-white/15 border border-slate-300 dark:border-white/20 group-hover:bg-slate-300 dark:group-hover:bg-white/25"
                                     }`}
                                   >
                                     <div
                                       className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
                                         isChecked
                                           ? "translate-x-3 bg-white"
-                                          : "translate-x-0 bg-white/70 group-hover:bg-white"
+                                          : "translate-x-0 bg-slate-400 dark:bg-white/70 group-hover:bg-slate-500 dark:group-hover:bg-white"
                                       }`}
                                     />
                                   </div>
@@ -1339,9 +1352,9 @@ export default function NuevoPaciente() {
                                   className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
                                     isChecked
                                       ? isCritico
-                                        ? "bg-rose-400/25 text-rose-200 border border-rose-300/40"
-                                        : "bg-indigo-400/25 text-indigo-200 border border-indigo-300/40"
-                                      : "bg-white/5 text-slate-300 border border-white/10 group-hover:border-white/20 group-hover:text-white"
+                                        ? "bg-rose-100 dark:bg-rose-400/25 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-300/40"
+                                        : "bg-indigo-100 dark:bg-indigo-400/25 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-300/40"
+                                      : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 group-hover:border-slate-300 dark:group-hover:border-white/20 group-hover:text-slate-900 dark:group-hover:text-white"
                                   }`}
                                 >
                                   +{item.puntos}
@@ -1387,16 +1400,16 @@ export default function NuevoPaciente() {
                       return (
                         <div
                           key={grupo.titulo}
-                          className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 space-y-3 flex flex-col justify-between"
+                          className="rounded-xl border border-slate-300 dark:border-white/10 bg-white/5 p-4 space-y-3 flex flex-col justify-between"
                         >
                           <div className="space-y-3">
-                            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                              <div className="flex items-center gap-2 text-xs font-bold text-slate-100 uppercase tracking-wider">
+                            <div className="flex items-center justify-between border-b border-slate-300 dark:border-white/10 pb-2.5">
+                              <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-100 font-medium uppercase tracking-wider">
                                 <i className={`${grupo.icono} text-sm`}></i>
                                 <span>{grupo.titulo}</span>
                               </div>
                               {grupoActivos > 0 && (
-                                <span className="text-[11px] font-semibold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 rounded-full">
+                                <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-400/60 px-2.5 py-0.5 rounded-full">
                                   {grupoActivos} activo{grupoActivos > 1 ? "s" : ""}
                                 </span>
                               )}
@@ -1416,11 +1429,11 @@ export default function NuevoPaciente() {
                                     className={`group w-full relative flex items-center justify-between gap-2.5 h-11 rounded-lg px-3 text-xs font-medium transition-all duration-150 cursor-pointer border ${
                                       isChecked
                                         ? isCritico
-                                          ? "bg-rose-500/20 border-rose-400/60 text-white shadow-sm ring-1 ring-rose-400/30"
+                                          ? "bg-rose-50 dark:bg-rose-500/20 border-rose-500/50 dark:border-rose-400/60 text-rose-950 dark:text-rose-100 font-semibold shadow-sm ring-1 ring-rose-500/40 dark:ring-rose-400/30"
                                           : isAlto
-                                          ? "bg-amber-500/20 border-amber-400/60 text-white shadow-sm ring-1 ring-amber-400/30"
-                                          : "bg-indigo-500/20 border-indigo-400/60 text-white shadow-sm ring-1 ring-indigo-400/30"
-                                        : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                                          ? "bg-amber-50 dark:bg-amber-500/20 border-amber-500/50 dark:border-amber-400/60 text-amber-950 dark:text-amber-100 font-semibold shadow-sm ring-1 ring-amber-500/40 dark:ring-amber-400/30"
+                                          : "bg-indigo-50 dark:bg-indigo-500/20 border-indigo-500/50 dark:border-indigo-400/60 text-indigo-950 dark:text-indigo-100 font-semibold shadow-sm ring-1 ring-indigo-500/40 dark:ring-indigo-400/30"
+                                        : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:text-slate-900 dark:hover:text-white"
                                     }`}
                                   >
                                     <div className="flex items-center gap-2.5 min-w-0">
@@ -1433,14 +1446,14 @@ export default function NuevoPaciente() {
                                               : isAlto
                                               ? "bg-amber-500 shadow-sm shadow-amber-500/40"
                                               : "bg-indigo-500 shadow-sm shadow-indigo-500/40"
-                                            : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                                            : "bg-slate-200 dark:bg-white/15 border border-slate-300 dark:border-white/20 group-hover:bg-slate-300 dark:group-hover:bg-white/25"
                                         }`}
                                       >
                                         <div
                                           className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
                                             isChecked
                                               ? "translate-x-3 bg-white"
-                                              : "translate-x-0 bg-white/70 group-hover:bg-white"
+                                              : "translate-x-0 bg-slate-400 dark:bg-white/70 group-hover:bg-slate-500 dark:group-hover:bg-white"
                                           }`}
                                         />
                                       </div>
@@ -1450,11 +1463,11 @@ export default function NuevoPaciente() {
                                       className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
                                         isChecked
                                           ? isCritico
-                                            ? "bg-rose-400/25 text-rose-200 border border-rose-300/40"
+                                            ? "bg-rose-100 dark:bg-rose-400/25 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-300/40"
                                             : isAlto
-                                            ? "bg-amber-400/25 text-amber-200 border border-amber-300/40"
-                                            : "bg-indigo-400/25 text-indigo-200 border border-indigo-300/40"
-                                          : "bg-white/5 text-slate-300 border border-white/10 group-hover:border-white/20 group-hover:text-white"
+                                            ? "bg-amber-100 dark:bg-amber-400/25 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-300/40"
+                                            : "bg-indigo-100 dark:bg-indigo-400/25 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-300/40"
+                                          : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 group-hover:border-slate-300 dark:group-hover:border-white/20 group-hover:text-slate-900 dark:group-hover:text-white"
                                       }`}
                                     >
                                       +{item.puntos}
@@ -1470,15 +1483,15 @@ export default function NuevoPaciente() {
                   </div>
 
                   {/* 3. OTROS ANTECEDENTES (SWITCH + CAMPO DE TEXTO MÁXIMO 50 CARACTERES) */}
-                  <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 space-y-3">
+                  <div className="rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 p-4 space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <i className="fa-solid fa-file-pen text-base text-indigo-400"></i>
+                        <i className="fa-solid fa-file-pen text-base text-indigo-500 dark:text-indigo-400"></i>
                         <div>
-                          <p className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-100 font-medium uppercase tracking-wider">
                             Otros Antecedentes
                           </p>
-                          <p className="text-xs text-slate-200">
+                          <p className="text-xs text-slate-600 dark:text-slate-300">
                             ¿La paciente presenta algún otro antecedente no especificado arriba?
                           </p>
                         </div>
@@ -1498,22 +1511,22 @@ export default function NuevoPaciente() {
                         }
                         className={`group shrink-0 flex items-center gap-2 rounded-full p-1 pr-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
                           form.tiene_otros_antecedentes
-                            ? "bg-indigo-500/20 border-indigo-400/60 text-indigo-100 shadow-sm ring-1 ring-indigo-400/30"
-                            : "bg-white/5 border-white/10 text-slate-200 hover:border-white/20 hover:text-white"
+                            ? "bg-indigo-50 dark:bg-indigo-500/20 border-indigo-500/50 dark:border-indigo-400/60 text-indigo-950 dark:text-indigo-100 font-semibold shadow-sm ring-1 ring-indigo-500/40 dark:ring-indigo-400/30"
+                            : "bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
                         <div
                           className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
                             form.tiene_otros_antecedentes
                               ? "bg-indigo-500 shadow-sm shadow-indigo-500/40"
-                              : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                              : "bg-slate-200 dark:bg-white/15 border border-slate-300 dark:border-white/20 group-hover:bg-slate-300 dark:group-hover:bg-white/25"
                           }`}
                         >
                           <div
                             className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
                               form.tiene_otros_antecedentes
                                 ? "translate-x-3 bg-white"
-                                : "translate-x-0 bg-white/70 group-hover:bg-white"
+                                : "translate-x-0 bg-slate-400 dark:bg-white/70 group-hover:bg-slate-500 dark:group-hover:bg-white"
                             }`}
                           />
                         </div>
@@ -1524,9 +1537,9 @@ export default function NuevoPaciente() {
                     </div>
 
                     {form.tiene_otros_antecedentes && (
-                      <div className="pt-3 border-t border-white/10 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
-                        <label className="block text-xs font-semibold text-slate-100">
-                          Descripción del antecedente <span className="text-slate-300 text-xs font-normal">(máximo 50 caracteres)</span>
+                      <div className="pt-3 border-t border-slate-300 dark:border-white/10 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-100 font-medium">
+                          Descripción del antecedente <span className="text-slate-500 dark:text-slate-400 text-xs font-normal">(máximo 50 caracteres)</span>
                         </label>
                         <input
                           type="text"
@@ -1539,19 +1552,19 @@ export default function NuevoPaciente() {
                             }))
                           }
                           placeholder="Ej. Alergia severa a penicilina, hipotiroidismo..."
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                          className="w-full bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
                         />
                         <div className="flex items-center justify-between text-xs px-0.5">
-                          <span className="text-slate-300">
+                          <span className="text-slate-500 dark:text-slate-400">
                             Registro descriptivo complementario para el expediente
                           </span>
                           <span
                             className={`font-mono font-semibold ${
                               50 - (form.otros_antecedentes || "").length <= 5
-                                ? "text-rose-400"
+                                ? "text-rose-600 dark:text-rose-400"
                                 : 50 - (form.otros_antecedentes || "").length <= 15
-                                ? "text-amber-400"
-                                : "text-slate-200"
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-slate-600 dark:text-slate-300"
                             }`}
                           >
                             {50 - (form.otros_antecedentes || "").length} caracteres restantes ({(form.otros_antecedentes || "").length}/50)
@@ -1570,14 +1583,14 @@ export default function NuevoPaciente() {
                 <button
                   type="button"
                   onClick={() => setMostrarFactoresEpid(!mostrarFactoresEpid)}
-                  className="w-full flex items-center justify-between text-sm font-semibold text-slate-100 bg-white/5 border border-white/10 rounded-lg px-4 py-3 hover:bg-white/10 transition-colors"
+                  className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 dark:text-slate-100 font-medium bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg px-4 py-3 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
                     <i className={`fa-solid ${mostrarFactoresEpid ? "fa-chevron-down" : "fa-chevron-right"} text-xs text-slate-400`}></i>
-                    <i className="fa-solid fa-virus text-base text-rose-400"></i>
+                    <i className="fa-solid fa-virus text-base text-rose-500 dark:text-rose-400"></i>
                     <span>Factores epidemiológicos</span>
                   </div>
-                  <span className="text-xs text-slate-200">
+                  <span className="text-xs text-slate-600 dark:text-slate-300">
                     {mostrarFactoresEpid ? 'Ocultar' : 'Mostrar'}
                   </span>
                 </button>
@@ -1585,7 +1598,7 @@ export default function NuevoPaciente() {
               
               {mostrarFactoresEpid && (
                 <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
-                  <p className="text-xs text-slate-200 px-1 font-normal">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 px-1 font-normal">
                     Portadora o contacto de enfermedad sujeta a vigilancia epidemiológica (Tuberculosis, VIH, Sífilis, Chagas, etc.)
                   </p>
                   
@@ -1605,11 +1618,11 @@ export default function NuevoPaciente() {
                           className={`group flex items-center gap-2.5 h-11 rounded-lg px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
                             isSelected
                               ? opt.value === "es_portadora"
-                                ? "bg-rose-500/20 border-rose-400/60 text-white shadow-sm ring-1 ring-rose-400/30"
+                                ? "bg-rose-50 dark:bg-rose-500/20 border-rose-500/50 dark:border-rose-400/60 text-rose-950 dark:text-rose-100 font-semibold shadow-sm ring-1 ring-rose-500/40 dark:ring-rose-400/30"
                                 : opt.value === "es_contacto"
-                                ? "bg-amber-500/20 border-amber-400/60 text-white shadow-sm ring-1 ring-amber-400/30"
-                                : "bg-indigo-500/20 border-indigo-400/60 text-white shadow-sm ring-1 ring-indigo-400/30"
-                              : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                                ? "bg-amber-50 dark:bg-amber-500/20 border-amber-500/50 dark:border-amber-400/60 text-amber-950 dark:text-amber-100 font-semibold shadow-sm ring-1 ring-amber-500/40 dark:ring-amber-400/30"
+                                : "bg-indigo-50 dark:bg-indigo-500/20 border-indigo-500/50 dark:border-indigo-400/60 text-indigo-950 dark:text-indigo-100 font-semibold shadow-sm ring-1 ring-indigo-500/40 dark:ring-indigo-400/30"
+                              : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:text-slate-900 dark:hover:text-white"
                           }`}
                         >
                           <div
@@ -1620,16 +1633,24 @@ export default function NuevoPaciente() {
                                   : opt.value === "es_contacto"
                                   ? "bg-amber-500 shadow-sm shadow-amber-500/40"
                                   : "bg-indigo-500 shadow-sm shadow-indigo-500/40"
-                                : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                                : "bg-slate-200 dark:bg-white/15 border border-slate-300 dark:border-white/20 group-hover:bg-slate-300 dark:group-hover:bg-white/25"
                             }`}
                           >
                             <div
                               className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
-                                isSelected ? "translate-x-3 bg-white" : "translate-x-0 bg-white/70 group-hover:bg-white"
+                                isSelected ? "translate-x-3 bg-white" : "translate-x-0 bg-slate-400 dark:bg-white/70 group-hover:bg-slate-500 dark:group-hover:bg-white"
                               }`}
                             />
                           </div>
-                          <i className={`${opt.icono} text-xs ${isSelected ? "text-white" : "text-slate-400"}`}></i>
+                          <i className={`${opt.icono} text-xs ${
+                            isSelected
+                              ? opt.value === "es_portadora"
+                                ? "text-rose-600 dark:text-rose-300"
+                                : opt.value === "es_contacto"
+                                ? "text-amber-600 dark:text-amber-300"
+                                : "text-indigo-600 dark:text-indigo-300"
+                              : "text-slate-400"
+                          }`}></i>
                           <span className="truncate font-medium">{opt.label}</span>
                         </button>
                       );
@@ -1640,15 +1661,15 @@ export default function NuevoPaciente() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
+          <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl dark:shadow-2xl transition-colors">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-pink-500/15 border border-pink-400/30 flex items-center justify-center shrink-0">
                   <i className="fa-solid fa-person-pregnant text-pink-400 text-lg"></i>
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Antecedentes gineco-obstétricos</h2>
-                  <p className="text-sm text-slate-300">Paridad y riesgos previos</p>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Antecedentes gineco-obstétricos</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">Paridad y riesgos previos</p>
                 </div>
               </div>
             </div>
@@ -1662,16 +1683,16 @@ export default function NuevoPaciente() {
                 { key: "abortos", label: "Abortos", required: true },
               ].map((item) => (
                 <label key={item.key} className="space-y-1 text-sm">
-                  <span className="text-slate-100">
+                  <span className="text-slate-700 dark:text-slate-100 font-medium">
                     {item.label} {item.required ? "*" : ""}
                   </span>
                   <input
                     type="number"
                     min={0}
-                    className={`w-full rounded-lg bg-white/5 border px-3 py-2 text-white transition-all ${
+                    className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
                       attemptedSubmit && item.required && !(form as any)[item.key].trim()
                         ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                        : "border-white/10"
+                        : "border-slate-300 dark:border-white/10"
                     }`}
                     value={(form as any)[item.key]}
                     onChange={(e) => handleChange(item.key, e.target.value)}
@@ -1695,19 +1716,19 @@ export default function NuevoPaciente() {
               return (
                 <div className={`rounded-xl border px-3.5 py-2.5 text-xs flex items-center justify-between gap-3 transition-all ${
                   esValido
-                    ? "bg-emerald-500/10 border-emerald-400/30 text-emerald-200"
-                    : "bg-amber-500/15 border-amber-400/40 text-amber-200"
+                    ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-400/40 text-emerald-950 dark:text-emerald-200"
+                    : "bg-amber-50 dark:bg-amber-500/15 border-amber-400/50 text-amber-950 dark:text-amber-200"
                 }`}>
                   <div className="flex items-center gap-2">
-                    <i className={`fa-solid ${esValido ? "fa-circle-check text-emerald-400" : "fa-triangle-exclamation text-amber-400"}`}></i>
+                    <i className={`fa-solid ${esValido ? "fa-circle-check text-emerald-600 dark:text-emerald-400" : "fa-triangle-exclamation text-amber-600 dark:text-amber-400"}`}></i>
                     <span>
                       Fórmula Obstétrica: <strong>P ({p}) + C ({c}) + A ({a}) = {sumaPCA}</strong>
                       {esValido ? " (Correcto: coincide con Gestas totales)" : ` ≠ Gestas (${g})`}
                     </span>
                   </div>
                   {!esValido && (
-                    <span className="font-semibold text-amber-300 shrink-0">
-                      La suma debe ser {g}
+                    <span className="font-bold text-amber-800 dark:text-amber-300 shrink-0">
+                      ⚠️ Incongruencia
                     </span>
                   )}
                 </div>
@@ -1732,9 +1753,9 @@ export default function NuevoPaciente() {
                     className={`group flex items-center justify-between gap-2.5 h-11 rounded-lg px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
                       isChecked
                         ? item.puntos === 6
-                          ? "bg-amber-500/20 border-amber-400/60 text-white shadow-sm ring-1 ring-amber-400/30"
-                          : "bg-indigo-500/20 border-indigo-400/60 text-white shadow-sm ring-1 ring-indigo-400/30"
-                        : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                          ? "bg-amber-50 dark:bg-amber-500/20 border-amber-500/50 dark:border-amber-400/60 text-amber-950 dark:text-amber-100 font-semibold shadow-sm ring-1 ring-amber-500/40 dark:ring-amber-400/30"
+                          : "bg-indigo-50 dark:bg-indigo-500/20 border-indigo-500/50 dark:border-indigo-400/60 text-indigo-950 dark:text-indigo-100 font-semibold shadow-sm ring-1 ring-indigo-500/40 dark:ring-indigo-400/30"
+                        : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -1745,12 +1766,12 @@ export default function NuevoPaciente() {
                             ? item.puntos === 6
                               ? "bg-amber-500 shadow-sm shadow-amber-500/40"
                               : "bg-indigo-500 shadow-sm shadow-indigo-500/40"
-                            : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                            : "bg-slate-200 dark:bg-white/15 border border-slate-300 dark:border-white/20 group-hover:bg-slate-300 dark:group-hover:bg-white/25"
                         }`}
                       >
                         <div
                           className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
-                            isChecked ? "translate-x-3 bg-white" : "translate-x-0 bg-white/70 group-hover:bg-white"
+                            isChecked ? "translate-x-3 bg-white" : "translate-x-0 bg-slate-400 dark:bg-white/70 group-hover:bg-slate-500 dark:group-hover:bg-white"
                           }`}
                         />
                       </div>
@@ -1760,9 +1781,9 @@ export default function NuevoPaciente() {
                       className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
                         isChecked
                           ? item.puntos === 6
-                            ? "bg-amber-400/25 text-amber-200 border border-amber-300/40"
-                            : "bg-indigo-400/25 text-indigo-200 border border-indigo-300/40"
-                          : "bg-white/5 text-slate-300 border border-white/10 group-hover:border-white/20 group-hover:text-white"
+                            ? "bg-amber-100 dark:bg-amber-400/25 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-300/40"
+                            : "bg-indigo-100 dark:bg-indigo-400/25 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-300/40"
+                          : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 group-hover:border-slate-300 dark:group-hover:border-white/20 group-hover:text-slate-900 dark:group-hover:text-white"
                       }`}
                     >
                       +{item.puntos}
@@ -1773,23 +1794,23 @@ export default function NuevoPaciente() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
+          <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl dark:shadow-2xl transition-colors">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center shrink-0">
                   <i className="fa-solid fa-vials text-indigo-400 text-lg"></i>
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Tamizajes iniciales</h2>
-                  <p className="text-sm text-slate-300">Detecciones del primer contacto</p>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Tamizajes iniciales</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">Detecciones del primer contacto</p>
                 </div>
               </div>
-              <span className="text-xs text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full">Primer contacto</span>
+              <span className="text-xs text-emerald-800 dark:text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full font-bold">Primer contacto</span>
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-start gap-3 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-emerald-50">
-                <i className="fa-solid fa-circle-info mt-0.5 text-base text-emerald-300 shrink-0"></i>
+              <div className="flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-900 dark:text-emerald-50">
+                <i className="fa-solid fa-circle-info mt-0.5 text-base text-emerald-600 dark:text-emerald-300 shrink-0"></i>
                 <p className="text-sm">Captura las pruebas de VIH, VDRL, Hepatitis C, glicemia y violencia realizadas en el primer contacto con la paciente.</p>
               </div>
             </div>
@@ -1855,8 +1876,8 @@ export default function NuevoPaciente() {
                     }
                     className={`group flex items-center justify-between gap-2.5 h-12 rounded-lg px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
                       isChecked
-                        ? "bg-rose-500/20 border-rose-400/60 text-white shadow-sm ring-1 ring-rose-400/30"
-                        : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                        ? "bg-rose-50 dark:bg-rose-500/20 border-rose-500/50 dark:border-rose-400/60 text-rose-950 dark:text-rose-100 font-semibold shadow-sm ring-1 ring-rose-500/40 dark:ring-rose-400/30"
+                        : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -1865,20 +1886,22 @@ export default function NuevoPaciente() {
                         className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
                           isChecked
                             ? "bg-rose-500 shadow-sm shadow-rose-500/40"
-                            : "bg-white/15 border border-white/20 group-hover:bg-white/25 group-hover:border-white/30"
+                            : "bg-slate-200 dark:bg-white/15 border border-slate-300 dark:border-white/20 group-hover:bg-slate-300 dark:group-hover:bg-white/25"
                         }`}
                       >
                         <div
                           className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
                             isChecked
                               ? "translate-x-3 bg-white"
-                              : "translate-x-0 bg-white/70 group-hover:bg-white"
+                              : "translate-x-0 bg-slate-400 dark:bg-white/70 group-hover:bg-slate-500 dark:group-hover:bg-white"
                           }`}
                         />
                       </div>
                       <div className="flex flex-col text-left min-w-0">
-                        <span className="truncate font-semibold text-slate-100 flex items-center gap-1.5">
-                          <i className={`${item.icono} text-xs ${isChecked ? "text-rose-300" : "text-slate-400"}`}></i>
+                        <span className={`truncate font-semibold flex items-center gap-1.5 ${
+                          isChecked ? "text-rose-950 dark:text-rose-100" : "text-slate-700 dark:text-slate-100 font-medium"
+                        }`}>
+                          <i className={`${item.icono} text-xs ${isChecked ? "text-rose-600 dark:text-rose-300" : "text-slate-400"}`}></i>
                           <span>{item.label}</span>
                         </span>
                       </div>
@@ -1886,8 +1909,8 @@ export default function NuevoPaciente() {
                     <span
                       className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
                         isChecked
-                          ? "bg-rose-400/25 text-rose-200 border border-rose-300/40"
-                          : "bg-white/5 text-slate-300 border border-white/10 group-hover:border-white/20 group-hover:text-white"
+                          ? "bg-rose-100 dark:bg-rose-400/25 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-300/40"
+                          : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 group-hover:border-slate-300 dark:group-hover:border-white/20 group-hover:text-slate-900 dark:group-hover:text-white"
                       }`}
                     >
                       {isChecked ? `${item.labelActivo} (+4)` : item.labelInactivo}
@@ -1898,40 +1921,40 @@ export default function NuevoPaciente() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
+          <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl dark:shadow-2xl transition-colors">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center shrink-0">
                   <i className="fa-solid fa-truck-medical text-amber-400 text-lg"></i>
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Red de apoyo y traslado</h2>
-                  <p className="text-sm text-slate-300">Contacto de madrina y traslado</p>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Red de apoyo y traslado</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">Contacto de madrina y traslado</p>
                 </div>
               </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
               <label className="space-y-1 text-sm lg:col-span-2">
-                <span className="text-slate-100">Nombre de madrina</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Nombre de madrina</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.madrina_nombre}
                   onChange={(e) => handleChange("madrina_nombre", e.target.value)}
                 />
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Teléfono de madrina</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Teléfono de madrina</span>
                 <input
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.madrina_telefono}
                   onChange={(e) => handleChange("madrina_telefono", e.target.value)}
                 />
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-100">Mecanismo de traslado</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">Mecanismo de traslado</span>
                 <select
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
                   value={form.mecanismo_traslado}
                   onChange={(e) => handleChange("mecanismo_traslado", e.target.value)}
                 >
@@ -1953,7 +1976,7 @@ export default function NuevoPaciente() {
             </button>
             <button
               type="button"
-              className="rounded-lg border border-white/20 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+              className="rounded-lg border border-slate-300 dark:border-white/20 px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
               onClick={() => router.push("/dashboard")}
             >
               Cancelar
@@ -1967,68 +1990,68 @@ export default function NuevoPaciente() {
       {/* MODAL DE CONFIRMACIÓN */}
       {showConfirmModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="confirm-modal-title"
         >
-          <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-slate-900/95 shadow-2xl backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-white/15 bg-white dark:bg-slate-900 shadow-2xl text-slate-900 dark:text-white transition-colors">
             {/* Encabezado */}
-            <div className="border-b border-white/10 px-6 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80 mb-1">Confirmación</p>
-              <h2 id="confirm-modal-title" className="text-lg font-semibold text-white">
+            <div className="border-b border-slate-200 dark:border-white/10 px-6 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400 font-bold">Resumen de registro</p>
+              <h2 id="confirm-modal-title" className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
                 ¿Confirmar registro de paciente?
               </h2>
-              <p className="text-sm text-slate-300/70 mt-0.5">
-                Revisa los datos antes de guardar. Esta acción creará el registro.
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                Verifica los datos antes de guardar el expediente en el sistema.
               </p>
             </div>
 
             {/* Resumen de datos */}
-            <div className="px-6 py-4 space-y-3">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <div className="col-span-2">
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Nombre completo</dt>
-                  <dd className="text-white font-medium mt-0.5">{form.nombre_completo || "—"}</dd>
+            <div className="max-h-[60vh] overflow-y-auto px-6 py-4 space-y-3 text-sm">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
+                <div className="sm:col-span-2">
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Nombre completo</dt>
+                  <dd className="text-slate-900 dark:text-white font-medium mt-0.5">{form.nombre_completo || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">CURP</dt>
-                  <dd className="text-white font-mono mt-0.5">{form.curp || "No capturado"}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">CURP</dt>
+                  <dd className="text-slate-900 dark:text-white font-mono mt-0.5">{form.curp || "No capturado"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Folio</dt>
-                  <dd className="text-emerald-300 font-medium mt-0.5">{form.folio || "—"}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Folio</dt>
+                  <dd className="text-emerald-700 dark:text-emerald-300 font-bold mt-0.5">{form.folio || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Unidad / CLUES</dt>
-                  <dd className="text-white mt-0.5">{form.unidad || "—"} / {form.clues_id || "—"}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Unidad / CLUES</dt>
+                  <dd className="text-slate-900 dark:text-white mt-0.5">{form.unidad || "—"} / {form.clues_id || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Edad</dt>
-                  <dd className="text-white mt-0.5">{form.edad ? `${form.edad} años` : "No capturada"}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Edad</dt>
+                  <dd className="text-slate-900 dark:text-white mt-0.5">{form.edad ? `${form.edad} años` : "No capturada"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">FUM</dt>
-                  <dd className="text-white mt-0.5">{form.fum || "No capturada"}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">FUM</dt>
+                  <dd className="text-slate-900 dark:text-white mt-0.5">{form.fum || "No capturada"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Semanas gestación</dt>
-                  <dd className="text-white mt-0.5">{form.semanas_gestacion ? `${form.semanas_gestacion} sdg` : "—"}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Semanas gestación</dt>
+                  <dd className="text-slate-900 dark:text-white mt-0.5">{form.semanas_gestacion ? `${form.semanas_gestacion} sdg` : "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Fecha ingreso CPN</dt>
-                  <dd className="text-white mt-0.5">{form.fecha_ingreso_cpn || "No capturada"}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Fecha ingreso CPN</dt>
+                  <dd className="text-slate-900 dark:text-white mt-0.5">{form.fecha_ingreso_cpn || "No capturada"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 text-xs uppercase tracking-wide">Riesgo social</dt>
-                  <dd className="text-white mt-0.5">{form.tipo_riesgo_social}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Riesgo social</dt>
+                  <dd className="text-slate-900 dark:text-white mt-0.5">{form.tipo_riesgo_social}</dd>
                 </div>
               </dl>
 
               {(puntajeFactorAntecedentes + puntajeFactorTamizajes) > 0 && (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-                  <p className="text-xs text-amber-200/80 uppercase tracking-wide">Factor de riesgo</p>
-                  <p className="text-sm text-amber-100 mt-0.5">
+                <div className="rounded-lg border border-amber-500/40 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-2">
+                  <p className="text-xs text-amber-800 dark:text-amber-200/80 uppercase tracking-wide font-bold">Factor de riesgo</p>
+                  <p className="text-sm text-amber-950 dark:text-amber-100 mt-0.5">
                     Puntaje antecedentes: <strong>{puntajeFactorAntecedentes}</strong> ·
                     Tamizajes: <strong>{puntajeFactorTamizajes}</strong>
                   </p>
@@ -2037,7 +2060,7 @@ export default function NuevoPaciente() {
             </div>
 
             {/* Botones */}
-            <div className="flex gap-3 border-t border-white/10 px-6 py-4">
+            <div className="flex gap-3 border-t border-slate-200 dark:border-white/10 px-6 py-4">
               <button
                 type="button"
                 onClick={executeSave}
@@ -2048,7 +2071,7 @@ export default function NuevoPaciente() {
               <button
                 type="button"
                 onClick={() => setShowConfirmModal(false)}
-                className="flex-1 rounded-lg border border-white/20 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+                className="flex-1 rounded-lg border border-slate-300 dark:border-white/20 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
               >
                 Revisar captura
               </button>
@@ -2060,7 +2083,7 @@ export default function NuevoPaciente() {
       {/* MODAL DE ALERTA POR EDAD 10-14 */}
       {showEdadAlertaModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="edad-alerta-modal-title"
