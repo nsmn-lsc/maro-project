@@ -325,6 +325,13 @@ export default function PacienteDetalle() {
   const recomendacionesClinicas = useMemo(() => {
     if (!patient) return [];
     const recs: string[] = [];
+    if (
+      patient.factor_diabetes ||
+      patient.diabetes_glicemia === "Diabetes" ||
+      patient.diabetes_glicemia === "Resistencia a la insulina"
+    ) {
+      recs.push("No acumulativos en cada consulta + Manejo conjunto con Segundo Nivel de Atencion");
+    }
     if (patient.tipo_riesgo_social === "Medio" || patient.tipo_riesgo_social === "Alto") {
       recs.push("Fortalecer red social, vinculación con acción comunitaria");
     }
@@ -439,7 +446,29 @@ export default function PacienteDetalle() {
       });
     }
 
-    // 4. Alerta de Discapacidad
+    // 4. Alerta de Notificación por Violencia
+    if (patient.violencia === "Positiva") {
+      cards.push({
+        id: "notificacion-violencia",
+        tipo: "notificacion",
+        titulo: "Alerta de Notificación",
+        subtitulo: "Violencia",
+        icono: "fa-solid fa-shield-halved",
+        colorTheme: {
+          border: "border-rose-400/60 dark:border-rose-400/60",
+          bg: "bg-rose-50 dark:bg-rose-500/20",
+          textTitle: "text-rose-800 dark:text-rose-300",
+          textBody: "text-rose-950 dark:text-rose-100",
+          chipBg: "bg-rose-100 dark:bg-rose-400/20",
+          chipBorder: "border-rose-300 dark:border-rose-300/40",
+          chipText: "text-rose-900 dark:text-rose-200",
+        },
+        texto: "Integrar ruta de atencion para violencia; Notificación de caso a enlace zonal",
+        items: ["Tamizaje de violencia positiva"],
+      });
+    }
+
+    // 5. Alerta de Discapacidad
     if (patient.factor_discapacidad) {
       cards.push({
         id: "alerta-discapacidad",
@@ -460,7 +489,7 @@ export default function PacienteDetalle() {
       });
     }
 
-    // 5. Recomendaciones Clínicas Activas
+    // 6. Recomendaciones Clínicas Activas
     if (recomendacionesClinicas.length > 0) {
       cards.push({
         id: "recomendaciones-clinicas",

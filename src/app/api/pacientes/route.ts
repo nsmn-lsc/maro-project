@@ -363,16 +363,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "La CLUES es obligatoria" }, { status: 400 });
     }
 
-    // Validación de paridad obstétrica: Partos + Cesáreas + Abortos = Gestas
+    // Validación de paridad obstétrica: Partos + Cesáreas + Abortos + 1 (embarazo actual) = Gestas
     if (body.gestas !== undefined && body.gestas !== null && String(body.gestas).trim() !== "") {
       const g = Number(body.gestas);
       const p = Number(body.partos ?? 0);
       const c = Number(body.cesareas ?? 0);
       const a = Number(body.abortos ?? 0);
-      if (Number.isFinite(g) && (p + c + a !== g)) {
+      if (Number.isFinite(g) && (p + c + a + 1 !== g)) {
         return NextResponse.json(
           {
-            message: `Inconsistencia en la fórmula obstétrica: La suma de Partos (${p}) + Cesáreas (${c}) + Abortos (${a}) = ${p + c + a} debe ser igual a las Gestas totales (${g}).`,
+            message: `Inconsistencia en la fórmula obstétrica: Las Gestas totales (${g}) deben ser iguales a Partos (${p}) + Cesáreas (${c}) + Abortos (${a}) + 1 (embarazo actual en curso) = ${p + c + a + 1}.`,
             code: "INVALID_PARITY"
           },
           { status: 400 }

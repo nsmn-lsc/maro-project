@@ -50,9 +50,8 @@ const CRITERIOS_TAMIZAJES = {
     razon: 'recomendacion',
   },
   diabetes_glicemia: {
-    valores_riesgo: ['Resistencia a la insulina', 'Diabetes'],
-    puntos: 4,
-    razon: 'recomendacion',
+    'Resistencia a la insulina': { puntos: 4, razon: 'recomendacion' },
+    'Diabetes': { puntos: 6, razon: 'recomendacion' },
   },
   violencia: {
     valor: 'Positiva',
@@ -107,19 +106,26 @@ export function evaluarTamizajes(datos: DatosTamizajes): ResultadoTamizajes {
   }
 
   // Evaluar Diabetes/Glicemia
-  if (
-    datos.diabetes_glicemia &&
-    datos.diabetes_glicemia !== 'Normal' &&
-    datos.diabetes_glicemia !== ''
-  ) {
+  if (datos.diabetes_glicemia === 'Resistencia a la insulina') {
+    const config = CRITERIOS_TAMIZAJES.diabetes_glicemia['Resistencia a la insulina'];
     tamizajes.push({
       campo: 'Diabetes/Glicemia',
-      valor: datos.diabetes_glicemia,
-      puntos: CRITERIOS_TAMIZAJES.diabetes_glicemia.puntos,
-      razon: CRITERIOS_TAMIZAJES.diabetes_glicemia.razon,
+      valor: 'Resistencia a la insulina',
+      puntos: config.puntos,
+      razon: config.razon,
       tipo: 'TAMIZAJE',
     });
-    puntajeTotal += CRITERIOS_TAMIZAJES.diabetes_glicemia.puntos;
+    puntajeTotal += config.puntos;
+  } else if (datos.diabetes_glicemia === 'Diabetes') {
+    const config = CRITERIOS_TAMIZAJES.diabetes_glicemia['Diabetes'];
+    tamizajes.push({
+      campo: 'Diabetes/Glicemia',
+      valor: 'Diabetes',
+      puntos: config.puntos,
+      razon: config.razon,
+      tipo: 'TAMIZAJE',
+    });
+    puntajeTotal += config.puntos;
   }
 
   // Evaluar Violencia

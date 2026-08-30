@@ -151,6 +151,23 @@ describe("Motor de Factores de Riesgo Obstétrico (riesgoFactores)", () => {
       expect(resultado.factores).toHaveLength(4);
     });
 
+    it("debe evaluar con 12 puntos Cardiopatía, Coagulopatía, Nefropatía, Hepatopatía y Enf. autoinmune", () => {
+      const resultado = evaluarFactoresRiesgo({
+        factor_cardiopatia: true,    // 12 pts
+        factor_coagulopatias: true,  // 12 pts
+        factor_nefropatia: true,     // 12 pts
+        factor_hepatopatia: true,    // 12 pts
+        factor_enf_autoinmune: true, // 12 pts
+      });
+      // 12 * 5 = 60 puntos
+      expect(resultado.puntajeTotal).toBe(60);
+      expect(resultado.factores).toHaveLength(5);
+      resultado.factores.forEach((f) => {
+        expect(f.puntos).toBe(12);
+      });
+      expect(resultado.nivel).toBe("CRITICO");
+    });
+
     it("debe evaluar y sumar correctamente los nuevos factores de riesgo agregados", () => {
       const resultado = evaluarFactoresRiesgo({
         factor_endocrinopatia: true,            // 12 pts
@@ -237,16 +254,30 @@ describe("Motor de Tamizajes Iniciales (riesgoTamizajes)", () => {
     expect(res.nivel).toBe("SIN_HALLAZGOS");
   });
 
-  it("debe sumar 4 puntos por cada tamizaje reactivo o positivo y clasificar como ALERTA", () => {
+  it("debe evaluar correctamente tamizajes reactivos o positivos", () => {
     const res = evaluarTamizajes({
       prueba_vih: "Reactiva",                 // 4 pts
       prueba_vdrl: "Reactiva",                // 4 pts
-      diabetes_glicemia: "Diabetes",          // 4 pts
+      diabetes_glicemia: "Diabetes",          // 6 pts
       violencia: "Positiva",                  // 4 pts
     });
-    expect(res.puntajeTotal).toBe(16);
+    expect(res.puntajeTotal).toBe(18); // 4 + 4 + 6 + 4 = 18
     expect(res.tamizajes).toHaveLength(4);
     expect(res.nivel).toBe("ALERTA");
+  });
+
+  it("debe asignar 4 puntos a Resistencia a la insulina y 6 puntos a Diabetes", () => {
+    const resResistencia = evaluarTamizajes({
+      diabetes_glicemia: "Resistencia a la insulina",
+    });
+    expect(resResistencia.puntajeTotal).toBe(4);
+    expect(resResistencia.tamizajes[0].puntos).toBe(4);
+
+    const resDiabetes = evaluarTamizajes({
+      diabetes_glicemia: "Diabetes",
+    });
+    expect(resDiabetes.puntajeTotal).toBe(6);
+    expect(resDiabetes.tamizajes[0].puntos).toBe(6);
   });
 });
 

@@ -264,6 +264,7 @@ export default function NuevoPaciente() {
     if (form.ant_sepsis) list.push("Antecedente de sepsis");
     if (form.ant_bajo_peso_macrosomia) list.push("Antecedente de bajo peso / macrosomía");
     if (form.ant_muerte_perinatal) list.push("Antecedente de muerte perinatal");
+    if (form.ant_embarazo_ectopico) list.push("Antecedente de embarazo ectópico");
     return list;
   }, [
     form.factor_diabetes,
@@ -281,6 +282,7 @@ export default function NuevoPaciente() {
     form.ant_sepsis,
     form.ant_bajo_peso_macrosomia,
     form.ant_muerte_perinatal,
+    form.ant_embarazo_ectopico,
   ]);
 
   const tieneAlertaSegundoNivel = factoresSegundoNivelActivos.length > 0;
@@ -298,6 +300,13 @@ export default function NuevoPaciente() {
   const getRecomendaciones = () => {
     const recs: string[] = [];
     
+    if (
+      form.factor_diabetes ||
+      form.diabetes_glicemia === "Diabetes" ||
+      form.diabetes_glicemia === "Resistencia a la insulina"
+    ) {
+      recs.push("No acumulativos en cada consulta + Manejo conjunto con Segundo Nivel de Atencion");
+    }
     if (form.tipo_riesgo_social === "Medio" || form.tipo_riesgo_social === "Alto") {
       recs.push("Fortalecer red social, vinculación con acción comunitaria");
     }
@@ -524,9 +533,13 @@ export default function NuevoPaciente() {
     const numP = Number(form.partos);
     const numC = Number(form.cesareas);
     const numA = Number(form.abortos);
-    if (numP + numC + numA !== numG) {
+    if (numG < 1) {
+      setError("El campo Gestas debe ser al menos 1 (incluye el embarazo actual en curso).");
+      return;
+    }
+    if (numP + numC + numA + 1 !== numG) {
       setError(
-        `Inconsistencia en antecedentes: La suma de Partos (${numP}) + Cesáreas (${numC}) + Abortos (${numA}) = ${numP + numC + numA} debe ser igual a las Gestas totales (${numG}).`
+        `Inconsistencia en la fórmula obstétrica: Las Gestas totales (${numG}) deben ser iguales a Partos (${numP}) + Cesáreas (${numC}) + Abortos (${numA}) + 1 (embarazo actual en curso) = ${numP + numC + numA + 1}.`
       );
       return;
     }
@@ -778,6 +791,24 @@ export default function NuevoPaciente() {
               </div>
             )}
 
+            {/* ALERTA DE NOTIFICACION POR VIOLENCIA */}
+            {form.violencia === "Positiva" && (
+              <div className="rounded-xl border border-rose-500/40 dark:border-rose-400/60 bg-rose-50 dark:bg-rose-500/20 p-3.5 space-y-2 shadow-sm animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-shield-halved text-sm text-rose-600 dark:text-rose-400"></i>
+                  <span>Alerta de Notificación</span>
+                </div>
+                <p className="text-xs font-semibold text-rose-950 dark:text-rose-100 leading-snug">
+                  Integrar ruta de atencion para violencia; Notificación de caso a enlace zonal
+                </p>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  <span className="text-[10px] bg-rose-100 dark:bg-rose-400/20 border border-rose-300 dark:border-rose-300/40 text-rose-900 dark:text-rose-200 font-medium px-2 py-0.5 rounded-full">
+                    Tamizaje de violencia positiva
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* ALERTA DE DISCAPACIDAD */}
             {form.factor_discapacidad && (
               <div className="rounded-xl border border-sky-500/40 dark:border-sky-400/60 bg-sky-50 dark:bg-sky-500/20 p-3.5 space-y-2 shadow-sm animate-in fade-in duration-200">
@@ -792,7 +823,11 @@ export default function NuevoPaciente() {
             )}
 
             {getRecomendaciones().length === 0 ? (
-              !tieneAlertaSegundoNivel && !form.ant_preeclampsia && !tieneAlertaNotificacion && !form.factor_discapacidad && (
+              !tieneAlertaSegundoNivel &&
+              !form.ant_preeclampsia &&
+              !tieneAlertaNotificacion &&
+              form.violencia !== "Positiva" &&
+              !form.factor_discapacidad && (
                 <p className="text-sm text-slate-500 dark:text-slate-400 italic leading-relaxed">
                   No hay recomendaciones activas basadas en los datos capturados actualmente.
                 </p>
@@ -1282,13 +1317,13 @@ export default function NuevoPaciente() {
                     const comorbilidades = [
                       { key: "factor_endocrinopatia", label: "Endocrinopatía", puntos: 12, nivel: "critico" },
                       { key: "factor_neumopatia", label: "Neumopatía", puntos: 12, nivel: "critico" },
+                      { key: "factor_cardiopatia", label: "Cardiopatía", puntos: 12, nivel: "critico" },
+                      { key: "factor_coagulopatias", label: "Coagulopatías", puntos: 12, nivel: "critico" },
+                      { key: "factor_nefropatia", label: "Nefropatía", puntos: 12, nivel: "critico" },
+                      { key: "factor_hepatopatia", label: "Hepatopatía", puntos: 12, nivel: "critico" },
+                      { key: "factor_enf_autoinmune", label: "Enf. autoinmune", puntos: 12, nivel: "critico" },
                       { key: "factor_diabetes", label: "Diabetes", puntos: 4, nivel: "moderado" },
                       { key: "factor_hipertension", label: "Hipertensión", puntos: 4, nivel: "moderado" },
-                      { key: "factor_cardiopatia", label: "Cardiopatía", puntos: 4, nivel: "moderado" },
-                      { key: "factor_nefropatia", label: "Nefropatía", puntos: 4, nivel: "moderado" },
-                      { key: "factor_hepatopatia", label: "Hepatopatía", puntos: 4, nivel: "moderado" },
-                      { key: "factor_enf_autoinmune", label: "Enf. autoinmune", puntos: 4, nivel: "moderado" },
-                      { key: "factor_coagulopatias", label: "Coagulopatías", puntos: 4, nivel: "moderado" },
                       { key: "factor_neuropatia", label: "Neuropatía", puntos: 4, nivel: "moderado" },
                       { key: "factor_enf_psiquiatrica", label: "Enf. psiquiátrica", puntos: 4, nivel: "moderado" },
                       { key: "factor_obesidad", label: "Obesidad", puntos: 4, nivel: "moderado" },
@@ -1674,6 +1709,19 @@ export default function NuevoPaciente() {
               </div>
             </div>
 
+            {/* Nota aclaratoria sobre la fórmula obstétrica */}
+            <div className="rounded-xl border border-sky-200 dark:border-sky-500/20 bg-sky-50/80 dark:bg-sky-500/10 p-3.5 text-xs text-sky-950 dark:text-sky-200 space-y-1">
+              <div className="flex items-center gap-2 font-semibold text-sky-950 dark:text-sky-100">
+                <i className="fa-solid fa-circle-info text-sky-600 dark:text-sky-400 text-sm shrink-0"></i>
+                <span>Nota sobre la Fórmula Obstétrica (G - P - C - A):</span>
+              </div>
+              <p className="leading-relaxed pl-5">
+                El total de <strong>Gestas</strong> incluye el <strong>embarazo actual en curso (+1)</strong> más todos los eventos previos resueltos (Partos, Cesáreas y Abortos).
+                Por ejemplo, si la paciente tuvo 2 embarazos previos y acude por este nuevo registro, sus Gestas deben ser <strong>3</strong>.
+                Regla de congruencia: <code className="font-mono font-bold bg-sky-100 dark:bg-sky-900/50 px-1.5 py-0.5 rounded text-[11px]">Gestas = Partos + Cesáreas + Abortos + 1</code>.
+              </p>
+            </div>
+
             <div className="grid gap-4 lg:grid-cols-5">
               {[
                 { key: "menarca", label: "Menarca (años)" },
@@ -1704,14 +1752,14 @@ export default function NuevoPaciente() {
               ))}
             </div>
 
-            {/* Verificador visual en tiempo real de fórmula obstétrica (P + C + A = G) */}
+            {/* Verificador visual en tiempo real de fórmula obstétrica (G = P + C + A + 1) */}
             {form.gestas.trim() !== "" && (form.partos.trim() !== "" || form.cesareas.trim() !== "" || form.abortos.trim() !== "") && (() => {
               const g = Number(form.gestas) || 0;
               const p = Number(form.partos) || 0;
               const c = Number(form.cesareas) || 0;
               const a = Number(form.abortos) || 0;
-              const sumaPCA = p + c + a;
-              const esValido = sumaPCA === g;
+              const totalEsperado = p + c + a + 1;
+              const esValido = g === totalEsperado && g >= 1;
 
               return (
                 <div className={`rounded-xl border px-3.5 py-2.5 text-xs flex items-center justify-between gap-3 transition-all ${
@@ -1722,13 +1770,13 @@ export default function NuevoPaciente() {
                   <div className="flex items-center gap-2">
                     <i className={`fa-solid ${esValido ? "fa-circle-check text-emerald-600 dark:text-emerald-400" : "fa-triangle-exclamation text-amber-600 dark:text-amber-400"}`}></i>
                     <span>
-                      Fórmula Obstétrica: <strong>P ({p}) + C ({c}) + A ({a}) = {sumaPCA}</strong>
-                      {esValido ? " (Correcto: coincide con Gestas totales)" : ` ≠ Gestas (${g})`}
+                      Fórmula Obstétrica: <strong>P ({p}) + C ({c}) + A ({a}) + 1 (actual) = {totalEsperado}</strong>
+                      {esValido ? ` (Correcto: coincide con Gestas totales: ${g})` : ` ≠ Gestas capturadas (${g})`}
                     </span>
                   </div>
                   {!esValido && (
                     <span className="font-bold text-amber-800 dark:text-amber-300 shrink-0">
-                      ⚠️ Incongruencia
+                      ⚠️ Incongruencia en Gestas
                     </span>
                   )}
                 </div>
@@ -1823,8 +1871,9 @@ export default function NuevoPaciente() {
                   icono: "fa-solid fa-virus",
                   valorActivo: "Reactiva",
                   valorInactivo: "No reactiva",
-                  labelActivo: "Reactiva",
+                  labelActivo: "Reactiva (+4)",
                   labelInactivo: "No reactiva",
+                  tipo: "binario",
                 },
                 {
                   key: "prueba_vdrl",
@@ -1832,8 +1881,9 @@ export default function NuevoPaciente() {
                   icono: "fa-solid fa-vial-virus",
                   valorActivo: "Reactiva",
                   valorInactivo: "No reactiva",
-                  labelActivo: "Reactiva",
+                  labelActivo: "Reactiva (+4)",
                   labelInactivo: "No reactiva",
+                  tipo: "binario",
                 },
                 {
                   key: "prueba_hepatitis_c",
@@ -1841,17 +1891,15 @@ export default function NuevoPaciente() {
                   icono: "fa-solid fa-disease",
                   valorActivo: "Reactiva",
                   valorInactivo: "No reactiva",
-                  labelActivo: "Reactiva",
+                  labelActivo: "Reactiva (+4)",
                   labelInactivo: "No reactiva",
+                  tipo: "binario",
                 },
                 {
                   key: "diabetes_glicemia",
                   label: "Diabetes / Glicemia",
                   icono: "fa-solid fa-droplet",
-                  valorActivo: "Diabetes",
-                  valorInactivo: "Normal",
-                  labelActivo: "Alterada",
-                  labelInactivo: "Normal",
+                  tipo: "tri-state",
                 },
                 {
                   key: "violencia",
@@ -1859,10 +1907,123 @@ export default function NuevoPaciente() {
                   icono: "fa-solid fa-shield-halved",
                   valorActivo: "Positiva",
                   valorInactivo: "Negativa",
-                  labelActivo: "Positiva",
+                  labelActivo: "Positiva (+4)",
                   labelInactivo: "Negativa",
+                  tipo: "binario",
                 },
               ].map((item) => {
+                if (item.tipo === "tri-state") {
+                  const val = form.diabetes_glicemia;
+                  const isResistencia = val === "Resistencia a la insulina";
+                  const isDiabetes = val === "Diabetes";
+                  const isNormal = !val || val === "Normal";
+
+                  const handleCycle = () => {
+                    if (isNormal) {
+                      handleChange("diabetes_glicemia", "Resistencia a la insulina");
+                    } else if (isResistencia) {
+                      handleChange("diabetes_glicemia", "Diabetes");
+                    } else {
+                      handleChange("diabetes_glicemia", "Normal");
+                    }
+                  };
+
+                  return (
+                    <div key={item.key} className="relative group/tooltip">
+                      <button
+                        type="button"
+                        onClick={handleCycle}
+                        title="Switch de 3 posiciones: Haz clic para alternar entre Normal (0 pts) → Resistencia a la insulina (+4 pts) → Diabetes (+6 pts)"
+                        className={`w-full group flex items-center justify-between gap-2.5 h-12 rounded-lg px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                          isDiabetes
+                            ? "bg-rose-50 dark:bg-rose-500/20 border-rose-500/50 dark:border-rose-400/60 text-rose-950 dark:text-rose-100 font-semibold shadow-sm ring-1 ring-rose-500/40 dark:ring-rose-400/30"
+                            : isResistencia
+                            ? "bg-amber-50 dark:bg-amber-500/20 border-amber-500/50 dark:border-amber-400/60 text-amber-950 dark:text-amber-100 font-semibold shadow-sm ring-1 ring-amber-500/40 dark:ring-amber-400/30"
+                            : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {/* Micro Switch Toggle de 3 posiciones */}
+                          <div
+                            className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                              isDiabetes
+                                ? "bg-rose-500 shadow-sm shadow-rose-500/40"
+                                : isResistencia
+                                ? "bg-amber-500 shadow-sm shadow-amber-500/40"
+                                : "bg-slate-200 dark:bg-white/15 border border-slate-300 dark:border-white/20 group-hover:bg-slate-300 dark:group-hover:bg-white/25"
+                            }`}
+                          >
+                            <div
+                              className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
+                                isDiabetes
+                                  ? "translate-x-3 bg-white"
+                                  : isResistencia
+                                  ? "translate-x-1.5 bg-white"
+                                  : "translate-x-0 bg-slate-400 dark:bg-white/70 group-hover:bg-slate-500 dark:group-hover:bg-white"
+                              }`}
+                            />
+                          </div>
+                          <div className="flex flex-col text-left min-w-0">
+                            <span className={`truncate font-semibold flex items-center gap-1.5 ${
+                              isDiabetes
+                                ? "text-rose-950 dark:text-rose-100"
+                                : isResistencia
+                                ? "text-amber-950 dark:text-amber-100"
+                                : "text-slate-700 dark:text-slate-100 font-medium"
+                            }`}>
+                              <i className={`${item.icono} text-xs ${
+                                isDiabetes
+                                  ? "text-rose-600 dark:text-rose-300"
+                                  : isResistencia
+                                  ? "text-amber-600 dark:text-amber-300"
+                                  : "text-slate-400"
+                              }`}></i>
+                              <span>{item.label}</span>
+                            </span>
+                          </div>
+                        </div>
+                        <span
+                          className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
+                            isDiabetes
+                              ? "bg-rose-100 dark:bg-rose-400/25 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-300/40"
+                              : isResistencia
+                              ? "bg-amber-100 dark:bg-amber-400/25 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-300/40"
+                              : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 group-hover:border-slate-300 dark:group-hover:border-white/20 group-hover:text-slate-900 dark:group-hover:text-white"
+                          }`}
+                        >
+                          {isDiabetes
+                            ? "Diabetes (+6)"
+                            : isResistencia
+                            ? "Resistencia (+4)"
+                            : "Normal"}
+                        </span>
+                      </button>
+
+                      {/* Tooltip flotante al hacer hover */}
+                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[260px] opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-200 z-30">
+                        <div className="rounded-lg bg-slate-900/95 dark:bg-slate-800 text-white text-[11px] p-2.5 shadow-xl border border-slate-700 dark:border-white/20 space-y-1 text-center">
+                          <p className="font-bold flex items-center justify-center gap-1.5 text-cyan-300">
+                            <i className="fa-solid fa-arrows-rotate text-[10px]"></i>
+                            <span>Switch de 3 posiciones</span>
+                          </p>
+                          <p className="text-[10px] text-slate-300 leading-tight">
+                            Clic para rotar entre los 3 estados:
+                          </p>
+                          <div className="flex items-center justify-center gap-1 text-[10px] font-mono pt-0.5">
+                            <span className={isNormal ? "text-emerald-400 font-bold underline" : "text-slate-400"}>Normal (0)</span>
+                            <span className="text-slate-500">→</span>
+                            <span className={isResistencia ? "text-amber-400 font-bold underline" : "text-slate-400"}>Resistencia (+4)</span>
+                            <span className="text-slate-500">→</span>
+                            <span className={isDiabetes ? "text-rose-400 font-bold underline" : "text-slate-400"}>Diabetes (+6)</span>
+                          </div>
+                        </div>
+                        {/* Triángulo inferior del tooltip */}
+                        <div className="w-2 h-2 bg-slate-900/95 dark:bg-slate-800 border-r border-b border-slate-700 dark:border-white/20 rotate-45 mx-auto -mt-1" />
+                      </div>
+                    </div>
+                  );
+                }
+
                 const isChecked = (form as any)[item.key] === item.valorActivo;
                 return (
                   <button
@@ -1913,7 +2074,7 @@ export default function NuevoPaciente() {
                           : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 group-hover:border-slate-300 dark:group-hover:border-white/20 group-hover:text-slate-900 dark:group-hover:text-white"
                       }`}
                     >
-                      {isChecked ? `${item.labelActivo} (+4)` : item.labelInactivo}
+                      {isChecked ? `${item.labelActivo}` : item.labelInactivo}
                     </span>
                   </button>
                 );

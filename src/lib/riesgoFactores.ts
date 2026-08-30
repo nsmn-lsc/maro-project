@@ -110,19 +110,19 @@ const CRITERIOS = {
     { valor: true, puntos: 4 },
   ],
   factor_cardiopatia: [
-    { valor: true, puntos: 4 },
+    { valor: true, puntos: 12 },
   ],
   factor_hepatopatia: [
-    { valor: true, puntos: 4 },
+    { valor: true, puntos: 12 },
   ],
   factor_enf_autoinmune: [
-    { valor: true, puntos: 4 },
+    { valor: true, puntos: 12 },
   ],
   factor_nefropatia: [
-    { valor: true, puntos: 4 },
+    { valor: true, puntos: 12 },
   ],
   factor_coagulopatias: [
-    { valor: true, puntos: 4 },
+    { valor: true, puntos: 12 },
   ],
   factor_neuropatia: [
     { valor: true, puntos: 4 },

@@ -152,25 +152,13 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
             ))}
           </div>
 
-          {/* TOTAL */}
-          <div className="mt-4 pt-4 border-t-2 opacity-60 flex justify-between">
-            <span className="font-semibold">TOTAL:</span>
-            <span className="font-bold text-lg">{resultado.puntajeTotal} puntos</span>
-          </div>
-        </div>
-      ) : (
-        <div className={`rounded px-3 py-2 text-sm ${color.badge}`}>
-          ✅ Sin factores de riesgo detectados - Antecedentes normales
+      {/* TOTAL */}
+      {resultado.factores.length > 0 && (
+        <div className="mt-4 pt-4 border-t-2 opacity-60 flex justify-between">
+          <span className="font-semibold">TOTAL:</span>
+          <span className="font-bold text-lg">{resultado.puntajeTotal} puntos</span>
         </div>
       )}
-
-      {/* RECOMENDACIÓN */}
-      <div className="mt-4 pt-4 border-t opacity-70">
-        <div className="text-xs font-semibold mb-1">RECOMENDACIÓN:</div>
-        <div className="text-xs">
-          {"recomendacion"}
-        </div>
-      </div>
     </div>
   );
 }

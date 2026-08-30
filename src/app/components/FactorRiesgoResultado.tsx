@@ -128,13 +128,6 @@ export default function FactorRiesgoResultado({
           </div>
         </div>
       )}
-
-      {/* Referencias (opcional) */}
-      <div className="mt-4 text-xs opacity-60">
-        <p>
-          <strong>Nota:</strong> recomendacion
-        </p>
-      </div>
     </div>
   );
 }
