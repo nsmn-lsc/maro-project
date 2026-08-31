@@ -13,6 +13,67 @@ type UsuarioAuthRow = {
   clues_region: string | null;
 };
 
+// Caché en memoria para usuarios activos (TTL: 2 minutos)
+const USER_CACHE_TTL_MS = 120_000;
+const userAuthCache = new Map<number, { data: UsuarioAuthRow; expiresAt: number }>();
+
+// Caché en memoria para regiones de unidades (TTL: 30 minutos)
+const UNIDADES_CACHE_TTL_MS = 1_800_000;
+const unidadRegionCache = new Map<string, { region: string | null; expiresAt: number }>();
+
+async function getCachedUser(userId: number): Promise<UsuarioAuthRow | null> {
+  const now = Date.now();
+  const cached = userAuthCache.get(userId);
+  if (cached && cached.expiresAt > now) {
+    return cached.data;
+  }
+
+  try {
+    const rows = await query<UsuarioAuthRow[]>(
+      `SELECT u.id, u.nivel, u.clues_id, u.region, u.activo, cu.region AS clues_region
+       FROM usuarios u
+       LEFT JOIN cat_unidades cu ON cu.clues = u.clues_id
+       WHERE u.id = ?
+       LIMIT 1`,
+      [userId]
+    );
+
+    const user = rows?.[0] || null;
+    if (user) {
+      userAuthCache.set(userId, { data: user, expiresAt: now + USER_CACHE_TTL_MS });
+    } else {
+      userAuthCache.delete(userId);
+    }
+    return user;
+  } catch (error) {
+    // Fallback: si falla la BD pero tenemos dato previo en cache, lo usamos temporalmente
+    if (cached) return cached.data;
+    throw error;
+  }
+}
+
+async function getCachedUnidadRegion(clues: string): Promise<string | null> {
+  const normalized = clues.trim().toUpperCase();
+  const now = Date.now();
+  const cached = unidadRegionCache.get(normalized);
+  if (cached && cached.expiresAt > now) {
+    return cached.region;
+  }
+
+  try {
+    const rows = await query<Array<{ region: string | null }>>(
+      `SELECT region FROM cat_unidades WHERE clues = ? LIMIT 1`,
+      [normalized]
+    );
+    const region = rows?.[0]?.region ? String(rows[0].region).trim().toUpperCase() : null;
+    unidadRegionCache.set(normalized, { region, expiresAt: now + UNIDADES_CACHE_TTL_MS });
+    return region;
+  } catch (error) {
+    if (cached) return cached.region;
+    throw error;
+  }
+}
+
 export type ApiAuthContext = {
   userId: number;
   nivel: number;
@@ -56,16 +117,14 @@ export async function requireApiAuth(
     return { ok: false, response: NextResponse.json({ message: "Sesión inválida" }, { status: 401 }) };
   }
 
-  const rows = await query<UsuarioAuthRow[]>(
-    `SELECT u.id, u.nivel, u.clues_id, u.region, u.activo, cu.region AS clues_region
-     FROM usuarios u
-     LEFT JOIN cat_unidades cu ON cu.clues = u.clues_id
-     WHERE u.id = ?
-     LIMIT 1`,
-    [claims.userId]
-  );
+  let user: UsuarioAuthRow | null = null;
+  try {
+    user = await getCachedUser(claims.userId);
+  } catch (err) {
+    console.error("Error validando usuario en requireApiAuth", err);
+    return { ok: false, response: NextResponse.json({ message: "Error interno de autenticación" }, { status: 500 }) };
+  }
 
-  const user = rows?.[0];
   if (!user || !user.activo) {
     return { ok: false, response: NextResponse.json({ message: "Sesión no autorizada" }, { status: 401 }) };
   }
@@ -97,13 +156,12 @@ export async function assertCluesScope(cluesId: string, auth: ApiAuthContext): P
     return auth.cluesId === normalized;
   }
 
-  const rows = await query<Array<{ region: string | null }>>(
-    `SELECT region FROM cat_unidades WHERE clues = ? LIMIT 1`,
-    [normalized]
-  );
-
-  const rowRegion = rows?.[0]?.region ? String(rows[0].region).trim().toUpperCase() : null;
-  return !!auth.region && !!rowRegion && auth.region === rowRegion;
+  try {
+    const rowRegion = await getCachedUnidadRegion(normalized);
+    return !!auth.region && !!rowRegion && auth.region === rowRegion;
+  } catch {
+    return false;
+  }
 }
 
 export async function assertPacienteScope(pacienteId: number, auth: ApiAuthContext): Promise<boolean> {

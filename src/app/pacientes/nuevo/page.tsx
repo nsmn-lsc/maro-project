@@ -107,6 +107,8 @@ export default function NuevoPaciente() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showEdadAlertaModal, setShowEdadAlertaModal] = useState(false);
   const [edadAlertaConfirmada, setEdadAlertaConfirmada] = useState(false);
+  const [showEdadMayor35Modal, setShowEdadMayor35Modal] = useState(false);
+  const [edadMayor35Confirmada, setEdadMayor35Confirmada] = useState(false);
 
   const hospitalesDisponibles = useMemo(() => {
     if (!session.clues) return HOSPITALES_REFERENCIA;
@@ -314,7 +316,7 @@ export default function NuevoPaciente() {
       recs.push("Fortalecer red social, manejo conjunto con segundo nivel de atención");
     }
     if (form.edad && (parseInt(form.edad) < 19 || parseInt(form.edad) > 35)) {
-      recs.push("Vigilancia estrecha por edad extrema de riesgo");
+      recs.push("Vigilancia estrecha por edad de riesgo");
     }
     if (form.factor_obesidad) {
       recs.push("Asesoría nutricional y control estricto de ganancia de peso");
@@ -404,6 +406,7 @@ export default function NuevoPaciente() {
 
   const edadNumero = Number(form.edad);
   const edadEnRangoAlerta = Number.isFinite(edadNumero) && edadNumero >= 10 && edadNumero <= 14;
+  const edadMayor35Alerta = Number.isFinite(edadNumero) && edadNumero > 35;
 
   useEffect(() => {
     if (edadEnRangoAlerta && !edadAlertaConfirmada) {
@@ -417,7 +420,18 @@ export default function NuevoPaciente() {
     }
   }, [edadEnRangoAlerta, edadAlertaConfirmada]);
 
-  // Validar y abrir modal de confirmación
+  useEffect(() => {
+    if (edadMayor35Alerta && !edadMayor35Confirmada) {
+      setShowEdadMayor35Modal(true);
+      return;
+    }
+
+    if (!edadMayor35Alerta) {
+      setShowEdadMayor35Modal(false);
+      setEdadMayor35Confirmada(false);
+    }
+  }, [edadMayor35Alerta, edadMayor35Confirmada]);
+
   // Validar y abrir modal de confirmación
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -454,6 +468,10 @@ export default function NuevoPaciente() {
     }
     if (edadEnRangoAlerta && !edadAlertaConfirmada) {
       setShowEdadAlertaModal(true);
+      return;
+    }
+    if (edadMayor35Alerta && !edadMayor35Confirmada) {
+      setShowEdadMayor35Modal(true);
       return;
     }
     if (form.curp && form.curp.trim()) {
@@ -938,18 +956,33 @@ export default function NuevoPaciente() {
                 )}
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-700 dark:text-slate-100 font-medium">Edad *</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-700 dark:text-slate-100 font-medium">Edad *</span>
+                  {form.edad && Number(form.edad) > 35 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 border border-amber-400/50 text-amber-800 dark:text-amber-300">
+                      ⚠️ Edad de riesgo (+4 pts)
+                    </span>
+                  )}
+                </div>
                 <input
                   type="number"
                   min={10}
-                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
+                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.edad.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                      : form.edad && Number(form.edad) > 35
+                      ? "border-amber-400/80 dark:border-amber-400/60 focus:border-amber-500"
                       : "border-slate-300 dark:border-white/10"
                   }`}
                   value={form.edad}
                   onChange={(e) => handleChange("edad", e.target.value)}
                 />
+                {form.edad && Number(form.edad) > 35 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1 mt-1">
+                    <i className="fa-solid fa-circle-exclamation text-xs"></i>
+                    <span>Edad de riesgo obstétrico detectada (&gt; 35 años).</span>
+                  </p>
+                )}
                 {attemptedSubmit && !form.edad.trim() && (
                   <p className="text-xs text-rose-400 mt-1 font-medium">✗ La edad es obligatoria</p>
                 )}
@@ -2280,7 +2313,58 @@ export default function NuevoPaciente() {
                   setEdadAlertaConfirmada(true);
                   setShowEdadAlertaModal(false);
                 }}
-                className="w-full rounded-lg bg-rose-300 px-4 py-2.5 text-sm font-semibold text-rose-950 hover:bg-rose-200 transition-colors"
+                className="w-full rounded-lg bg-rose-300 px-4 py-2.5 text-sm font-semibold text-rose-950 hover:bg-rose-200 transition-colors cursor-pointer"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ALERTA POR EDAD > 35 (EDAD DE RIESGO) */}
+      {showEdadMayor35Modal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="edad-mayor-35-modal-title"
+        >
+          <div className="w-full max-w-lg rounded-2xl border-2 border-amber-400/60 bg-gradient-to-br from-amber-950/95 via-slate-900/95 to-amber-900/95 shadow-2xl">
+            <div className="border-b border-white/15 px-6 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-amber-200/90 font-bold">Alerta Obstétrica</p>
+                <h2 id="edad-mayor-35-modal-title" className="mt-1 text-xl font-bold text-white flex items-center gap-2">
+                  <i className="fa-solid fa-triangle-exclamation text-amber-400"></i>
+                  <span>Edad de riesgo ({form.edad || "—"} años)</span>
+                </h2>
+              </div>
+              <span className="text-xs font-mono font-bold bg-amber-400/20 text-amber-200 border border-amber-400/40 px-2.5 py-1 rounded-full">
+                +4 pts riesgo
+              </span>
+            </div>
+
+            <div className="px-6 py-5 space-y-3 text-amber-50">
+              <p className="text-sm text-amber-100/90">
+                Se detectó edad de <strong>{form.edad || "—"} años</strong>.
+              </p>
+
+              <ul className="space-y-2 text-sm">
+                <li className="rounded-lg border border-amber-300/30 bg-amber-950/40 px-3 py-2 flex items-start gap-2">
+                  <span className="text-amber-400 font-bold">•</span>
+                  <span>Vigilancia estrecha por edad extrema de riesgo (+4 puntos en semáforo de factores).</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="border-t border-white/15 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setEdadMayor35Confirmada(true);
+                  setShowEdadMayor35Modal(false);
+                }}
+                className="w-full rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-300 transition-colors cursor-pointer"
               >
                 Entendido
               </button>

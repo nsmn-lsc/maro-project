@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { requireApiAuth } from "@/lib/apiAuth";
 
+const columnCache = new Map<string, boolean>();
+
 async function hasColumn(columnName: string) {
+  if (columnCache.has(columnName)) {
+    return columnCache.get(columnName)!;
+  }
   try {
     const rows = await query<any[]>(`SHOW COLUMNS FROM consultas_prenatales LIKE '${columnName}'`);
-    return Array.isArray(rows) && rows.length > 0;
+    const exists = Array.isArray(rows) && rows.length > 0;
+    columnCache.set(columnName, exists);
+    return exists;
   } catch {
     return false;
   }

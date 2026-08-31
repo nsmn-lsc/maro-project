@@ -282,12 +282,12 @@ export async function GET(request: Request) {
       p.edad, p.fum, p.fpp,
       p.imc_inicial,
       COALESCE(p.sdg_ingreso, FLOOR(p.semanas_gestacion)) AS sdg_ingreso,
-      c.last_consulta_sdg AS ultima_consulta_sdg,
-      c.last_consulta_fecha AS ultima_consulta_fecha,
-      DATEDIFF(CURDATE(), COALESCE(c.last_consulta_fecha, p.fecha_ingreso_cpn, DATE(p.created_at))) AS dias_sin_consulta,
+      c.sdg AS ultima_consulta_sdg,
+      c.fecha_consulta AS ultima_consulta_fecha,
+      DATEDIFF(CURDATE(), COALESCE(c.fecha_consulta, p.fecha_ingreso_cpn, DATE(p.created_at))) AS dias_sin_consulta,
       p.semanas_gestacion, p.factor_riesgo_antecedentes, p.factor_riesgo_tamizajes,
       p.factor_cardiopatia, p.factor_hepatopatia, p.factor_coagulopatias, p.factor_nefropatia,
-        c.last_consulta_id AS ultima_consulta_id,
+      c.id AS ultima_consulta_id,
       COALESCE(c.puntaje_consulta_parametros, 0) AS puntaje_ultima_consulta,
       COALESCE(
         c.puntaje_total_consulta,
@@ -300,22 +300,18 @@ export async function GET(request: Request) {
       LEFT JOIN detecciones d ON p.id = d.paciente_id
     ` : `
       FROM cat_pacientes p
-      LEFT JOIN (
-          SELECT c1.id AS last_consulta_id, c1.paciente_id, c1.puntaje_consulta_parametros, c1.puntaje_total_consulta, c1.sdg AS last_consulta_sdg, c1.fecha_consulta AS last_consulta_fecha
-        FROM consultas_prenatales c1
-        INNER JOIN (
-          SELECT paciente_id, MAX(id) AS last_consulta_id
-          FROM consultas_prenatales
-          GROUP BY paciente_id
-        ) last_c ON last_c.last_consulta_id = c1.id
-      ) c ON c.paciente_id = p.id
+      LEFT JOIN consultas_prenatales c ON c.id = (
+        SELECT MAX(c_sub.id)
+        FROM consultas_prenatales c_sub
+        WHERE c_sub.paciente_id = p.id
+      )
     `;
 
     const rows = await query(
       `SELECT ${selectFields}
        ${fromClause}
        ${whereClause}
-       ORDER BY ${idFilter ? 'p.created_at' : 'created_at'} DESC
+       ORDER BY p.created_at DESC
        ${idFilter ? "LIMIT 1" : limitClause}`,
       params
     );
