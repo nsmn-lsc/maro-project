@@ -196,7 +196,8 @@ export async function POST(request: Request) {
 
     const pacienteRows: any = await query(
       `SELECT factor_riesgo_antecedentes, factor_riesgo_tamizajes, folio, unidad, edad,
-              imc_inicial, factor_cardiopatia, factor_nefropatia, factor_hepatopatia, factor_coagulopatias, fum
+              imc_inicial, factor_cardiopatia, factor_nefropatia, factor_hepatopatia, factor_coagulopatias, fum,
+              estado_embarazo, fecha_resolucion
          FROM cat_pacientes
         WHERE id = ?
         LIMIT 1`,
@@ -206,6 +207,17 @@ export async function POST(request: Request) {
     const paciente = pacienteRows?.[0];
     if (!paciente) {
       return NextResponse.json({ message: "Paciente no encontrado" }, { status: 404 });
+    }
+
+    // Si el embarazo ya concluyó (está en puerperio o concluido), no se permite nueva consulta prenatal
+    if (paciente.estado_embarazo === "puerperio" || paciente.estado_embarazo === "concluido") {
+      return NextResponse.json(
+        {
+          message:
+            "El ciclo prenatal de esta paciente ha concluido (se encuentra en puerperio). Las consultas subsecuentes deben registrarse en el módulo de Puerperio.",
+        },
+        { status: 400 }
+      );
     }
 
     const puntajeAntecedentes = Number(paciente.factor_riesgo_antecedentes) || 0;
@@ -247,6 +259,10 @@ export async function POST(request: Request) {
       }
     }
 
+    const tipoEvento = body.tipo_evento || (body.diagnostico === "puerperio" ? "resolucion_sin_complicaciones" : "embarazo");
+    const fechaEvento = body.fecha_evento || (tipoEvento !== "embarazo" ? (body.fecha_consulta || null) : null);
+    const complicacionResolucion = body.complicacion_resolucion || null;
+
     const payload = {
       paciente_id: pacienteId,
       fecha_consulta: body.fecha_consulta || null,
@@ -267,6 +283,9 @@ export async function POST(request: Request) {
       puntaje_total_consulta: puntajeTotalConsulta,
       riesgo_25_plus: riesgo25Plus,
       diagnostico: body.diagnostico || null,
+      tipo_evento: tipoEvento,
+      fecha_evento: fechaEvento,
+      complicacion_resolucion: complicacionResolucion,
       plan: body.plan || null,
       fecha_referencia: body.fecha_referencia || null,
       area_referencia: body.area_referencia || null,
@@ -292,6 +311,45 @@ export async function POST(request: Request) {
 
     const consultaId = Number(result?.insertId) || null;
     const puntajeTotal = Number(puntajeTotalConsulta) || 0;
+
+    // Si la consulta registra una resolución de embarazo, actualizar el estado de la paciente e inicializar puerperio
+    if (tipoEvento === "resolucion_sin_complicaciones" || tipoEvento === "resolucion_con_complicaciones") {
+      const tipoRes = tipoEvento === "resolucion_con_complicaciones" ? "con_complicaciones" : "sin_complicaciones";
+      const fechaRes = fechaEvento || body.fecha_consulta || new Date().toISOString().slice(0, 10);
+      const lugarAtencion = body.lugar_atencion_parto || null;
+
+      await connection.execute(
+        `UPDATE cat_pacientes
+         SET estado_embarazo = 'puerperio',
+             fecha_resolucion = ?,
+             tipo_resolucion = ?,
+             lugar_atencion_parto = ?
+         WHERE id = ?`,
+        [fechaRes, tipoRes, lugarAtencion, pacienteId]
+      );
+
+      const [puerperioRows]: any = await connection.execute(
+        `SELECT id FROM puerperio WHERE paciente_id = ? LIMIT 1`,
+        [pacienteId]
+      );
+
+      if (!puerperioRows || puerperioRows.length === 0) {
+        await connection.execute(
+          `INSERT INTO puerperio (
+            paciente_id, folio, fecha_atencion_evento, complicaciones, MMEG, valoracion_riesgo, created_by
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            pacienteId,
+            paciente.folio || null,
+            fechaRes,
+            complicacionResolucion,
+            tipoEvento === "resolucion_con_complicaciones" ? 1 : 0,
+            tipoEvento === "resolucion_con_complicaciones" ? "Alto" : "Bajo",
+            auth.userId,
+          ]
+        );
+      }
+    }
 
     let alertEnqueued = false;
     if (consultaId && riesgo25Plus === 1) {

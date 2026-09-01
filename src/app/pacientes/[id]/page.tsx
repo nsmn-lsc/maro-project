@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { evaluarFactoresRiesgo, DatosFactoresPaciente } from "@/lib/riesgoFactores";
 import { evaluarTamizajes, DatosTamizajes } from "@/lib/riesgoTamizajes";
+import { evaluarCicloObstetrico } from "@/lib/resolucionEmbarazo";
 
 type Patient = {
   id: number;
@@ -22,6 +23,11 @@ type Patient = {
   fpp: string | null;
   semanas_gestacion: number | null;
   sdg_ingreso: number | null;
+  estado_embarazo?: "activo" | "puerperio" | "concluido" | null;
+  fecha_resolucion?: string | null;
+  tipo_resolucion?: string | null;
+  lugar_atencion_parto?: string | null;
+  dias_puerperio?: number | null;
   riesgo_obstetrico_ingreso: number | null;
   telefono: string | null;
   direccion: string | null;
@@ -164,25 +170,25 @@ export default function PacienteDetalle() {
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  /** Calcula SDG actuales a partir de la FUM (notación médica: semanas.días) */
+  /** Calcula SDG actuales o información de puerperio a partir del ciclo obstétrico */
   const calcularSdgActual = (p: Patient | null): string => {
     if (!p) return "—";
-    if (p.fum) {
-      const fumDate = new Date(p.fum);
-      if (!Number.isNaN(fumDate.getTime())) {
-        const hoy = new Date();
-        const diffMs = hoy.getTime() - fumDate.getTime();
-        const totalDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-        const weeks = Math.floor(totalDays / 7);
-        const days = totalDays % 7;
-        if (weeks >= 0 && weeks <= 45) {
-          return `${weeks}.${days}`;
-        }
-      }
+    const ciclo = evaluarCicloObstetrico({
+      fum: p.fum,
+      estadoEmbarazo: p.estado_embarazo,
+      fechaResolucion: p.fecha_resolucion,
+    });
+
+    if (ciclo.estadoEmbarazo === "puerperio") {
+      return `👶 Puerperio (Día ${ciclo.diasPuerperio ?? 1}/42)`;
     }
-    if (p.semanas_gestacion != null) return String(p.semanas_gestacion);
-    if (p.sdg_ingreso != null) return String(p.sdg_ingreso);
-    return "—";
+    if (ciclo.estadoEmbarazo === "concluido") {
+      return "Concluido (Alta de puerperio)";
+    }
+    if (ciclo.esFppVencida) {
+      return `${ciclo.sdgTexto} (⚠️ FPP Vencida +${ciclo.diasVencido}d)`;
+    }
+    return ciclo.sdgTexto;
   };
 
   // Calcular factor de riesgo basado en los datos del paciente
@@ -619,7 +625,7 @@ export default function PacienteDetalle() {
             {/* ========================================================================= */}
             <div className="lg:col-span-7 xl:col-span-8 space-y-6">
               {/* ACCESOS RÁPIDOS A MÓDULOS */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className={`grid grid-cols-1 ${patient.estado_embarazo === 'puerperio' ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'} gap-3`}>
                 {[
                   {
                     title: "Consultas",
@@ -629,6 +635,14 @@ export default function PacienteDetalle() {
                     accent: "border-teal-300 dark:border-cyan-400/40 bg-white/95 dark:bg-cyan-500/10 text-teal-950 dark:text-cyan-100 hover:bg-teal-50 dark:hover:bg-cyan-500/20 hover:border-teal-400 dark:hover:border-cyan-300",
                     iconBox: "bg-teal-100 dark:bg-white/10 text-teal-700 dark:text-cyan-300",
                   },
+                  ...(patient.estado_embarazo === "puerperio" ? [{
+                    title: "Puerperio",
+                    subtitle: "Seguimiento y APEO",
+                    icon: "fa-solid fa-baby",
+                    href: `/puerperio/nuevo?paciente_id=${patient.id}&folio=${patient.folio || ''}`,
+                    accent: "border-purple-300 dark:border-purple-400/40 bg-white/95 dark:bg-purple-500/10 text-purple-950 dark:text-purple-100 hover:bg-purple-50 dark:hover:bg-purple-500/20 hover:border-purple-400 dark:hover:border-purple-300",
+                    iconBox: "bg-purple-100 dark:bg-white/10 text-purple-700 dark:text-purple-300",
+                  }] : []),
                   {
                     title: "Acciones",
                     subtitle: "Preventivas y Educación",

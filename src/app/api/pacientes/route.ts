@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type mysql from "mysql2/promise";
 import { getPool, query } from "@/lib/db";
-import { assertCluesScope, requireApiAuth } from "@/lib/apiAuth";
+import { assertCluesScope, assertPacienteScope, requireApiAuth } from "@/lib/apiAuth";
 
 function parseDateOnly(dateValue: string): Date | null {
   if (!dateValue) return null;
@@ -238,6 +238,8 @@ export async function GET(request: Request) {
     }
   }
 
+  const estadoFilter = searchParams.get("estado");
+
   try {
     const where: string[] = [];
     const params: any[] = [];
@@ -257,6 +259,10 @@ export async function GET(request: Request) {
         where.push("c.paciente_id IS NOT NULL");
       }
     }
+    if (estadoFilter && ["activo", "puerperio", "concluido"].includes(estadoFilter)) {
+      where.push("p.estado_embarazo = ?");
+      params.push(estadoFilter);
+    }
 
     const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
@@ -264,6 +270,8 @@ export async function GET(request: Request) {
     const selectFields = idFilter ? `
       p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.localidad, p.region, p.fecha_ingreso_cpn, 
       p.edad, p.indigena, p.migrante, p.derechohabiencia,
+      p.estado_embarazo, p.fecha_resolucion, p.tipo_resolucion, p.lugar_atencion_parto,
+      DATEDIFF(CURDATE(), p.fecha_resolucion) AS dias_puerperio,
       p.imc_inicial, p.ganancia_ponderal_max, p.tipo_riesgo_social,
       p.fum, p.fpp, p.semanas_gestacion,
       COALESCE(p.sdg_ingreso, FLOOR(p.semanas_gestacion)) AS sdg_ingreso, p.riesgo_obstetrico_ingreso, 
@@ -280,6 +288,8 @@ export async function GET(request: Request) {
     ` : `
       p.id, p.folio, p.nombre_completo, p.clues_id, p.unidad, p.municipio, p.localidad, p.telefono, p.madrina_nombre, p.madrina_telefono, p.fecha_ingreso_cpn, 
       p.edad, p.fum, p.fpp,
+      p.estado_embarazo, p.fecha_resolucion, p.tipo_resolucion, p.lugar_atencion_parto,
+      DATEDIFF(CURDATE(), p.fecha_resolucion) AS dias_puerperio,
       p.imc_inicial,
       COALESCE(p.sdg_ingreso, FLOOR(p.semanas_gestacion)) AS sdg_ingreso,
       c.sdg AS ultima_consulta_sdg,
@@ -327,6 +337,93 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error("Error fetching pacientes", error);
     return NextResponse.json({ message: "Error al obtener pacientes" }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  const authResult = await requireApiAuth(request, 1);
+  if (!authResult.ok) return authResult.response;
+  const auth = authResult.auth;
+
+  try {
+    const body = await request.json();
+    const pacienteId = Number(body.id || body.paciente_id);
+    if (!pacienteId || !Number.isFinite(pacienteId)) {
+      return NextResponse.json({ message: "ID de paciente inválido" }, { status: 400 });
+    }
+
+    const hasScope = await assertPacienteScope(pacienteId, auth);
+    if (!hasScope) {
+      return NextResponse.json({ message: "Sin permisos sobre este paciente" }, { status: 403 });
+    }
+
+    const estado = body.estado_embarazo;
+    const fechaRes = body.fecha_resolucion || new Date().toISOString().slice(0, 10);
+    const tipoRes = body.tipo_resolucion || "sin_complicaciones";
+    const lugarAtencion = body.lugar_atencion_parto || null;
+    const notas = body.notas || null;
+
+    if (!["activo", "puerperio", "concluido"].includes(estado)) {
+      return NextResponse.json({ message: "Estado de embarazo no válido" }, { status: 400 });
+    }
+
+    const pool = getPool();
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      await conn.execute(
+        `UPDATE cat_pacientes
+         SET estado_embarazo = ?,
+             fecha_resolucion = ?,
+             tipo_resolucion = ?,
+             lugar_atencion_parto = ?,
+             updated_by = ?
+         WHERE id = ?`,
+        [estado, estado === "activo" ? null : fechaRes, estado === "activo" ? null : tipoRes, lugarAtencion, auth.userId, pacienteId]
+      );
+
+      if (estado === "puerperio") {
+        const [puerperioRows]: any = await conn.execute(
+          `SELECT id FROM puerperio WHERE paciente_id = ? LIMIT 1`,
+          [pacienteId]
+        );
+
+        if (!puerperioRows || puerperioRows.length === 0) {
+          const [pacienteRows]: any = await conn.execute(
+            `SELECT folio FROM cat_pacientes WHERE id = ? LIMIT 1`,
+            [pacienteId]
+          );
+          const folio = pacienteRows?.[0]?.folio || null;
+
+          await conn.execute(
+            `INSERT INTO puerperio (
+              paciente_id, folio, fecha_atencion_evento, complicaciones, MMEG, valoracion_riesgo, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              pacienteId,
+              folio,
+              fechaRes,
+              tipoRes === "con_complicaciones" ? (notas || "Resolución con complicaciones") : null,
+              tipoRes === "con_complicaciones" ? 1 : 0,
+              tipoRes === "con_complicaciones" ? "Alto" : "Bajo",
+              auth.userId,
+            ]
+          );
+        }
+      }
+
+      await conn.commit();
+      return NextResponse.json({ ok: true, message: "Estatus obstétrico actualizado correctamente" });
+    } catch (err: any) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  } catch (error: any) {
+    console.error("Error actualizando resolución de paciente:", error);
+    return NextResponse.json({ message: "Error al actualizar resolución", error: error.message }, { status: 500 });
   }
 }
 

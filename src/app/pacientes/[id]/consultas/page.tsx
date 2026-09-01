@@ -35,6 +35,10 @@ interface Consulta {
 
 const initialForm = {
   fecha_consulta: "",
+  tipo_evento: "embarazo",
+  fecha_evento: "",
+  complicacion_resolucion: "",
+  lugar_atencion_parto: "",
   ta_sistolica: "",
   ta_diastolica: "",
   frecuencia_cardiaca: "",
@@ -85,6 +89,10 @@ export default function ConsultasPaciente() {
     factor_nefropatia: number;
     factor_hepatopatia: number;
     factor_coagulopatias: number;
+    estado_embarazo: "activo" | "puerperio" | "concluido" | null;
+    fecha_resolucion: string | null;
+    tipo_resolucion: string | null;
+    lugar_atencion_parto: string | null;
   }>({
     folio: null,
     nombre_completo: null,
@@ -100,6 +108,10 @@ export default function ConsultasPaciente() {
     factor_nefropatia: 0,
     factor_hepatopatia: 0,
     factor_coagulopatias: 0,
+    estado_embarazo: "activo",
+    fecha_resolucion: null,
+    tipo_resolucion: null,
+    lugar_atencion_parto: null,
   });
 
   useEffect(() => {
@@ -347,6 +359,10 @@ export default function ConsultasPaciente() {
             factor_nefropatia: data.factor_nefropatia || 0,
             factor_hepatopatia: data.factor_hepatopatia || 0,
             factor_coagulopatias: data.factor_coagulopatias || 0,
+            estado_embarazo: data.estado_embarazo || "activo",
+            fecha_resolucion: data.fecha_resolucion || null,
+            tipo_resolucion: data.tipo_resolucion || null,
+            lugar_atencion_parto: data.lugar_atencion_parto || null,
           });
         }
       } catch (err) {
@@ -464,7 +480,11 @@ export default function ConsultasPaciente() {
         hemorragia: form.hemorragia || null,
         respiracion: form.respiracion || null,
         color_piel: form.color_piel || null,
-        diagnostico: form.diagnostico || null,
+        tipo_evento: form.tipo_evento || "embarazo",
+        fecha_evento: form.fecha_evento || (form.tipo_evento !== "embarazo" ? form.fecha_consulta : null),
+        complicacion_resolucion: form.complicacion_resolucion || null,
+        lugar_atencion_parto: form.lugar_atencion_parto || null,
+        diagnostico: form.diagnostico || (form.tipo_evento !== "embarazo" ? "puerperio" : null),
         plan: form.plan || null,
         fecha_referencia: form.fecha_referencia || null,
         area_referencia: form.area_referencia || null,
@@ -498,8 +518,8 @@ export default function ConsultasPaciente() {
         );
       }
 
-      // Si el diagnóstico es puerperio, preparar redirección
-      if (form.diagnostico === "puerperio") {
+      // Si se registró resolución de embarazo o puerperio, preparar redirección
+      if (form.tipo_evento !== "embarazo" || form.diagnostico === "puerperio") {
         const pacienteRes = await fetch(`/api/pacientes?id=${pacienteId}`);
         if (pacienteRes.ok) {
           const pData = await pacienteRes.json();
@@ -603,25 +623,90 @@ export default function ConsultasPaciente() {
           </div>
         )}
 
+        {/* BANNER INFORMATIVO SI EL EMBARAZO YA ESTÁ RESUELTO (EN PUERPERIO) */}
+        {pacienteData.estado_embarazo === "puerperio" && (
+          <div className="rounded-2xl border border-purple-400/40 bg-purple-50 dark:bg-purple-950/40 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg animate-in fade-in">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-200 dark:bg-purple-800/40 text-purple-800 dark:text-purple-200 flex items-center justify-center text-xl shrink-0">
+                👶
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-purple-950 dark:text-purple-100">
+                  Paciente en Etapa de Puerperio (Ciclo Prenatal Concluido)
+                </h3>
+                <p className="text-xs text-purple-800 dark:text-purple-200/90 mt-0.5">
+                  La resolución del evento obstétrico ya está registrada (Parto el <strong>{formatDate(pacienteData.fecha_resolucion)}</strong>
+                  {pacienteData.lugar_atencion_parto ? ` en ${pacienteData.lugar_atencion_parto}` : ""}).
+                  Para capturar valoraciones postparto o método anticonceptivo postevento (APEO), utiliza el módulo especializado.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`/puerperio/nuevo?paciente_id=${pacienteId}&folio=${pacienteData.folio || ""}`}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 transition shadow-md shrink-0 cursor-pointer"
+            >
+              <i className="fa-solid fa-baby"></i>
+              <span>Seguimiento de Puerperio y APEO →</span>
+            </Link>
+          </div>
+        )}
+
         {/* LAYOUT PRINCIPAL DE 2 COLUMNAS (8 / 4) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* COLUMNA PRINCIPAL (8/12) - FORMULARIO E HISTORIAL */}
           <div className="lg:col-span-8 space-y-6">
             
-            {/* FORMULARIO DE NUEVA CONSULTA */}
-            <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-5 shadow-xl transition-colors">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-emerald-500/20 border border-teal-300 dark:border-emerald-400/40 flex items-center justify-center shrink-0">
-                    <i className="fa-solid fa-file-medical text-teal-700 dark:text-emerald-400 text-lg"></i>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Registro de Nueva Consulta</h2>
-                    <p className="text-xs text-slate-600 dark:text-slate-300">Captura de signos vitales, parámetros somáticos y triage de alarma</p>
+            {/* SI ESTÁ EN PUERPERIO / CONCLUIDO: BLOQUEAR FORMULARIO PRENATAL Y MOSTRAR ACCESO A PUERPERIO */}
+            {pacienteData.estado_embarazo === "puerperio" || pacienteData.estado_embarazo === "concluido" ? (
+              <section className="rounded-2xl border border-purple-300 dark:border-purple-500/30 bg-purple-50/80 dark:bg-purple-950/40 p-8 space-y-4 shadow-xl text-center transition-colors animate-in fade-in">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 flex items-center justify-center text-3xl shadow-inner border border-purple-200 dark:border-purple-500/30">
+                  👶
+                </div>
+                <div className="space-y-1.5 max-w-lg mx-auto">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                    Captura Prenatal Cerrada por Término de Embarazo
+                  </h2>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Esta paciente se encuentra en etapa de <strong>Puerperio</strong> (resolución registrada el <strong>{formatDate(pacienteData.fecha_resolucion)}</strong>
+                    {pacienteData.lugar_atencion_parto ? ` en ${pacienteData.lugar_atencion_parto}` : ""}).
+                  </p>
+                  <p className="text-[11px] text-purple-900 dark:text-purple-200 bg-purple-100/80 dark:bg-purple-900/40 p-3 rounded-xl border border-purple-200 dark:border-purple-500/30 text-left">
+                    ℹ️ <strong>Normativa MARO:</strong> Las variables de triage obstétrico prenatal (altura de fondo uterino acorde a SDG, FCF fetal, etc.) han sido bloqueadas para este expediente ya que el ciclo prenatal finalizó. Las evaluaciones médicas subsecuentes deben registrarse exclusivamente en el <strong>Módulo de Seguimiento de Puerperio y APEO</strong>.
+                  </p>
+                </div>
+
+                <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                  <Link
+                    href={`/puerperio/nuevo?paciente_id=${pacienteId}&folio=${pacienteData.folio || ""}`}
+                    className="inline-flex items-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-500 px-6 py-2.5 text-xs sm:text-sm font-bold text-white transition-all shadow-lg shadow-purple-950/20 cursor-pointer"
+                  >
+                    <i className="fa-solid fa-baby"></i>
+                    <span>Ir a Seguimiento de Puerperio y APEO</span>
+                  </Link>
+                  <Link
+                    href={`/pacientes/${pacienteId}`}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 transition-all cursor-pointer"
+                  >
+                    <i className="fa-solid fa-user"></i>
+                    <span>Ver Expediente Completo</span>
+                  </Link>
+                </div>
+              </section>
+            ) : (
+              /* FORMULARIO DE NUEVA CONSULTA PRENATAL (SOLO PARA EMBARAZO ACTIVO) */
+              <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-5 shadow-xl transition-colors">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-emerald-500/20 border border-teal-300 dark:border-emerald-400/40 flex items-center justify-center shrink-0">
+                      <i className="fa-solid fa-file-medical text-teal-700 dark:text-emerald-400 text-lg"></i>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">Registro de Nueva Consulta</h2>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">Captura de signos vitales, parámetros somáticos y triage de alarma</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 
@@ -926,13 +1011,121 @@ export default function ConsultasPaciente() {
                 <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-white/10">
                   <h3 className="text-xs font-bold text-teal-800 dark:text-cyan-300 uppercase tracking-wider flex items-center gap-2">
                     <i className="fa-solid fa-clipboard-user text-teal-600 dark:text-cyan-400"></i>
-                    <span>3. Diagnóstico, Plan y Referencia</span>
+                    <span>3. Diagnóstico, Resolución del Embarazo y Referencia</span>
                   </h3>
+
+                  {/* SELECTOR DE RESOLUCIÓN DE EMBARAZO */}
+                  <div className="space-y-2 p-3.5 rounded-xl border border-teal-500/30 bg-teal-500/5 dark:bg-slate-900/60">
+                      <span className="text-xs font-bold text-teal-900 dark:text-teal-300 block">
+                        Estatus del Evento / Resolución del Embarazo
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <label className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition ${
+                          form.tipo_evento === 'embarazo' 
+                            ? 'border-teal-500 bg-teal-500/15 text-teal-950 dark:text-teal-200 font-bold' 
+                            : 'border-slate-300 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="tipo_evento"
+                            value="embarazo"
+                            checked={form.tipo_evento === 'embarazo'}
+                            onChange={(e) => {
+                              handleChange('tipo_evento', e.target.value);
+                              handleChange('diagnostico', 'seguimiento_embarazo');
+                            }}
+                            className="text-teal-600 focus:ring-teal-500"
+                          />
+                          <span>🤰 Embarazo en Curso</span>
+                        </label>
+
+                        <label className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition ${
+                          form.tipo_evento === 'resolucion_sin_complicaciones' 
+                            ? 'border-purple-500 bg-purple-500/15 text-purple-950 dark:text-purple-200 font-bold' 
+                            : 'border-slate-300 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="tipo_evento"
+                            value="resolucion_sin_complicaciones"
+                            checked={form.tipo_evento === 'resolucion_sin_complicaciones'}
+                            onChange={(e) => {
+                              handleChange('tipo_evento', e.target.value);
+                              handleChange('diagnostico', 'puerperio');
+                              if (!form.fecha_evento) handleChange('fecha_evento', form.fecha_consulta || new Date().toISOString().slice(0, 10));
+                            }}
+                            className="text-purple-600 focus:ring-purple-500"
+                          />
+                          <span>👶 Resolución sin Complicaciones</span>
+                        </label>
+
+                        <label className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition ${
+                          form.tipo_evento === 'resolucion_con_complicaciones' 
+                            ? 'border-rose-500 bg-rose-500/15 text-rose-950 dark:text-rose-200 font-bold' 
+                            : 'border-slate-300 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="tipo_evento"
+                            value="resolucion_con_complicaciones"
+                            checked={form.tipo_evento === 'resolucion_con_complicaciones'}
+                            onChange={(e) => {
+                              handleChange('tipo_evento', e.target.value);
+                              handleChange('diagnostico', 'puerperio');
+                              if (!form.fecha_evento) handleChange('fecha_evento', form.fecha_consulta || new Date().toISOString().slice(0, 10));
+                            }}
+                            className="text-rose-600 focus:ring-rose-500"
+                          />
+                          <span>⚠️ Resolución con Complicaciones</span>
+                        </label>
+                      </div>
+
+                      {form.tipo_evento !== 'embarazo' && (
+                        <div className="mt-3 pt-3 border-t border-purple-500/20 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
+                          <label className="space-y-1 text-xs">
+                            <span className="text-purple-900 dark:text-purple-300 font-bold">Fecha del Evento Obstétrico (Parto/Cesárea) *</span>
+                            <input
+                              type="date"
+                              required
+                              className="w-full rounded-lg bg-white dark:bg-slate-900 border border-purple-400 dark:border-purple-500/40 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-purple-500/50"
+                              value={form.fecha_evento}
+                              onChange={(e) => handleChange('fecha_evento', e.target.value)}
+                            />
+                          </label>
+                          <label className="space-y-1 text-xs">
+                            <span className="text-purple-900 dark:text-purple-300 font-bold">Lugar de Atención del Parto</span>
+                            <input
+                              type="text"
+                              className="w-full rounded-lg bg-white dark:bg-slate-900 border border-purple-400 dark:border-purple-500/40 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-purple-500/50"
+                              value={form.lugar_atencion_parto}
+                              onChange={(e) => handleChange('lugar_atencion_parto', e.target.value)}
+                              placeholder="Ej. Hospital General / Hospital Materno"
+                            />
+                          </label>
+                          {form.tipo_evento === 'resolucion_con_complicaciones' && (
+                            <label className="space-y-1 text-xs sm:col-span-2">
+                              <span className="text-rose-900 dark:text-rose-300 font-bold">Complicación Principal Registrada *</span>
+                              <input
+                                type="text"
+                                required
+                                className="w-full rounded-lg bg-white dark:bg-slate-900 border border-rose-400 dark:border-rose-500/40 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500/50"
+                                value={form.complicacion_resolucion}
+                                onChange={(e) => handleChange('complicacion_resolucion', e.target.value)}
+                                placeholder="Ej. Preeclampsia con datos de severidad, Hemorragia obstétrica, Sepsis puerperal..."
+                              />
+                            </label>
+                          )}
+                          <div className="sm:col-span-2 bg-purple-500/10 border border-purple-500/20 rounded-lg p-2.5 text-[11px] text-purple-900 dark:text-purple-200">
+                            ℹ️ <strong>Nota clínica:</strong> Al guardar, las semanas de gestación se congelarán al momento del evento y la paciente iniciará automáticamente su seguimiento de <strong>Puerperio (Día 1 a 42)</strong>.
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Diagnóstico */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-700 dark:text-slate-200 font-bold">Diagnóstico</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">Diagnóstico Clínico</span>
                       <select
                         className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-teal-500/50"
                         value={form.diagnostico}
@@ -940,7 +1133,7 @@ export default function ConsultasPaciente() {
                       >
                         <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione un diagnóstico</option>
                         <option value="seguimiento_embarazo" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seguimiento de embarazo</option>
-                        <option value="puerperio" className="bg-purple-50 text-purple-950 dark:bg-slate-900 font-bold dark:text-purple-300">Puerperio (Requiere formulario específico)</option>
+                        <option value="puerperio" className="bg-purple-50 text-purple-950 dark:bg-slate-900 font-bold dark:text-purple-300">Puerperio (Seguimiento postparto)</option>
                       </select>
                     </label>
 
@@ -1014,6 +1207,7 @@ export default function ConsultasPaciente() {
 
               </form>
             </section>
+            )}
 
             {/* HISTORIAL DE CONSULTAS PREVIAS */}
             <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl transition-colors">
@@ -1107,135 +1301,175 @@ export default function ConsultasPaciente() {
           {/* COLUMNA LATERAL STICKY (4/12) - SEMÁFORO EN TIEMPO REAL Y HALLAZGOS */}
           <aside className="lg:col-span-4 space-y-5 lg:sticky lg:top-6">
             
-            {/* SEMÁFORO DE RIESGO TOTAL COMBINADO EN TIEMPO REAL */}
-            <div className={`rounded-2xl border-2 p-5 shadow-xl transition-all duration-200 ${
-              puntajeRiesgoTotal >= 25
-                ? 'bg-rose-50 border-rose-300 dark:bg-rose-500/20 dark:border-rose-500/70 shadow-rose-950/20'
-                : puntajeRiesgoTotal >= 10
-                ? 'bg-orange-50 border-orange-300 dark:bg-orange-500/20 dark:border-orange-400/70 shadow-orange-950/20'
-                : puntajeRiesgoTotal >= 4
-                ? 'bg-amber-50 border-amber-300 dark:bg-amber-500/20 dark:border-amber-400/70 shadow-amber-950/20'
-                : 'bg-emerald-50 border-emerald-300 dark:bg-emerald-500/20 dark:border-emerald-400/70 shadow-emerald-950/20'
-            }`}>
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                  Semáforo de Riesgo en Vivo
-                </span>
-                <span className={`px-3 py-1 rounded-full text-xs font-black tracking-wider shadow-xs ${
-                  puntajeRiesgoTotal >= 25
-                    ? 'bg-rose-600 text-white animate-pulse'
-                    : puntajeRiesgoTotal >= 10
-                    ? 'bg-orange-500 text-white dark:text-slate-950'
-                    : puntajeRiesgoTotal >= 4
-                    ? 'bg-amber-400 text-slate-950'
-                    : 'bg-emerald-600 text-white dark:bg-emerald-400 dark:text-slate-950'
-                }`}>
-                  {puntajeRiesgoTotal >= 25 ? 'CRÍTICO' :
-                   puntajeRiesgoTotal >= 10 ? 'MUY ALTO' :
-                   puntajeRiesgoTotal >= 4 ? 'ALTO' : 'BAJO'}
-                </span>
-              </div>
-
-              <div className="pt-3 flex items-baseline justify-between">
-                <div>
-                  <span className="text-xs text-slate-500 dark:text-slate-300 block font-medium">Puntaje Total MARO</span>
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-4xl font-black text-slate-900 dark:text-white">{puntajeRiesgoTotal}</span>
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-300">puntos</span>
+            {pacienteData.estado_embarazo === "puerperio" || pacienteData.estado_embarazo === "concluido" ? (
+              <div className="rounded-2xl border border-purple-400/30 bg-purple-500/10 dark:bg-slate-900/80 p-5 space-y-4 shadow-xl">
+                <div className="flex items-center gap-2.5 border-b border-purple-500/20 pb-3">
+                  <span className="text-2xl">👶</span>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Estado Obstétrico</h3>
+                    <p className="text-xs text-purple-700 dark:text-purple-300 font-semibold">Puerperio (Seguimiento Activo)</p>
                   </div>
                 </div>
 
-                <div className="text-right space-y-1 text-xs">
-                  <div className="text-slate-600 dark:text-slate-300">
-                    Antecedentes: <strong className="text-slate-900 dark:text-white font-bold">{pacienteData.factor_riesgo_antecedentes || 0} pts</strong>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                    <span className="text-slate-500 dark:text-slate-400">Fecha de parto:</span>
+                    <strong className="text-slate-900 dark:text-white">{formatDate(pacienteData.fecha_resolucion)}</strong>
                   </div>
-                  <div className="text-slate-600 dark:text-slate-300">
-                    Tamizajes: <strong className="text-slate-900 dark:text-white font-bold">{pacienteData.factor_riesgo_tamizajes || 0} pts</strong>
+                  <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                    <span className="text-slate-500 dark:text-slate-400">Tipo de resolución:</span>
+                    <strong className="text-slate-900 dark:text-white">
+                      {pacienteData.tipo_resolucion === "sin_complicaciones"
+                        ? "Sin complicaciones"
+                        : pacienteData.tipo_resolucion === "con_complicaciones"
+                        ? "Con complicaciones"
+                        : "Resuelto"}
+                    </strong>
                   </div>
-                  <div className="text-slate-600 dark:text-slate-300">
-                    Cita Actual: <strong className="text-emerald-700 dark:text-emerald-300 font-bold">+{puntajeConsultaParametros} pts</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* HALLAZGOS ACTIVOS EN LA CAPTURA */}
-            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-5 space-y-3 shadow-xl transition-colors">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <i className="fa-solid fa-list-check text-teal-600 dark:text-cyan-400 text-sm"></i>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Hallazgos en Consulta</span>
-                </div>
-                <span className="text-xs font-bold text-teal-800 dark:text-cyan-300 bg-teal-100 dark:bg-cyan-500/20 px-2 py-0.5 rounded-md">
-                  +{puntajeConsultaParametros} pts
-                </span>
-              </div>
-
-              {hallazgosConsulta.length > 0 ? (
-                <div className="space-y-2 pt-1">
-                  {hallazgosConsulta.map((h, i) => (
-                    <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl p-2.5 text-xs">
-                      <div>
-                        <span className="text-slate-900 dark:text-white font-semibold block">{h.campo}</span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-300 block">{h.criterio}</span>
-                      </div>
-                      <span className="font-black text-amber-800 dark:text-amber-300 text-sm">+{h.puntos} pts</span>
+                  {pacienteData.lugar_atencion_parto && (
+                    <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                      <span className="text-slate-500 dark:text-slate-400">Lugar de atención:</span>
+                      <strong className="text-slate-900 dark:text-white">{pacienteData.lugar_atencion_parto}</strong>
                     </div>
-                  ))}
+                  )}
                 </div>
-              ) : (
-                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-400/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 text-center flex items-center justify-center gap-2">
-                  <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
-                  <span>Sin hallazgos de riesgo en los parámetros capturados</span>
-                </div>
-              )}
-            </div>
 
-            {/* ALERTA DE IVU O CERVICOVAGINITIS DE REPETICIÓN */}
-            {form.ivu_repeticion && (
-              <div className="rounded-2xl border-2 border-rose-400 bg-rose-50 dark:bg-rose-600/30 p-4 space-y-2.5 shadow-xl animate-in fade-in duration-200">
-                <div className="flex items-center justify-between gap-2 border-b border-rose-300 dark:border-rose-300/20 pb-2">
-                  <div className="flex items-center gap-2 text-rose-900 dark:text-white font-extrabold text-xs uppercase tracking-wider">
-                    <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-300 text-sm animate-pulse"></i>
-                    <span>Alerta: IVU de Repetición</span>
-                  </div>
-                  <span className="text-xs font-black bg-rose-600 text-white px-2 py-0.5 rounded-full border border-rose-300/40">
-                    +15 pts
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-rose-950 dark:text-rose-100 leading-snug">
-                  Envío inmediato a Segundo Nivel de Atención con urocultivo, cultivo vaginal con antibiograma.
-                </p>
-                <div className="text-[11px] text-rose-900 dark:text-rose-200/90 font-medium bg-rose-100 dark:bg-red-950/40 p-2 rounded-lg border border-rose-300 dark:border-red-400/30 flex items-center gap-2">
-                  <i className="fa-solid fa-person-pregnant text-rose-600 dark:text-rose-300"></i>
-                  <span>Alto riesgo de parto pretérmino asociado.</span>
-                </div>
+                <Link
+                  href={`/puerperio/nuevo?paciente_id=${pacienteId}&folio=${pacienteData.folio || ""}`}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-500 py-2.5 px-4 text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+                >
+                  <i className="fa-solid fa-baby"></i>
+                  <span>Abrir Módulo de Puerperio</span>
+                </Link>
               </div>
-            )}
+            ) : (
+              <>
+                {/* SEMÁFORO DE RIESGO TOTAL COMBINADO EN TIEMPO REAL */}
+                <div className={`rounded-2xl border-2 p-5 shadow-xl transition-all duration-200 ${
+                  puntajeRiesgoTotal >= 25
+                    ? 'bg-rose-50 border-rose-300 dark:bg-rose-500/20 dark:border-rose-500/70 shadow-rose-950/20'
+                    : puntajeRiesgoTotal >= 10
+                    ? 'bg-orange-50 border-orange-300 dark:bg-orange-500/20 dark:border-orange-400/70 shadow-orange-950/20'
+                    : puntajeRiesgoTotal >= 4
+                    ? 'bg-amber-50 border-amber-300 dark:bg-amber-500/20 dark:border-amber-400/70 shadow-amber-950/20'
+                    : 'bg-emerald-50 border-emerald-300 dark:bg-emerald-500/20 dark:border-emerald-400/70 shadow-emerald-950/20'
+                }`}>
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                      Semáforo de Riesgo en Vivo
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-black tracking-wider shadow-xs ${
+                      puntajeRiesgoTotal >= 25
+                        ? 'bg-rose-600 text-white animate-pulse'
+                        : puntajeRiesgoTotal >= 10
+                        ? 'bg-orange-500 text-white dark:text-slate-950'
+                        : puntajeRiesgoTotal >= 4
+                        ? 'bg-amber-400 text-slate-950'
+                        : 'bg-emerald-600 text-white dark:bg-emerald-400 dark:text-slate-950'
+                    }`}>
+                      {puntajeRiesgoTotal >= 25 ? 'CRÍTICO' :
+                       puntajeRiesgoTotal >= 10 ? 'MUY ALTO' :
+                       puntajeRiesgoTotal >= 4 ? 'ALTO' : 'BAJO'}
+                    </span>
+                  </div>
 
-            {/* ALERTA DE ESCALAMIENTO / RIESGO MAYOR */}
-            {(tieneEscalamientoForzado || puntajeRiesgoTotal >= 25) && (
-              <div className="rounded-2xl border-2 border-rose-400/80 bg-rose-50 dark:bg-rose-500/25 p-4 space-y-2.5 shadow-xl animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-xs uppercase tracking-wider">
-                  <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-sm"></i>
-                  <span>Aviso de Escalamiento Estatal</span>
+                  <div className="pt-3 flex items-baseline justify-between">
+                    <div>
+                      <span className="text-xs text-slate-500 dark:text-slate-300 block font-medium">Puntaje Total MARO</span>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-4xl font-black text-slate-900 dark:text-white">{puntajeRiesgoTotal}</span>
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-300">puntos</span>
+                      </div>
+                    </div>
+
+                    <div className="text-right space-y-1 text-xs">
+                      <div className="text-slate-600 dark:text-slate-300">
+                        Antecedentes: <strong className="text-slate-900 dark:text-white font-bold">{pacienteData.factor_riesgo_antecedentes || 0} pts</strong>
+                      </div>
+                      <div className="text-slate-600 dark:text-slate-300">
+                        Tamizajes: <strong className="text-slate-900 dark:text-white font-bold">{pacienteData.factor_riesgo_tamizajes || 0} pts</strong>
+                      </div>
+                      <div className="text-slate-600 dark:text-slate-300">
+                        Cita Actual: <strong className="text-emerald-700 dark:text-emerald-300 font-bold">+{puntajeConsultaParametros} pts</strong>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs font-semibold text-rose-950 dark:text-rose-100 leading-snug">
-                  {puntajeRiesgoTotal >= 25 
-                    ? "Puntaje total ≥ 25 puntos. Al guardar esta consulta, el caso pasará automáticamente a nivel estatal para determinación colegiada."
-                    : "Paciente con antecedentes mayores de alto riesgo. Notificación automática activa."
-                  }
-                </p>
-                {criteriosEscalamientoActivos.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {criteriosEscalamientoActivos.map((crit, idx) => (
-                      <span key={idx} className="text-[10px] bg-rose-100 dark:bg-rose-400/20 border border-rose-300 dark:border-rose-300/40 text-rose-900 dark:text-rose-200 font-bold px-2 py-0.5 rounded-full">
-                        {crit}
+
+                {/* HALLAZGOS ACTIVOS EN LA CAPTURA */}
+                <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-5 space-y-3 shadow-xl transition-colors">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <i className="fa-solid fa-list-check text-teal-600 dark:text-cyan-400 text-sm"></i>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Hallazgos en Consulta</span>
+                    </div>
+                    <span className="text-xs font-bold text-teal-800 dark:text-cyan-300 bg-teal-100 dark:bg-cyan-500/20 px-2 py-0.5 rounded-md">
+                      +{puntajeConsultaParametros} pts
+                    </span>
+                  </div>
+
+                  {hallazgosConsulta.length > 0 ? (
+                    <div className="space-y-2 pt-1">
+                      {hallazgosConsulta.map((h, i) => (
+                        <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl p-2.5 text-xs">
+                          <div>
+                            <span className="text-slate-900 dark:text-white font-semibold block">{h.campo}</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-300 block">{h.criterio}</span>
+                          </div>
+                          <span className="font-black text-amber-800 dark:text-amber-300 text-sm">+{h.puntos} pts</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-400/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 text-center flex items-center justify-center gap-2">
+                      <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
+                      <span>Sin hallazgos de riesgo en los parámetros capturados</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* ALERTA DE IVU O CERVICOVAGINITIS DE REPETICIÓN */}
+                {form.ivu_repeticion && (
+                  <div className="rounded-2xl border-2 border-rose-400 bg-rose-50 dark:bg-rose-600/30 p-4 space-y-2.5 shadow-xl animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between gap-2 border-b border-rose-300 dark:border-rose-300/20 pb-2">
+                      <div className="flex items-center gap-2 text-rose-900 dark:text-white font-extrabold text-xs uppercase tracking-wider">
+                        <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-300 text-sm animate-pulse"></i>
+                        <span>Alerta: IVU de Repetición</span>
+                      </div>
+                      <span className="text-xs font-black bg-rose-600 text-white px-2 py-0.5 rounded-full border border-rose-300/40">
+                        +15 pts
                       </span>
-                    ))}
+                    </div>
+                    <p className="text-xs font-bold text-rose-950 dark:text-rose-100 leading-snug">
+                      Envío inmediato a Segundo Nivel de Atención con urocultivo, cultivo vaginal con antibiograma.
+                    </p>
+                    <div className="text-[11px] text-rose-900 dark:text-rose-200/90 font-medium bg-rose-100 dark:bg-red-950/40 p-2 rounded-lg border border-rose-300 dark:border-red-400/30 flex items-center gap-2">
+                      <i className="fa-solid fa-person-pregnant text-rose-600 dark:text-rose-300"></i>
+                      <span>Alto riesgo de parto pretérmino asociado.</span>
+                    </div>
                   </div>
                 )}
-              </div>
+
+                {/* ESCALAMIENTO A CRÍTICO (ROJO) */}
+                {tieneEscalamientoForzado && (
+                  <div className="rounded-2xl border-2 border-purple-400 bg-purple-50 dark:bg-purple-900/30 p-4 space-y-2 shadow-xl animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2 text-purple-900 dark:text-purple-200 font-extrabold text-xs uppercase tracking-wider">
+                      <i className="fa-solid fa-angles-up text-purple-600 dark:text-purple-300 text-sm animate-bounce"></i>
+                      <span>Escalamiento a Crítico</span>
+                    </div>
+                    <p className="text-xs font-bold text-purple-950 dark:text-purple-100">
+                      Puntaje fijado en mínimo 25 puntos por antecedentes de muy alto riesgo:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {criteriosEscalamientoActivos.map((crit, idx) => (
+                        <span key={idx} className="bg-purple-200 dark:bg-purple-800/60 text-purple-950 dark:text-purple-100 px-2.5 py-1 rounded-md text-[10px] font-bold border border-purple-300 dark:border-purple-600/50">
+                          {crit}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {/* RESUMEN DE PERFIL DE LA PACIENTE */}

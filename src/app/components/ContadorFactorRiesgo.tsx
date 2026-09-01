@@ -13,6 +13,21 @@ interface Props {
   compact?: boolean; // Si es true, mostrar versión compacta
 }
 
+function formatNivel(nivel: string): string {
+  switch (nivel) {
+    case 'MUY_ALTO':
+      return 'Muy Alto';
+    case 'CRITICO':
+      return 'Crítico';
+    case 'ALTO':
+      return 'Alto';
+    case 'BAJO':
+      return 'Bajo';
+    default:
+      return nivel;
+  }
+}
+
 export default function ContadorFactorRiesgo({ resultado, compact = false }: Props) {
   // Colores según nivel
   const colorMap = {
@@ -76,7 +91,7 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
             <span
               className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${color.badge}`}
             >
-              {icono} {resultado.nivel}
+              {icono} {formatNivel(resultado.nivel)}
             </span>
           </div>
         </div>
@@ -128,7 +143,7 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
       </div>
 
       {/* FACTORES DETECTADOS */}
-      {resultado.factores.length > 0 ? (
+      {resultado.factores.length > 0 && (
         <div className="space-y-2">
           <div className="text-xs font-semibold opacity-70 mb-2">
             FACTORES IDENTIFICADOS ({resultado.factores.length}):
@@ -151,6 +166,8 @@ export default function ContadorFactorRiesgo({ resultado, compact = false }: Pro
               </div>
             ))}
           </div>
+        </div>
+      )}
 
       {/* TOTAL */}
       {resultado.factores.length > 0 && (

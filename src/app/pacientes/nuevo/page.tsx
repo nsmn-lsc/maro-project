@@ -734,9 +734,9 @@ export default function NuevoPaciente() {
         )}
         {success && <p className="text-sm text-emerald-200 bg-emerald-500/10 border border-emerald-500/40 rounded-lg px-3 py-2">{success}</p>}
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* PANEL DE RECOMENDACIONES CLÍNICAS */}
-          <aside className="lg:col-span-1 rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl lg:sticky lg:top-6 transition-colors">
+          <aside className="lg:col-span-4 xl:col-span-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-5 space-y-4 shadow-xl lg:sticky lg:top-6 transition-colors">
             <h3 className="text-lg font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
               <i className="fa-solid fa-clipboard-check text-emerald-600 dark:text-emerald-400"></i>
               <span>Recomendaciones</span>
@@ -877,7 +877,7 @@ export default function NuevoPaciente() {
 
           <form
             onSubmit={handleSubmit}
-            className="lg:col-span-4 space-y-6"
+            className="lg:col-span-8 xl:col-span-9 space-y-6"
           >
           <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl dark:shadow-2xl transition-colors">
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -2065,7 +2065,7 @@ export default function NuevoPaciente() {
                     onClick={() =>
                       handleChange(
                         item.key,
-                        isChecked ? item.valorInactivo : item.valorActivo
+                        (isChecked ? item.valorInactivo : item.valorActivo) || ""
                       )
                     }
                     className={`group flex items-center justify-between gap-2.5 h-12 rounded-lg px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${

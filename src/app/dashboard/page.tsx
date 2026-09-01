@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { evaluarCicloObstetrico } from "@/lib/resolucionEmbarazo";
 
 type Patient = {
   id: number;
@@ -22,6 +23,11 @@ type Patient = {
   imc_inicial: number | null;
   sdg_ingreso: number | null;
   semanas_gestacion: number | null;
+  estado_embarazo?: "activo" | "puerperio" | "concluido" | null;
+  fecha_resolucion?: string | null;
+  tipo_resolucion?: string | null;
+  lugar_atencion_parto?: string | null;
+  dias_puerperio?: number | null;
   factor_riesgo_antecedentes: number | null;
   factor_riesgo_tamizajes: number | null;
   puntaje_ultima_consulta: number | null;
@@ -39,7 +45,8 @@ type SessionInfo = {
   displayName?: string;
 };
 
-type FilterType = "todos" | "critico" | "alto" | "bajo" | "inasistencia" | "proxima_vencer" | "al_corriente";
+type FilterType = "todos" | "critico" | "alto" | "bajo" | "inasistencia" | "proxima_vencer" | "al_corriente" | "vencidas";
+type TabEstadoType = "embarazo" | "puerperio" | "todos";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -49,8 +56,20 @@ export default function Dashboard() {
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [patientsError, setPatientsError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [tabEstado, setTabEstado] = useState<TabEstadoType>("embarazo");
   const [activeFilter, setActiveFilter] = useState<FilterType>("todos");
   const [showInasistenciasModal, setShowInasistenciasModal] = useState(false);
+
+  // Modal de resolución rápida
+  const [selectedPatientForResolucion, setSelectedPatientForResolucion] = useState<Patient | null>(null);
+  const [resolucionForm, setResolucionForm] = useState({
+    fecha_resolucion: new Date().toISOString().slice(0, 10),
+    tipo_resolucion: "sin_complicaciones" as "sin_complicaciones" | "con_complicaciones",
+    lugar_atencion_parto: "",
+    notas: "",
+  });
+  const [savingResolucion, setSavingResolucion] = useState(false);
+  const [resolucionError, setResolucionError] = useState<string | null>(null);
   
   const [metrics, setMetrics] = useState({
     total: 0,
@@ -204,6 +223,9 @@ export default function Dashboard() {
     let inasistencia = 0;
     let proximaVencer = 0;
     let alCorriente = 0;
+    let totalEmbarazo = 0;
+    let totalPuerperio = 0;
+    let totalVencidas = 0;
 
     for (const p of patients) {
       const score = p.puntaje_total_actual ?? 0;
@@ -215,15 +237,48 @@ export default function Dashboard() {
       if (dias > 30) inasistencia++;
       else if (dias >= 21) proximaVencer++;
       else alCorriente++;
+
+      const ciclo = evaluarCicloObstetrico({
+        fum: p.fum,
+        estadoEmbarazo: p.estado_embarazo,
+        fechaResolucion: p.fecha_resolucion,
+      });
+
+      if (ciclo.estadoEmbarazo === "puerperio" || ciclo.estadoEmbarazo === "concluido") {
+        totalPuerperio++;
+      } else {
+        totalEmbarazo++;
+        if (ciclo.esFppVencida) {
+          totalVencidas++;
+        }
+      }
     }
 
-    return { critico, alto, bajo, inasistencia, proximaVencer, alCorriente, total: patients.length };
+    return {
+      critico,
+      alto,
+      bajo,
+      inasistencia,
+      proximaVencer,
+      alCorriente,
+      totalEmbarazo,
+      totalPuerperio,
+      totalVencidas,
+      total: patients.length,
+    };
   }, [patients]);
 
   const filteredPatients = useMemo(() => {
     let result = patients;
 
-    // Filtro de texto por Folio o Nombre
+    // 1. Filtro por Población Obstétrica (Pestañas: Embarazo / Puerperio / Todos)
+    if (tabEstado === "embarazo") {
+      result = result.filter((p) => p.estado_embarazo !== "puerperio" && p.estado_embarazo !== "concluido");
+    } else if (tabEstado === "puerperio") {
+      result = result.filter((p) => p.estado_embarazo === "puerperio" || p.estado_embarazo === "concluido");
+    }
+
+    // 2. Filtro de texto por Folio o Nombre
     if (searchTerm.trim()) {
       const q = searchTerm
         .toLowerCase()
@@ -241,11 +296,16 @@ export default function Dashboard() {
       });
     }
 
-    // Filtro por Estado / Semáforo
+    // 3. Filtro por Semáforo / Categoría
     if (activeFilter !== "todos") {
       result = result.filter((p) => {
         const score = p.puntaje_total_actual ?? 0;
         const dias = p.dias_sin_consulta ?? 0;
+        const ciclo = evaluarCicloObstetrico({
+          fum: p.fum,
+          estadoEmbarazo: p.estado_embarazo,
+          fechaResolucion: p.fecha_resolucion,
+        });
 
         if (activeFilter === "critico") return score >= 25;
         if (activeFilter === "alto") return score >= 4 && score < 25;
@@ -253,12 +313,13 @@ export default function Dashboard() {
         if (activeFilter === "inasistencia") return dias > 30;
         if (activeFilter === "proxima_vencer") return dias >= 21 && dias <= 30;
         if (activeFilter === "al_corriente") return dias < 21;
+        if (activeFilter === "vencidas") return ciclo.esFppVencida;
         return true;
       });
     }
 
     return result;
-  }, [patients, searchTerm, activeFilter]);
+  }, [patients, tabEstado, searchTerm, activeFilter]);
 
   const formatDate = (value: string | null | undefined) => {
     if (!value) return "—";
@@ -270,24 +331,71 @@ export default function Dashboard() {
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  /** Calcula SDG actuales a partir de la FUM (notación médica: semanas.días) */
-  const calcularSdgActual = (p: Patient): string => {
-    if (p.fum) {
-      const fumDate = new Date(p.fum);
-      if (!Number.isNaN(fumDate.getTime())) {
-        const hoy = new Date();
-        const diffMs = hoy.getTime() - fumDate.getTime();
-        const totalDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-        const weeks = Math.floor(totalDays / 7);
-        const days = totalDays % 7;
-        if (weeks >= 0 && weeks <= 45) {
-          return `${weeks}.${days}`;
-        }
+  /** Calcula SDG actuales o datos de puerperio */
+  const obtenerInfoObstetrica = (p: Patient) => {
+    return evaluarCicloObstetrico({
+      fum: p.fum,
+      estadoEmbarazo: p.estado_embarazo,
+      fechaResolucion: p.fecha_resolucion,
+    });
+  };
+
+  const handleOpenResolucionModal = (patient: Patient) => {
+    setSelectedPatientForResolucion(patient);
+    setResolucionForm({
+      fecha_resolucion: new Date().toISOString().slice(0, 10),
+      tipo_resolucion: "sin_complicaciones",
+      lugar_atencion_parto: "",
+      notas: "",
+    });
+    setResolucionError(null);
+  };
+
+  const handleSaveResolucion = async () => {
+    if (!selectedPatientForResolucion) return;
+    setSavingResolucion(true);
+    setResolucionError(null);
+
+    try {
+      const res = await fetch("/api/pacientes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedPatientForResolucion.id,
+          estado_embarazo: "puerperio",
+          fecha_resolucion: resolucionForm.fecha_resolucion,
+          tipo_resolucion: resolucionForm.tipo_resolucion,
+          lugar_atencion_parto: resolucionForm.lugar_atencion_parto,
+          notas: resolucionForm.notas,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Error al actualizar la resolución del embarazo");
       }
+
+      // Actualizar estado local
+      setPatients((prev) =>
+        prev.map((p) =>
+          p.id === selectedPatientForResolucion.id
+            ? {
+                ...p,
+                estado_embarazo: "puerperio",
+                fecha_resolucion: resolucionForm.fecha_resolucion,
+                tipo_resolucion: resolucionForm.tipo_resolucion,
+                lugar_atencion_parto: resolucionForm.lugar_atencion_parto,
+              }
+            : p
+        )
+      );
+
+      setSelectedPatientForResolucion(null);
+    } catch (err: any) {
+      setResolucionError(err.message || "Error desconocido");
+    } finally {
+      setSavingResolucion(false);
     }
-    if (p.semanas_gestacion != null) return String(p.semanas_gestacion);
-    if (p.sdg_ingreso != null) return String(p.sdg_ingreso);
-    return "—";
   };
 
   const handleGenerateExcel = async () => {
@@ -640,7 +748,7 @@ export default function Dashboard() {
               <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
                 {searchTerm || activeFilter !== "todos"
                   ? `Mostrando ${filteredPatients.length} de ${patients.length} registros filtrados`
-                  : "Todos los expedientes obstétricos registrados en tu unidad médica"}
+                  : "Expedientes obstétricos registrados en tu unidad médica"}
               </p>
             </div>
 
@@ -694,6 +802,80 @@ export default function Dashboard() {
                 ≥25 Muy Alto ({counts.critico})
               </button>
             </div>
+          </div>
+
+          {/* PESTAÑAS PRINCIPALES: EMBARAZO ACTIVO VS PUERPERIO VS TODOS */}
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                setTabEstado("embarazo");
+                setActiveFilter("todos");
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer border ${
+                tabEstado === "embarazo"
+                  ? "bg-teal-600 text-white dark:bg-teal-500/30 dark:border-teal-400 dark:text-teal-200 shadow-md"
+                  : "bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10"
+              }`}
+            >
+              <span>🤰 Embarazadas Activas</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-extrabold ${
+                tabEstado === "embarazo"
+                  ? "bg-teal-700/90 text-white dark:bg-teal-400/30"
+                  : "bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300"
+              }`}>
+                {counts.totalEmbarazo}
+              </span>
+              {counts.totalVencidas > 0 && (
+                <span className="text-[10px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.5 rounded-full" title="Pacientes con >40 SDG o FPP vencida sin resolución">
+                  ⚠️ {counts.totalVencidas} vencidas
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTabEstado("puerperio");
+                setActiveFilter("todos");
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer border ${
+                tabEstado === "puerperio"
+                  ? "bg-purple-600 text-white dark:bg-purple-500/30 dark:border-purple-400 dark:text-purple-200 shadow-md"
+                  : "bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10"
+              }`}
+            >
+              <span>👶 En Puerperio</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-extrabold ${
+                tabEstado === "puerperio"
+                  ? "bg-purple-700/90 text-white dark:bg-purple-400/30"
+                  : "bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300"
+              }`}>
+                {counts.totalPuerperio}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTabEstado("todos");
+                setActiveFilter("todos");
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer border ${
+                tabEstado === "todos"
+                  ? "bg-slate-900 text-white dark:bg-white/20 dark:border-white/30 dark:text-white shadow-md"
+                  : "bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10"
+              }`}
+            >
+              <span>📁 Todo el Censo</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-extrabold ${
+                tabEstado === "todos"
+                  ? "bg-slate-800 text-white dark:bg-white/20"
+                  : "bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300"
+              }`}>
+                {counts.total}
+              </span>
+            </button>
           </div>
 
           {/* Barra de Búsqueda */}
@@ -798,8 +980,8 @@ export default function Dashboard() {
                   <tr>
                     <th className="py-3 px-3.5 font-bold">Folio</th>
                     <th className="py-3 px-3.5 font-bold">Paciente</th>
-                    <th className="py-3 px-3.5 font-bold">SDG Actuales</th>
-                    <th className="py-3 px-3.5 font-bold text-center">Seguimiento CPN</th>
+                    <th className="py-3 px-3.5 font-bold">Estatus / SDG</th>
+                    <th className="py-3 px-3.5 font-bold text-center">Seguimiento</th>
                     <th className="py-3 px-3.5 font-bold text-center">Antecedentes</th>
                     <th className="py-3 px-3.5 font-bold text-center">Tamizajes</th>
                     <th className="py-3 px-3.5 font-bold text-center">Riesgo Total</th>
@@ -812,6 +994,7 @@ export default function Dashboard() {
                     const antScore = p.factor_riesgo_antecedentes ?? 0;
                     const tamScore = p.factor_riesgo_tamizajes ?? 0;
                     const seguimiento = getSeguimientoStatus(p);
+                    const infoObs = obtenerInfoObstetrica(p);
 
                     return (
                       <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
@@ -833,12 +1016,42 @@ export default function Dashboard() {
                           </div>
                         </td>
 
-                        {/* SDG Actuales + Ingreso */}
+                        {/* SDG Actuales / Estatus Obstétrico */}
                         <td className="py-2.5 px-3.5 text-slate-600 dark:text-slate-300">
-                          <div className="flex flex-col">
-                            <span className="text-slate-900 dark:text-white font-bold">{calcularSdgActual(p)}</span>
-                            {p.sdg_ingreso != null && (
-                              <span className="text-[10px] text-slate-500 dark:text-slate-400">Ingreso: {p.sdg_ingreso} sem</span>
+                          <div className="flex flex-col gap-0.5">
+                            {infoObs.estadoEmbarazo === "puerperio" ? (
+                              <>
+                                <span className="inline-flex items-center gap-1 text-purple-900 dark:text-purple-200 font-bold bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 rounded-full text-[10px] w-fit">
+                                  <span>👶 Puerperio</span>
+                                  <span className="font-extrabold">(Día {infoObs.diasPuerperio ?? 1}/42)</span>
+                                </span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  Parto: {formatDate(p.fecha_resolucion)}
+                                </span>
+                              </>
+                            ) : infoObs.estadoEmbarazo === "concluido" ? (
+                              <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">
+                                Concluido (Alta)
+                              </span>
+                            ) : (
+                              <>
+                                <span className="text-slate-900 dark:text-white font-bold">{infoObs.sdgTexto}</span>
+                                {infoObs.esFppVencida ? (
+                                  <span className="inline-flex items-center gap-1 text-amber-900 dark:text-amber-200 font-bold bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-md text-[10px] w-fit">
+                                    <span>⚠️ FPP Vencida</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenResolucionModal(p)}
+                                      className="underline hover:text-amber-700 dark:hover:text-white ml-0.5 cursor-pointer font-extrabold"
+                                      title="Registrar resolución de embarazo"
+                                    >
+                                      Resolver
+                                    </button>
+                                  </span>
+                                ) : p.sdg_ingreso != null ? (
+                                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Ingreso: {p.sdg_ingreso} sem</span>
+                                ) : null}
+                              </>
                             )}
                           </div>
                         </td>
@@ -897,11 +1110,22 @@ export default function Dashboard() {
                           </span>
                         </td>
 
-                        {/* Acción */}
-                        <td className="py-2.5 px-3.5 text-right">
+                        {/* Acciones */}
+                        <td className="py-2.5 px-3.5 text-right whitespace-nowrap space-x-1.5">
+                          {infoObs.estadoEmbarazo === "activo" && infoObs.esFppVencida && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenResolucionModal(p)}
+                              className="inline-flex items-center gap-1 text-amber-950 dark:text-amber-100 bg-amber-400 hover:bg-amber-300 dark:bg-amber-500/30 dark:border dark:border-amber-400/50 py-1.5 px-2.5 rounded-lg text-xs font-bold transition shadow-sm cursor-pointer"
+                              title="Registrar término / resolución del embarazo"
+                            >
+                              <i className="fa-solid fa-baby text-[10px]"></i>
+                              <span>Resolver</span>
+                            </button>
+                          )}
                           <Link
                             href={`/pacientes/${p.id}`}
-                            className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-800 dark:text-cyan-200 bg-teal-50 dark:bg-cyan-500/15 border border-teal-300 dark:border-cyan-400/40 px-3 py-1 rounded-xl hover:bg-teal-100 dark:hover:bg-cyan-500/30 hover:text-teal-950 dark:hover:text-white transition"
+                            className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 py-1.5 px-3 rounded-lg text-xs font-semibold transition"
                           >
                             <span>Expediente</span>
                             <i className="fa-solid fa-chevron-right text-[10px]"></i>
@@ -914,8 +1138,147 @@ export default function Dashboard() {
               </table>
             </div>
           )}
-
         </section>
+
+        {/* MODAL DE RESOLUCIÓN RÁPIDA DE EMBARAZO */}
+        {selectedPatientForResolucion && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-fade-in">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-3">
+                <div className="space-y-0.5">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>👶 Registrar Término / Resolución</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Paciente: <strong>{selectedPatientForResolucion.nombre_completo}</strong> (Folio: {selectedPatientForResolucion.folio})
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPatientForResolucion(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                >
+                  <i className="fa-solid fa-xmark text-lg"></i>
+                </button>
+              </div>
+
+              {resolucionError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-200 text-xs">
+                  {resolucionError}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Tipo de Resolución
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition ${
+                      resolucionForm.tipo_resolucion === 'sin_complicaciones'
+                        ? 'border-purple-500 bg-purple-500/15 text-purple-950 dark:text-purple-200 font-bold'
+                        : 'border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="modal_tipo_resolucion"
+                        value="sin_complicaciones"
+                        checked={resolucionForm.tipo_resolucion === 'sin_complicaciones'}
+                        onChange={() => setResolucionForm({ ...resolucionForm, tipo_resolucion: 'sin_complicaciones' })}
+                      />
+                      <span>Sin complicaciones</span>
+                    </label>
+
+                    <label className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition ${
+                      resolucionForm.tipo_resolucion === 'con_complicaciones'
+                        ? 'border-rose-500 bg-rose-500/15 text-rose-950 dark:text-rose-200 font-bold'
+                        : 'border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="modal_tipo_resolucion"
+                        value="con_complicaciones"
+                        checked={resolucionForm.tipo_resolucion === 'con_complicaciones'}
+                        onChange={() => setResolucionForm({ ...resolucionForm, tipo_resolucion: 'con_complicaciones' })}
+                      />
+                      <span>Con complicaciones</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="space-y-1 text-xs">
+                    <span className="text-slate-700 dark:text-slate-300 font-bold">Fecha del Parto / Término *</span>
+                    <input
+                      type="date"
+                      required
+                      className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-purple-500/50"
+                      value={resolucionForm.fecha_resolucion}
+                      onChange={(e) => setResolucionForm({ ...resolucionForm, fecha_resolucion: e.target.value })}
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-xs">
+                    <span className="text-slate-700 dark:text-slate-300 font-bold">Lugar de Atención</span>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-purple-500/50"
+                      value={resolucionForm.lugar_atencion_parto}
+                      onChange={(e) => setResolucionForm({ ...resolucionForm, lugar_atencion_parto: e.target.value })}
+                      placeholder="Ej. Hospital General"
+                    />
+                  </label>
+                </div>
+
+                {resolucionForm.tipo_resolucion === 'con_complicaciones' && (
+                  <label className="space-y-1 text-xs block">
+                    <span className="text-rose-700 dark:text-rose-300 font-bold">Detalle de la Complicación</span>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-rose-300 dark:border-rose-500/30 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500/50"
+                      value={resolucionForm.notas}
+                      onChange={(e) => setResolucionForm({ ...resolucionForm, notas: e.target.value })}
+                      placeholder="Ej. Preeclampsia con datos de severidad, hemorragia, etc."
+                    />
+                  </label>
+                )}
+
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/5 p-2.5 rounded-xl border border-slate-200 dark:border-white/10">
+                  ℹ️ Al guardar, las semanas de gestación se congelarán al momento del parto y la paciente se trasladará a la pestaña <strong>Puerperio</strong>.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPatientForResolucion(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                  disabled={savingResolucion}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveResolucion}
+                  disabled={savingResolucion}
+                  className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 transition shadow-md cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
+                >
+                  {savingResolucion ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin"></i>
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-check"></i>
+                      <span>Confirmar Resolución</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* MODAL: CENSO DE BÚSQUEDA INTENCIONADA DE INASISTENCIAS (>30 DÍAS) */}
         {showInasistenciasModal && (
@@ -977,7 +1340,7 @@ export default function Dashboard() {
                               🔴 {dias} días sin acudir
                             </span>
                             <span className="text-xs bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-full font-medium">
-                              SDG: {calcularSdgActual(p)}
+                              SDG: {obtenerInfoObstetrica(p).sdgTexto}
                             </span>
                           </div>
 
