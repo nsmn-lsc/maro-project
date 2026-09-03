@@ -73,6 +73,7 @@ export default function ConsultasPaciente() {
   const [form, setForm] = useState(initialForm);
   const [showPuerperioModal, setShowPuerperioModal] = useState(false);
   const [pendingPuerperioRedirect, setPendingPuerperioRedirect] = useState<string | null>(null);
+  const [hallazgosMinimizado, setHallazgosMinimizado] = useState(true);
   
   const [pacienteData, setPacienteData] = useState<{
     folio: string | null;
@@ -308,6 +309,171 @@ export default function ConsultasPaciente() {
       alerta: form.color_piel === "cianotica",
     },
   ].filter((item) => item.puntos > 0);
+
+  const alertasSignosVitales = useMemo(() => {
+    const list: { campo: string; valor: string; nivel: "ROJO" | "AMARILLO"; descripcion: string }[] = [];
+
+    if (taSistolicaAlerta) {
+      list.push({
+        campo: "T/A Sistólica",
+        valor: `${form.ta_sistolica} mmHg`,
+        nivel: "ROJO",
+        descripcion: "Emergencia Obstétrica (≤ 89 o ≥ 160 mmHg)",
+      });
+    } else if (taSistolicaAdvertencia) {
+      list.push({
+        campo: "T/A Sistólica",
+        valor: `${form.ta_sistolica} mmHg`,
+        nivel: "AMARILLO",
+        descripcion: "Elevada / Advertencia (140 - 159 mmHg)",
+      });
+    }
+
+    if (taDiastolicaAlerta) {
+      list.push({
+        campo: "T/A Diastólica",
+        valor: `${form.ta_diastolica} mmHg`,
+        nivel: "ROJO",
+        descripcion: "Emergencia Obstétrica (≤ 50 o ≥ 110 mmHg)",
+      });
+    } else if (taDiastolicaAdvertencia) {
+      list.push({
+        campo: "T/A Diastólica",
+        valor: `${form.ta_diastolica} mmHg`,
+        nivel: "AMARILLO",
+        descripcion: "Elevada / Advertencia (90 - 109 mmHg)",
+      });
+    }
+
+    if (frecuenciaCardiacaAlerta) {
+      list.push({
+        campo: "Frecuencia Cardíaca (FC)",
+        valor: `${form.frecuencia_cardiaca} lpm`,
+        nivel: "ROJO",
+        descripcion: "Emergencia Obstétrica (< 60 o > 100 lpm)",
+      });
+    }
+
+    if (frecuenciaRespiratoriaAlerta) {
+      list.push({
+        campo: "Frecuencia Respiratoria (FR)",
+        valor: `${form.frecuencia_respiratoria} rpm`,
+        nivel: "ROJO",
+        descripcion: "Emergencia Obstétrica (< 16 o > 20 rpm)",
+      });
+    }
+
+    if (temperaturaAlerta) {
+      list.push({
+        campo: "Temperatura",
+        valor: `${form.temperatura} °C`,
+        nivel: "ROJO",
+        descripcion: "Temperatura crítica (< 36 o > 39 °C)",
+      });
+    } else if (temperaturaAdvertencia) {
+      list.push({
+        campo: "Temperatura",
+        valor: `${form.temperatura} °C`,
+        nivel: "AMARILLO",
+        descripcion: "Febrícula / Advertencia (37.5 - 38.9 °C)",
+      });
+    }
+
+    if (indiceChoqueAlerta) {
+      list.push({
+        campo: "Índice de Choque",
+        valor: `${form.indice_choque}`,
+        nivel: "ROJO",
+        descripcion: "Choque Severo (> 0.8)",
+      });
+    } else if (indiceChoqueAdvertencia) {
+      list.push({
+        campo: "Índice de Choque",
+        valor: `${form.indice_choque}`,
+        nivel: "AMARILLO",
+        descripcion: "Choque Leve / Moderado (0.7 - 0.8)",
+      });
+    }
+
+    if (form.hemorragia === "visible o abundante") {
+      list.push({
+        campo: "Hemorragia",
+        valor: "Visible o abundante",
+        nivel: "ROJO",
+        descripcion: "Emergencia Obstétrica Activa",
+      });
+    } else if (form.hemorragia === "no visible o moderada" || form.hemorragia === "no visible o escasa") {
+      list.push({
+        campo: "Hemorragia",
+        valor: form.hemorragia,
+        nivel: "AMARILLO",
+        descripcion: "Hemorragia detectada",
+      });
+    }
+
+    if (form.color_piel === "cianotica") {
+      list.push({
+        campo: "Color de Piel",
+        valor: "Cianótica",
+        nivel: "ROJO",
+        descripcion: "Hipoxia / Emergencia Obstétrica (+4 pts)",
+      });
+    } else if (form.color_piel === "palida") {
+      list.push({
+        campo: "Color de Piel",
+        valor: "Pálida",
+        nivel: "AMARILLO",
+        descripcion: "Pálida / Posible anemia",
+      });
+    }
+
+    if (form.estado_conciencia === "alteraciones") {
+      list.push({
+        campo: "Estado de Conciencia",
+        valor: "Alteraciones",
+        nivel: "ROJO",
+        descripcion: "Alteración neurológica / Estado mental",
+      });
+    }
+
+    if (form.respiracion === "alterada") {
+      list.push({
+        campo: "Respiración",
+        valor: "Alterada",
+        nivel: "AMARILLO",
+        descripcion: "Respiración alterada",
+      });
+    }
+
+    if (form.fondo_uterino_acorde_sdg) {
+      list.push({
+        campo: "Fondo Uterino",
+        valor: "No acorde a SDG",
+        nivel: "ROJO",
+        descripcion: "Desproporción / RCIU (+4 pts)",
+      });
+    }
+
+    if (form.ivu_repeticion) {
+      list.push({
+        campo: "Infección (IVU)",
+        valor: "IVU o Cervicovaginitis de repetición",
+        nivel: "ROJO",
+        descripcion: "Riesgo de parto pretérmino (+15 pts)",
+      });
+    }
+
+    return list;
+  }, [
+    taSistolicaAlerta, taSistolicaAdvertencia, form.ta_sistolica,
+    taDiastolicaAlerta, taDiastolicaAdvertencia, form.ta_diastolica,
+    frecuenciaCardiacaAlerta, form.frecuencia_cardiaca,
+    frecuenciaRespiratoriaAlerta, form.frecuencia_respiratoria,
+    temperaturaAlerta, temperaturaAdvertencia, form.temperatura,
+    indiceChoqueAlerta, indiceChoqueAdvertencia, form.indice_choque,
+    form.hemorragia, form.color_piel, form.estado_conciencia, form.respiracion,
+    form.fondo_uterino_acorde_sdg, form.ivu_repeticion,
+  ]);
 
   const puntajeRiesgoTotal =
     (pacienteData.factor_riesgo_antecedentes || 0) +
@@ -737,7 +903,7 @@ export default function ConsultasPaciente() {
                         type="number"
                         className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           taSistolicaAlerta
-                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-500/25 ring-2 ring-rose-400 text-rose-950 dark:text-white font-bold"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md placeholder:text-rose-200"
                             : taSistolicaAdvertencia
                             ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 ring-2 ring-amber-400 text-amber-950 dark:text-white font-bold"
                             : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
@@ -747,7 +913,7 @@ export default function ConsultasPaciente() {
                         placeholder="Ej. 110"
                       />
                       {taSistolicaAlerta && (
-                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-bold">⚠️ T/A Sistólica Crítica</p>
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
                       )}
                     </label>
 
@@ -758,7 +924,7 @@ export default function ConsultasPaciente() {
                         type="number"
                         className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           taDiastolicaAlerta
-                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-500/25 ring-2 ring-rose-400 text-rose-950 dark:text-white font-bold"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md placeholder:text-rose-200"
                             : taDiastolicaAdvertencia
                             ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 ring-2 ring-amber-400 text-amber-950 dark:text-white font-bold"
                             : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
@@ -768,7 +934,7 @@ export default function ConsultasPaciente() {
                         placeholder="Ej. 70"
                       />
                       {taDiastolicaAlerta && (
-                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-bold">⚠️ T/A Diastólica Crítica</p>
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
                       )}
                     </label>
 
@@ -779,7 +945,7 @@ export default function ConsultasPaciente() {
                         type="number"
                         className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           frecuenciaCardiacaAlerta
-                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-500/25 ring-2 ring-rose-400 text-rose-950 dark:text-white font-bold"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md placeholder:text-rose-200"
                             : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
                         }`}
                         value={form.frecuencia_cardiaca}
@@ -787,7 +953,7 @@ export default function ConsultasPaciente() {
                         placeholder="Ej. 80"
                       />
                       {frecuenciaCardiacaAlerta && (
-                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-bold">⚠️ FC fuera de rango</p>
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
                       )}
                     </label>
 
@@ -798,7 +964,7 @@ export default function ConsultasPaciente() {
                         type="number"
                         className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           frecuenciaRespiratoriaAlerta
-                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md placeholder:text-rose-200"
                             : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
                         }`}
                         value={form.frecuencia_respiratoria}
@@ -806,7 +972,7 @@ export default function ConsultasPaciente() {
                         placeholder="Ej. 18"
                       />
                       {frecuenciaRespiratoriaAlerta && (
-                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 &lt; 16 o &gt; 20 FR = 4 Pts (Emergencia Obstétrica)</p>
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
                       )}
                     </label>
 
@@ -818,7 +984,7 @@ export default function ConsultasPaciente() {
                         step="0.1"
                         className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           temperaturaAlerta
-                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-500/25 ring-2 ring-rose-400 text-rose-950 dark:text-white font-bold"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md placeholder:text-rose-200"
                             : temperaturaAdvertencia
                             ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 ring-2 ring-amber-400 text-amber-950 dark:text-white font-bold"
                             : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
@@ -828,7 +994,7 @@ export default function ConsultasPaciente() {
                         placeholder="Ej. 36.5"
                       />
                       {temperaturaAlerta && (
-                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-bold">⚠️ Temperatura Crítica</p>
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Temperatura Crítica! (&lt; 36 o &gt; 39 °C)</p>
                       )}
                     </label>
 
@@ -840,7 +1006,7 @@ export default function ConsultasPaciente() {
                         step="0.01"
                         className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           indiceChoqueAlerta
-                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-500/25 ring-2 ring-rose-400 text-rose-950 dark:text-white font-bold"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md placeholder:text-rose-200"
                             : indiceChoqueAdvertencia
                             ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 ring-2 ring-amber-400 text-amber-950 dark:text-white font-bold"
                             : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white"
@@ -850,7 +1016,7 @@ export default function ConsultasPaciente() {
                         placeholder="Auto o manual"
                       />
                       {indiceChoqueAlerta && (
-                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-bold">⚠️ Choque &gt; 0.8 (+4 pts)</p>
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Choque &gt; 0.8! (+4 pts - Emergencia)</p>
                       )}
                     </label>
 
@@ -861,24 +1027,24 @@ export default function ConsultasPaciente() {
                         onClick={() => handleChange("fondo_uterino_acorde_sdg", !form.fondo_uterino_acorde_sdg)}
                         className={`group flex items-center gap-3 h-10 rounded-xl px-3.5 text-xs font-medium transition-all duration-150 border cursor-pointer ${
                           form.fondo_uterino_acorde_sdg
-                            ? "bg-rose-100 dark:bg-rose-500/20 border-rose-400 dark:border-rose-400/60 text-rose-950 dark:text-white shadow-xs ring-1 ring-rose-400/30"
+                            ? "!bg-rose-600 !border-rose-500 border-2 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
                             : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
                         <div
                           className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
                             form.fondo_uterino_acorde_sdg
-                              ? "bg-rose-500 shadow-sm shadow-rose-500/40"
+                              ? "bg-white shadow-sm"
                               : "bg-slate-300 dark:bg-white/15 border border-slate-400 dark:border-white/20 group-hover:bg-slate-400 dark:group-hover:bg-white/25"
                           }`}
                         >
                           <div
                             className={`w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${
-                              form.fondo_uterino_acorde_sdg ? "translate-x-3 bg-white" : "translate-x-0 bg-white"
+                              form.fondo_uterino_acorde_sdg ? "translate-x-3 bg-rose-600" : "translate-x-0 bg-white"
                             }`}
                           />
                         </div>
-                        <i className={`fa-solid fa-ruler-vertical text-sm ${form.fondo_uterino_acorde_sdg ? "text-rose-700 dark:text-rose-300" : "text-slate-400"}`}></i>
+                        <i className={`fa-solid fa-ruler-vertical text-sm ${form.fondo_uterino_acorde_sdg ? "text-white" : "text-slate-400"}`}></i>
                         <span className="font-bold">Fondo uterino no acorde a SDG (+4 pts)</span>
                       </button>
 
@@ -1398,32 +1564,112 @@ export default function ConsultasPaciente() {
 
                 {/* HALLAZGOS ACTIVOS EN LA CAPTURA */}
                 <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-5 space-y-3 shadow-xl transition-colors">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5">
+                  <div
+                    onClick={() => setHallazgosMinimizado((prev) => !prev)}
+                    className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5 cursor-pointer group select-none"
+                  >
                     <div className="flex items-center gap-2">
                       <i className="fa-solid fa-list-check text-teal-600 dark:text-cyan-400 text-sm"></i>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Hallazgos en Consulta</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider group-hover:text-teal-600 dark:group-hover:text-cyan-400 transition-colors">
+                        Hallazgos en Consulta
+                      </span>
                     </div>
-                    <span className="text-xs font-bold text-teal-800 dark:text-cyan-300 bg-teal-100 dark:bg-cyan-500/20 px-2 py-0.5 rounded-md">
-                      +{puntajeConsultaParametros} pts
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-teal-800 dark:text-cyan-300 bg-teal-100 dark:bg-cyan-500/20 px-2 py-0.5 rounded-md font-mono">
+                        +{puntajeConsultaParametros} pts
+                      </span>
+                      <button
+                        type="button"
+                        className="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors"
+                        title={hallazgosMinimizado ? "Expandir" : "Minimizar"}
+                      >
+                        <i className={`fa-solid ${hallazgosMinimizado ? "fa-chevron-down" : "fa-chevron-up"}`}></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  {!hallazgosMinimizado && (
+                    <div className="animate-in fade-in duration-200 space-y-3">
+                      {hallazgosConsulta.length > 0 ? (
+                        <div className="space-y-2 pt-1">
+                          {hallazgosConsulta.map((h, i) => (
+                            <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl p-2.5 text-xs">
+                              <div>
+                                <span className="text-slate-900 dark:text-white font-semibold block">{h.campo}</span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-300 block">{h.criterio}</span>
+                              </div>
+                              <span className="font-black text-amber-800 dark:text-amber-300 text-sm">+{h.puntos} pts</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-400/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 text-center flex items-center justify-center gap-2">
+                          <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
+                          <span>Sin hallazgos de riesgo en los parámetros capturados</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* ALERTAS OBSTÉTRICAS DETECTADAS EN SIGNOS VITALES Y TRIAGE */}
+                <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-5 space-y-3 shadow-xl transition-colors">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <i className="fa-solid fa-heart-pulse text-rose-600 dark:text-rose-400 text-sm animate-pulse"></i>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                        Alertas en Signos Vitales
+                      </span>
+                    </div>
+                    <span
+                      className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full font-mono ${
+                        alertasSignosVitales.length > 0
+                          ? "bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-400/40"
+                          : "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-400/40"
+                      }`}
+                    >
+                      {alertasSignosVitales.length} {alertasSignosVitales.length === 1 ? "alerta" : "alertas"}
                     </span>
                   </div>
 
-                  {hallazgosConsulta.length > 0 ? (
+                  {alertasSignosVitales.length > 0 ? (
                     <div className="space-y-2 pt-1">
-                      {hallazgosConsulta.map((h, i) => (
-                        <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl p-2.5 text-xs">
-                          <div>
-                            <span className="text-slate-900 dark:text-white font-semibold block">{h.campo}</span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-300 block">{h.criterio}</span>
+                      {alertasSignosVitales.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex items-start justify-between p-2.5 rounded-xl border text-xs transition-all ${
+                            item.nivel === "ROJO"
+                              ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-500/40 text-rose-950 dark:text-rose-100"
+                              : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-500/40 text-amber-950 dark:text-amber-100"
+                          }`}
+                        >
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5 font-bold flex-wrap">
+                              <span className="text-xs">
+                                {item.nivel === "ROJO" ? "🚨" : "⚠️"}
+                              </span>
+                              <span>{item.campo}</span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                                  item.nivel === "ROJO"
+                                    ? "bg-rose-600 text-white"
+                                    : "bg-amber-500 text-slate-900"
+                                }`}
+                              >
+                                {item.valor}
+                              </span>
+                            </div>
+                            <p className="text-[10px] opacity-80 font-medium pl-5">
+                              {item.descripcion}
+                            </p>
                           </div>
-                          <span className="font-black text-amber-800 dark:text-amber-300 text-sm">+{h.puntos} pts</span>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-400/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 text-center flex items-center justify-center gap-2">
                       <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
-                      <span>Sin hallazgos de riesgo en los parámetros capturados</span>
+                      <span>Signos vitales dentro de parámetros normales</span>
                     </div>
                   )}
                 </div>
