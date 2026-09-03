@@ -101,6 +101,34 @@ export default function PacienteDetalle() {
   const [alertaIndex, setAlertaIndex] = useState(0);
   const [isAlertaHovered, setIsAlertaHovered] = useState(false);
 
+  // Estado para la gestión de Ultrasonidos Obstétricos
+  const [ultrasonidos, setUltrasonidos] = useState<{
+    id: number;
+    tipo: string;
+    fecha_toma_usg: string;
+    descripcion: string | null;
+    created_at: string;
+  }[]>([]);
+  const [loadingUsg, setLoadingUsg] = useState(false);
+  const [showAddUsgModal, setShowAddUsgModal] = useState(false);
+  const [showConfirmUsgModal, setShowConfirmUsgModal] = useState(false);
+  const [savingUsg, setSavingUsg] = useState(false);
+  const [ultrasonidosMinimizado, setUltrasonidosMinimizado] = useState(false);
+  const [usgForm, setUsgForm] = useState({
+    tipo: "USG 1er trimestre",
+    fecha_toma_usg: new Date().toISOString().slice(0, 10),
+    descripcion: "",
+  });
+
+  const OPCIONES_ULTRASONIDO = [
+    "USG 1er trimestre",
+    "USG 2o trimestre",
+    "USG 3er trimestre",
+    "USG cromosomopatías",
+    "USG estructural",
+    "USG Doppler Arterias Uterinas",
+  ];
+
   useEffect(() => {
     const stored = localStorage.getItem("maro:user");
     if (!stored) {
@@ -124,6 +152,23 @@ export default function PacienteDetalle() {
       router.replace("/inicial");
     }
   }, [id, router]);
+
+  const fetchUltrasonidos = async () => {
+    try {
+      setLoadingUsg(true);
+      const res = await fetch(`/api/pacientes/${id}/ultrasonidos`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.ultrasonidos)) {
+          setUltrasonidos(data.ultrasonidos);
+        }
+      }
+    } catch (err) {
+      console.error("Error al cargar ultrasonidos:", err);
+    } finally {
+      setLoadingUsg(false);
+    }
+  };
 
   useEffect(() => {
     if (!authChecked) return;
@@ -154,11 +199,50 @@ export default function PacienteDetalle() {
         if (!cancelled) setLoading(false);
       }
     };
-    if (id) load();
+    if (id) {
+      load();
+      fetchUltrasonidos();
+    }
     return () => {
       cancelled = true;
     };
   }, [authChecked, id]);
+
+  const handleGuardarUSG = async () => {
+    if (!usgForm.tipo || !usgForm.fecha_toma_usg) return;
+    try {
+      setSavingUsg(true);
+      const res = await fetch(`/api/pacientes/${id}/ultrasonidos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo: usgForm.tipo,
+          fecha_toma_usg: usgForm.fecha_toma_usg,
+          descripcion: usgForm.descripcion.trim(),
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || "No se pudo guardar el ultrasonido");
+        return;
+      }
+
+      setShowConfirmUsgModal(false);
+      setShowAddUsgModal(false);
+      setUsgForm({
+        tipo: "USG 1er trimestre",
+        fecha_toma_usg: new Date().toISOString().slice(0, 10),
+        descripcion: "",
+      });
+      await fetchUltrasonidos();
+    } catch (err) {
+      console.error("Error al guardar USG:", err);
+      alert("Ocurrió un error inesperado al registrar el ultrasonido");
+    } finally {
+      setSavingUsg(false);
+    }
+  };
 
   const formatDate = (value: string | null) => {
     if (!value) return "—";
@@ -625,7 +709,7 @@ export default function PacienteDetalle() {
             {/* ========================================================================= */}
             <div className="lg:col-span-7 xl:col-span-8 space-y-6">
               {/* ACCESOS RÁPIDOS A MÓDULOS */}
-              <div className={`grid grid-cols-1 ${patient.estado_embarazo === 'puerperio' ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'} gap-3`}>
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   {
                     title: "Consultas",
@@ -634,6 +718,14 @@ export default function PacienteDetalle() {
                     href: `/pacientes/${patient.id}/consultas`,
                     accent: "border-teal-300 dark:border-cyan-400/40 bg-white/95 dark:bg-cyan-500/10 text-teal-950 dark:text-cyan-100 hover:bg-teal-50 dark:hover:bg-cyan-500/20 hover:border-teal-400 dark:hover:border-cyan-300",
                     iconBox: "bg-teal-100 dark:bg-white/10 text-teal-700 dark:text-cyan-300",
+                  },
+                  {
+                    title: "Ultrasonidos",
+                    subtitle: `${ultrasonidos.length} ${ultrasonidos.length === 1 ? 'estudio' : 'estudios'}`,
+                    icon: "fa-solid fa-wave-square",
+                    href: "#ultrasonidos-section",
+                    accent: "border-cyan-300 dark:border-cyan-400/40 bg-white/95 dark:bg-cyan-500/10 text-cyan-950 dark:text-cyan-100 hover:bg-cyan-50 dark:hover:bg-cyan-500/20 hover:border-cyan-400 dark:hover:border-cyan-300",
+                    iconBox: "bg-cyan-100 dark:bg-white/10 text-cyan-700 dark:text-cyan-300",
                   },
                   ...(patient.estado_embarazo === "puerperio" ? [{
                     title: "Puerperio",
@@ -659,24 +751,54 @@ export default function PacienteDetalle() {
                     accent: "border-emerald-300 dark:border-emerald-400/40 bg-white/95 dark:bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 hover:border-emerald-400 dark:hover:border-emerald-300",
                     iconBox: "bg-emerald-100 dark:bg-white/10 text-emerald-700 dark:text-emerald-300",
                   },
-                ].map((item) => (
-                  <Link
-                    key={item.title}
-                    href={item.href}
-                    className={`group rounded-2xl border p-4 shadow-md dark:shadow-lg transition-all duration-200 flex flex-col justify-between gap-3 ${item.accent}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-lg ${item.iconBox}`}>
-                        <i className={item.icon}></i>
+                ].map((item) => {
+                  const isHash = item.href.startsWith("#");
+                  const content = (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-lg ${item.iconBox}`}>
+                          <i className={item.icon}></i>
+                        </div>
+                        <i className={`fa-solid ${isHash ? 'fa-arrow-down' : 'fa-arrow-right'} text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition`}></i>
                       </div>
-                      <i className="fa-solid fa-arrow-right text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition"></i>
-                    </div>
-                    <div>
-                      <p className="font-bold text-base text-slate-900 dark:text-white">{item.title}</p>
-                      <p className="text-xs text-slate-600 dark:text-slate-300">{item.subtitle}</p>
-                    </div>
-                  </Link>
-                ))}
+                      <div>
+                        <p className="font-bold text-base text-slate-900 dark:text-white">{item.title}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300">{item.subtitle}</p>
+                      </div>
+                    </>
+                  );
+
+                  if (isHash) {
+                    return (
+                      <a
+                        key={item.title}
+                        href={item.href}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setUltrasonidosMinimizado(false);
+                          const targetId = item.href.replace("#", "");
+                          const el = document.getElementById(targetId);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }
+                        }}
+                        className={`group rounded-2xl border p-4 shadow-md dark:shadow-lg transition-all duration-200 flex flex-col justify-between gap-3 cursor-pointer ${item.accent}`}
+                      >
+                        {content}
+                      </a>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={item.title}
+                      href={item.href}
+                      className={`group rounded-2xl border p-4 shadow-md dark:shadow-lg transition-all duration-200 flex flex-col justify-between gap-3 ${item.accent}`}
+                    >
+                      {content}
+                    </Link>
+                  );
+                })}
               </div>
 
               {/* PERFIL OBSTÉTRICO Y CRONOGRAMA GESTACIONAL */}
@@ -848,6 +970,87 @@ export default function PacienteDetalle() {
                     </div>
                   )}
                 </div>
+              </section>
+
+              {/* SECCIÓN DE ULTRASONIDOS OBSTÉTRICOS */}
+              <section id="ultrasonidos-section" className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl transition-colors scroll-mt-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-4">
+                  <button
+                    type="button"
+                    onClick={() => setUltrasonidosMinimizado(!ultrasonidosMinimizado)}
+                    className="flex items-center gap-2.5 text-left group cursor-pointer"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 flex items-center justify-center font-bold">
+                      <i className="fa-solid fa-wave-square text-base"></i>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                        <span>Ultrasonidos Obstétricos</span>
+                        <i className={`fa-solid ${ultrasonidosMinimizado ? 'fa-chevron-down' : 'fa-chevron-up'} text-xs text-slate-400`}></i>
+                      </h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                        {ultrasonidos.length} {ultrasonidos.length === 1 ? "estudio registrado" : "estudios registrados"}
+                      </p>
+                    </div>
+                  </button>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddUsgModal(true)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 text-xs font-bold transition shadow-sm cursor-pointer"
+                    >
+                      <i className="fa-solid fa-plus text-xs"></i>
+                      <span>Registrar USG</span>
+                    </button>
+                  </div>
+                </div>
+
+                {!ultrasonidosMinimizado && (
+                  <>
+                    {loadingUsg ? (
+                      <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400">
+                        Cargando ultrasonidos…
+                      </div>
+                    ) : ultrasonidos.length === 0 ? (
+                      <div className="rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 p-6 text-center text-xs text-slate-500 dark:text-slate-400 space-y-2">
+                        <i className="fa-solid fa-file-waveform text-2xl text-slate-400 dark:text-slate-500"></i>
+                        <p className="font-semibold text-slate-700 dark:text-slate-300">No hay ultrasonidos registrados para esta paciente</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Haz clic en "Registrar USG" para añadir un estudio ecográfico.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {ultrasonidos.map((usg) => (
+                          <div
+                            key={usg.id}
+                            className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 dark:bg-cyan-950/20 p-4 space-y-2 text-xs transition hover:border-cyan-500/50"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-cyan-500/20 pb-2">
+                              <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+                                <i className="fa-solid fa-file-waveform text-cyan-600 dark:text-cyan-400"></i>
+                                <span className="text-sm">{usg.tipo}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                                <span className="font-semibold text-cyan-800 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-500/20 px-2 py-0.5 rounded font-mono">
+                                  📅 Toma: {formatDate(usg.fecha_toma_usg)}
+                                </span>
+                                <span className="font-mono text-[10px]">
+                                  Capturado: {formatDate(usg.created_at)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <p className="text-slate-700 dark:text-slate-200 leading-relaxed italic bg-white dark:bg-slate-900/80 p-2.5 rounded-lg border border-slate-200 dark:border-white/10">
+                              {usg.descripcion ? `"${usg.descripcion}"` : "Sin descripción o hallazgos adicionales anotados."}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </section>
 
               {/* IDENTIFICACIÓN, UBICACIÓN Y CONTACTO */}
@@ -1118,6 +1321,180 @@ export default function PacienteDetalle() {
           </div>
         )}
       </div>
+
+      {/* MODAL 1: FORMULARIO DE REGISTRO DE ULTRASONIDO */}
+      {showAddUsgModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 flex items-center justify-center font-bold">
+                  <i className="fa-solid fa-wave-square text-sm"></i>
+                </div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Registrar Ultrasonido Obstétrico
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddUsgModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm p-1 rounded-lg"
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Tipo de USG */}
+              <label className="space-y-1 block">
+                <span className="text-slate-700 dark:text-slate-200 font-bold block">Tipo de Ultrasonido *</span>
+                <select
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-cyan-500/50"
+                  value={usgForm.tipo}
+                  onChange={(e) => setUsgForm({ ...usgForm, tipo: e.target.value })}
+                >
+                  {OPCIONES_ULTRASONIDO.map((opcion) => (
+                    <option key={opcion} value={opcion} className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">
+                      {opcion}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Fecha de Toma del USG */}
+              <label className="space-y-1 block">
+                <span className="text-slate-700 dark:text-slate-200 font-bold block">Fecha de Toma del USG *</span>
+                <input
+                  type="date"
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-cyan-500/50"
+                  value={usgForm.fecha_toma_usg}
+                  onChange={(e) => setUsgForm({ ...usgForm, fecha_toma_usg: e.target.value })}
+                  required
+                />
+              </label>
+
+              {/* Descripción / Hallazgos */}
+              <label className="space-y-1 block">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-700 dark:text-slate-200 font-bold">Descripción / Hallazgos (opcional)</span>
+                  <span
+                    className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                      usgForm.descripcion.length >= 90
+                        ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {usgForm.descripcion.length} / 100 caracteres
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={100}
+                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500/50"
+                  placeholder="Descripción / hallazgos"
+                  value={usgForm.descripcion}
+                  onChange={(e) => setUsgForm({ ...usgForm, descripcion: e.target.value.slice(0, 100) })}
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setShowAddUsgModal(false)}
+                className="rounded-xl border border-slate-300 dark:border-white/10 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!usgForm.tipo || !usgForm.fecha_toma_usg) return;
+                  setShowConfirmUsgModal(true);
+                }}
+                className="rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: CONFIRMACIÓN Y ADVERTENCIA DE REGISTRO */}
+      {showConfirmUsgModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl border border-amber-500/30 bg-white dark:bg-slate-900 p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-200 dark:border-white/10 pb-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg shrink-0">
+                <i className="fa-solid fa-triangle-exclamation animate-pulse"></i>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Confirmación de Registro de Ultrasonido
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Verifica los datos antes de almacenar
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-500/30 text-amber-900 dark:text-amber-200 leading-relaxed">
+                <p className="font-semibold">
+                  ⚠️ Una vez registrado, el estudio quedará almacenado con su fecha de toma y la fecha/hora de creación del registro en el sistema MARO.
+                </p>
+              </div>
+
+              <div className="space-y-1.5 bg-slate-50 dark:bg-white/5 p-3 rounded-xl border border-slate-200 dark:border-white/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Estudio:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{usgForm.tipo}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Fecha de toma:</span>
+                  <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">{formatDate(usgForm.fecha_toma_usg)}</span>
+                </div>
+                {usgForm.descripcion && (
+                  <div className="pt-1.5 border-t border-slate-200 dark:border-white/10">
+                    <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Hallazgos:</span>
+                    <span className="italic text-slate-800 dark:text-slate-200">"{usgForm.descripcion}"</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-white/10">
+              <button
+                type="button"
+                disabled={savingUsg}
+                onClick={() => setShowConfirmUsgModal(false)}
+                className="rounded-xl border border-slate-300 dark:border-white/10 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition"
+              >
+                Revisar
+              </button>
+              <button
+                type="button"
+                disabled={savingUsg}
+                onClick={handleGuardarUSG}
+                className="rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 text-xs font-bold transition shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {savingUsg ? (
+                  <>
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span>Guardando…</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-lock text-xs"></i>
+                    <span>Confirmar y Guardar</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

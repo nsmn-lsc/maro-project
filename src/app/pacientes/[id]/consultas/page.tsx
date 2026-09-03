@@ -74,6 +74,7 @@ export default function ConsultasPaciente() {
   const [showPuerperioModal, setShowPuerperioModal] = useState(false);
   const [pendingPuerperioRedirect, setPendingPuerperioRedirect] = useState<string | null>(null);
   const [hallazgosMinimizado, setHallazgosMinimizado] = useState(true);
+  const [alertasSignosMinimizado, setAlertasSignosMinimizado] = useState(true);
   
   const [pacienteData, setPacienteData] = useState<{
     folio: string | null;
@@ -1614,62 +1615,78 @@ export default function ConsultasPaciente() {
 
                 {/* ALERTAS OBSTÉTRICAS DETECTADAS EN SIGNOS VITALES Y TRIAGE */}
                 <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-5 space-y-3 shadow-xl transition-colors">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5">
+                  <div
+                    onClick={() => setAlertasSignosMinimizado((prev) => !prev)}
+                    className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5 cursor-pointer group select-none"
+                  >
                     <div className="flex items-center gap-2">
                       <i className="fa-solid fa-heart-pulse text-rose-600 dark:text-rose-400 text-sm animate-pulse"></i>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
                         Alertas en Signos Vitales
                       </span>
                     </div>
-                    <span
-                      className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full font-mono ${
-                        alertasSignosVitales.length > 0
-                          ? "bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-400/40"
-                          : "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-400/40"
-                      }`}
-                    >
-                      {alertasSignosVitales.length} {alertasSignosVitales.length === 1 ? "alerta" : "alertas"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full font-mono ${
+                          alertasSignosVitales.length > 0
+                            ? "bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-400/40"
+                            : "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-400/40"
+                        }`}
+                      >
+                        {alertasSignosVitales.length} {alertasSignosVitales.length === 1 ? "alerta" : "alertas"}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors"
+                        title={alertasSignosMinimizado ? "Expandir" : "Minimizar"}
+                      >
+                        <i className={`fa-solid ${alertasSignosMinimizado ? "fa-chevron-down" : "fa-chevron-up"}`}></i>
+                      </button>
+                    </div>
                   </div>
 
-                  {alertasSignosVitales.length > 0 ? (
-                    <div className="space-y-2 pt-1">
-                      {alertasSignosVitales.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className={`flex items-start justify-between p-2.5 rounded-xl border text-xs transition-all ${
-                            item.nivel === "ROJO"
-                              ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-500/40 text-rose-950 dark:text-rose-100"
-                              : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-500/40 text-amber-950 dark:text-amber-100"
-                          }`}
-                        >
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-1.5 font-bold flex-wrap">
-                              <span className="text-xs">
-                                {item.nivel === "ROJO" ? "🚨" : "⚠️"}
-                              </span>
-                              <span>{item.campo}</span>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${
-                                  item.nivel === "ROJO"
-                                    ? "bg-rose-600 text-white"
-                                    : "bg-amber-500 text-slate-900"
-                                }`}
-                              >
-                                {item.valor}
-                              </span>
+                  {!alertasSignosMinimizado && (
+                    <div className="animate-in fade-in duration-200 space-y-3">
+                      {alertasSignosVitales.length > 0 ? (
+                        <div className="space-y-2 pt-1">
+                          {alertasSignosVitales.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className={`flex items-start justify-between p-2.5 rounded-xl border text-xs transition-all ${
+                                item.nivel === "ROJO"
+                                  ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-500/40 text-rose-950 dark:text-rose-100"
+                                  : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-500/40 text-amber-950 dark:text-amber-100"
+                              }`}
+                            >
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5 font-bold flex-wrap">
+                                  <span className="text-xs">
+                                    {item.nivel === "ROJO" ? "🚨" : "⚠️"}
+                                  </span>
+                                  <span>{item.campo}</span>
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                                      item.nivel === "ROJO"
+                                        ? "bg-rose-600 text-white"
+                                        : "bg-amber-500 text-slate-900"
+                                    }`}
+                                  >
+                                    {item.valor}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] opacity-80 font-medium pl-5">
+                                  {item.descripcion}
+                                </p>
+                              </div>
                             </div>
-                            <p className="text-[10px] opacity-80 font-medium pl-5">
-                              {item.descripcion}
-                            </p>
-                          </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-400/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 text-center flex items-center justify-center gap-2">
-                      <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
-                      <span>Signos vitales dentro de parámetros normales</span>
+                      ) : (
+                        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-400/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 text-center flex items-center justify-center gap-2">
+                          <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
+                          <span>Signos vitales dentro de parámetros normales</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

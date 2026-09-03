@@ -433,4 +433,20 @@ CREATE TABLE `usuarios` (
   CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`clues_id`) REFERENCES `cat_unidades` (`clues`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `pacientes_ultrasonidos` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `paciente_id` bigint unsigned NOT NULL,
+  `consulta_id` bigint unsigned DEFAULT NULL,
+  `tipo` enum('USG 1er trimestre','USG 2o trimestre','USG 3er trimestre','USG cromosomopatías','USG estructural','USG Doppler Arterias Uterinas') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fecha_toma_usg` date NOT NULL,
+  `descripcion` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_by` bigint unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_usg_paciente` (`paciente_id`),
+  KEY `idx_usg_fecha_toma` (`fecha_toma_usg`),
+  KEY `idx_usg_created` (`created_at`),
+  CONSTRAINT `fk_usg_paciente` FOREIGN KEY (`paciente_id`) REFERENCES `cat_pacientes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS=1;
