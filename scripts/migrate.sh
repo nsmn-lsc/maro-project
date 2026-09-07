@@ -21,11 +21,17 @@ DB_USER="${DB_USER:-devuser}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 DB_NAME="${DB_NAME:-maro_hub}"
 
-MYSQL_CMD="mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME}"
+# Usar ejecutable 'mariadb' si está instalado para evitar avisos de deprecación de 'mysql'
+CLI_BIN="mysql"
+if command -v mariadb >/dev/null 2>&1; then
+  CLI_BIN="mariadb"
+fi
+
+MYSQL_CMD="${CLI_BIN} -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME}"
 
 # 3. Validar argumento
 if [ $# -eq 0 ]; then
-  echo "Uso: $0 <archivo_migracion.sql | all | status>"
+  echo "Uso: $0 <archivo_migracion.sql | all | status | mark-applied <archivo.sql>>"
   exit 1
 fi
 
@@ -44,6 +50,18 @@ CREATE TABLE IF NOT EXISTS _schema_migrations (
 if [ "$ACTION" = "status" ]; then
   echo "=== Migraciones registradas en ${DB_NAME} (${DB_HOST}) ==="
   ${MYSQL_CMD} -e "SELECT id, migration_name, executed_at FROM _schema_migrations ORDER BY id ASC;"
+  exit 0
+fi
+
+# Opción: Marcar archivo como aplicado sin ejecutar el SQL (útil para esquemas históricos ya existentes)
+if [ "$ACTION" = "mark-applied" ]; then
+  if [ $# -lt 2 ]; then
+    echo "[!] Error: Debe especificar el nombre del archivo SQL a registrar."
+    exit 1
+  fi
+  TARGET_FILE=$(basename "$2")
+  ${MYSQL_CMD} -e "INSERT IGNORE INTO _schema_migrations (migration_name) VALUES ('${TARGET_FILE}');"
+  echo "[✓] Archivo registrado como aplicado en _schema_migrations: ${TARGET_FILE}"
   exit 0
 fi
 
@@ -87,6 +105,3 @@ else
   echo "[!] Error: No se encontró el archivo $ACTION"
   exit 1
 fi
-EOF
-
-chmod +x scripts/migrate.sh

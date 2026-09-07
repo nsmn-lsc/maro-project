@@ -294,6 +294,29 @@ export async function POST(request: Request) {
       updated_by: auth.userId,
     };
 
+    // Campos de la Sección 3: Consulta
+    if (await hasColumn("longitud_cervical")) {
+      (payload as any).longitud_cervical = toNumberOrNull(body.longitud_cervical);
+    }
+    if (await hasColumn("peso") && body.peso !== undefined && body.peso !== "") {
+      (payload as any).peso = toNumberOrNull(body.peso);
+    }
+    if (await hasColumn("fc_fetal")) {
+      (payload as any).fc_fetal = body.fc_fetal || null;
+    }
+    if (await hasColumn("movimientos_fetales")) {
+      (payload as any).movimientos_fetales = body.movimientos_fetales || null;
+    }
+    if (await hasColumn("proteinuria")) {
+      (payload as any).proteinuria = body.proteinuria || null;
+    }
+    if (await hasColumn("edema")) {
+      (payload as any).edema = body.edema || null;
+    }
+    if (await hasColumn("bh")) {
+      (payload as any).bh = body.bh || null;
+    }
+
     const placeholders = Object.keys(payload)
       .map(() => "?")
       .join(", ");

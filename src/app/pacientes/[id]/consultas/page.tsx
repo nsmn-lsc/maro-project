@@ -51,6 +51,14 @@ const initialForm = {
   hemorragia: "",
   respiracion: "",
   color_piel: "",
+  // Sección 3: Consulta
+  longitud_cervical: "",
+  peso: "",
+  fc_fetal: "",
+  movimientos_fetales: "",
+  proteinuria: "",
+  edema: "",
+  bh: "",
   diagnostico: "",
   plan: "",
   fecha_referencia: "",
@@ -778,7 +786,7 @@ export default function ConsultasPaciente() {
               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-white transition-colors cursor-pointer"
             >
               <i className="fa-solid fa-table-columns text-slate-500 dark:text-slate-300"></i>
-              <span>Dashboard</span>
+              <span translate="no" className="notranslate">Dashboard</span>
             </Link>
           </div>
         </header>
@@ -1174,11 +1182,208 @@ export default function ConsultasPaciente() {
                   </div>
                 </div>
 
-                {/* BLOQUE 3: DIAGNÓSTICO, PLAN Y REFERENCIA */}
+                {/* BLOQUE 3: CONSULTA */}
+                <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-white/10">
+                  <h3 className="text-xs font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider flex items-center gap-2">
+                    <i className="fa-solid fa-notes-medical text-sky-600 dark:text-sky-400"></i>
+                    <span>3. Anexo de Consulta</span>
+                  </h3>
+
+                  <div className="p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 dark:bg-slate-900/60 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      
+                      {/* Longitud Cervical (Decimal) */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Longitud Cervical</span>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 px-3 py-2 pr-10 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/50"
+                            placeholder="ej. 35.5"
+                            value={form.longitud_cervical}
+                            onChange={(e) => handleChange("longitud_cervical", e.target.value)}
+                          />
+                          <span className="absolute right-3 top-2 text-[11px] font-semibold text-slate-400 font-mono">mm</span>
+                        </div>
+                      </label>
+
+                      {/* Peso (Decimal) */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Peso</span>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 px-3 py-2 pr-10 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/50"
+                            placeholder="ej. 68.5"
+                            value={form.peso}
+                            onChange={(e) => handleChange("peso", e.target.value)}
+                          />
+                          <span className="absolute right-3 top-2 text-[11px] font-semibold text-slate-400 font-mono">kg</span>
+                        </div>
+                      </label>
+
+                      {/* FC Fetal */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">FC Fetal</span>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 px-3 py-2 pr-10 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/50"
+                            placeholder="ej. 145"
+                            value={form.fc_fetal}
+                            onChange={(e) => handleChange("fc_fetal", e.target.value)}
+                          />
+                          <span className="absolute right-3 top-2 text-[11px] font-semibold text-slate-400 font-mono">lpm</span>
+                        </div>
+                      </label>
+
+                      {/* Movimientos Fetales (Switch segmentado de 3 opciones) */}
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-700 dark:text-slate-200 font-bold block">Movimientos Fetales *</span>
+                          {form.movimientos_fetales === "" && (
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold italic">Pendiente de elegir</span>
+                          )}
+                        </div>
+                        
+                        <div className="p-1 rounded-xl bg-slate-200/70 dark:bg-white/5 border border-slate-300 dark:border-white/10 grid grid-cols-3 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleChange("movimientos_fetales", "")}
+                            className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center cursor-pointer ${
+                              form.movimientos_fetales === ""
+                                ? "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm border border-slate-300 dark:border-white/10"
+                                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            Sin evaluar
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleChange("movimientos_fetales", "presentes")}
+                            className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+                              form.movimientos_fetales === "presentes"
+                                ? "bg-emerald-600 text-white shadow-md font-bold"
+                                : "text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300"
+                            }`}
+                          >
+                            <i className="fa-solid fa-check text-[10px]"></i>
+                            <span>Presentes</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleChange("movimientos_fetales", "ausentes")}
+                            className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+                              form.movimientos_fetales === "ausentes"
+                                ? "!bg-rose-600 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                                : "text-slate-600 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-400"
+                            }`}
+                          >
+                            <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                            <span>🚨 Ausentes</span>
+                          </button>
+                        </div>
+
+                        {form.movimientos_fetales === "ausentes" && (
+                          <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold animate-in fade-in">
+                            🚨 ¡Alerta! Movimientos Fetales Ausentes (Riesgo de Sufrimiento / Óbito Fetal)
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Proteinuria */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Proteinuria</span>
+                        <input
+                          type="text"
+                          className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/50"
+                          placeholder="ej. Negativa / Tira reactiva (+)"
+                          value={form.proteinuria}
+                          onChange={(e) => handleChange("proteinuria", e.target.value)}
+                        />
+                      </label>
+
+                      {/* Edema (Switch segmentado de 3 opciones) */}
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-700 dark:text-slate-200 font-bold block">Edema *</span>
+                          {form.edema === "" && (
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold italic">Pendiente de elegir</span>
+                          )}
+                        </div>
+
+                        <div className="p-1 rounded-xl bg-slate-200/70 dark:bg-white/5 border border-slate-300 dark:border-white/10 grid grid-cols-3 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleChange("edema", "")}
+                            className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center cursor-pointer ${
+                              form.edema === ""
+                                ? "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm border border-slate-300 dark:border-white/10"
+                                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            Sin evaluar
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleChange("edema", "ausente")}
+                            className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+                              form.edema === "ausente"
+                                ? "bg-emerald-600 text-white shadow-md font-bold"
+                                : "text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300"
+                            }`}
+                          >
+                            <i className="fa-solid fa-check text-[10px]"></i>
+                            <span>Ausente</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleChange("edema", "presente")}
+                            className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+                              form.edema === "presente"
+                                ? "!bg-rose-600 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                                : "text-slate-600 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-400"
+                            }`}
+                          >
+                            <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                            <span>🚨 Presente</span>
+                          </button>
+                        </div>
+
+                        {form.edema === "presente" && (
+                          <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold animate-in fade-in">
+                            🚨 ¡Alerta Obstétrica! Edema Presente (Evaluar Preeclampsia / Datos de Alarma)
+                          </p>
+                        )}
+                      </div>
+
+                      {/* BH (Biometría Hemática) */}
+                      <label className="space-y-1 text-xs sm:col-span-2 lg:col-span-3">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">BH (Biometría Hemática si es eso??)</span>
+                        <input
+                          type="text"
+                          className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/50"
+                          placeholder="aqui no entiendo bien que va"
+                          value={form.bh}
+                          onChange={(e) => handleChange("bh", e.target.value)}
+                        />
+                      </label>
+
+                    </div>
+                  </div>
+                </div>
+
+                {/* BLOQUE 4: DIAGNÓSTICO, PLAN Y REFERENCIA */}
                 <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-white/10">
                   <h3 className="text-xs font-bold text-teal-800 dark:text-cyan-300 uppercase tracking-wider flex items-center gap-2">
                     <i className="fa-solid fa-clipboard-user text-teal-600 dark:text-cyan-400"></i>
-                    <span>3. Diagnóstico, Resolución del Embarazo y Referencia</span>
+                    <span>4. Diagnóstico, Resolución del Embarazo y Referencia</span>
                   </h3>
 
                   {/* SELECTOR DE RESOLUCIÓN DE EMBARAZO */}
