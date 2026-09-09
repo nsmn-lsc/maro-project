@@ -317,6 +317,35 @@ export async function POST(request: Request) {
       (payload as any).bh = body.bh || null;
     }
 
+    // Campos de Acciones Solicitadas (Sección 4)
+    if (await hasColumn("accion_ginecologia")) {
+      (payload as any).accion_ginecologia = body.accion_ginecologia ? 1 : 0;
+    }
+    if (await hasColumn("accion_medicina_interna")) {
+      (payload as any).accion_medicina_interna = body.accion_medicina_interna ? 1 : 0;
+    }
+    if (await hasColumn("accion_nutricion")) {
+      (payload as any).accion_nutricion = body.accion_nutricion ? 1 : 0;
+    }
+    if (await hasColumn("accion_psicologia")) {
+      (payload as any).accion_psicologia = body.accion_psicologia ? 1 : 0;
+    }
+    if (await hasColumn("accion_psiquiatria")) {
+      (payload as any).accion_psiquiatria = body.accion_psiquiatria ? 1 : 0;
+    }
+    if (await hasColumn("accion_odontologia")) {
+      (payload as any).accion_odontologia = body.accion_odontologia ? 1 : 0;
+    }
+    if (await hasColumn("accion_laboratorio_gabinete")) {
+      (payload as any).accion_laboratorio_gabinete = body.accion_laboratorio_gabinete ? 1 : 0;
+    }
+    if (await hasColumn("accion_otra_especialidad")) {
+      (payload as any).accion_otra_especialidad = body.accion_otra_especialidad ? 1 : 0;
+    }
+    if (await hasColumn("otra_especialidad_texto")) {
+      (payload as any).otra_especialidad_texto = body.accion_otra_especialidad && body.otra_especialidad_texto ? body.otra_especialidad_texto.slice(0, 20) : null;
+    }
+
     const placeholders = Object.keys(payload)
       .map(() => "?")
       .join(", ");

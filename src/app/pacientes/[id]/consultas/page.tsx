@@ -64,6 +64,16 @@ const initialForm = {
   fecha_referencia: "",
   area_referencia: "",
   notas: "",
+  // Acciones Solicitadas (Sección 4)
+  accion_ginecologia: false,
+  accion_medicina_interna: false,
+  accion_nutricion: false,
+  accion_psicologia: false,
+  accion_psiquiatria: false,
+  accion_odontologia: false,
+  accion_laboratorio_gabinete: false,
+  accion_otra_especialidad: false,
+  otra_especialidad_texto: "",
 };
 
 export default function ConsultasPaciente() {
@@ -187,6 +197,9 @@ export default function ConsultasPaciente() {
   const temperaturaNumber = form.temperatura === "" ? null : Number(form.temperatura);
   const temperaturaAlerta = temperaturaNumber !== null && (temperaturaNumber < 36 || temperaturaNumber > 39);
 
+  const fcFetalNumber = form.fc_fetal === "" || form.fc_fetal === null || isNaN(Number(form.fc_fetal)) ? null : Number(form.fc_fetal);
+  const fcFetalAlerta = fcFetalNumber !== null && (fcFetalNumber < 110 || fcFetalNumber > 160);
+
   // Advertencias AMARILLAS
   const taSistolicaAdvertencia = taSistolicaNumber !== null && !taSistolicaAlerta && (taSistolicaNumber >= 140 && taSistolicaNumber <= 159);
   const taDiastolicaAdvertencia = taDiastolicaNumber !== null && !taDiastolicaAlerta && (taDiastolicaNumber >= 90 && taDiastolicaNumber <= 109);
@@ -242,6 +255,12 @@ export default function ConsultasPaciente() {
   const puntajeIvu = form.ivu_repeticion ? 15 : 0;
   const puntajeColorPiel = form.color_piel === "cianotica" ? 4 : 0;
 
+  const puntajeFcFetal = fcFetalNumber === null
+    ? 0
+    : (fcFetalNumber < 110 || fcFetalNumber > 160)
+      ? 9
+      : 0;
+
   const puntajeConsultaParametros =
     puntajeTaSistolica +
     puntajeTaDiastolica +
@@ -251,7 +270,8 @@ export default function ConsultasPaciente() {
     puntajeTemperatura +
     puntajeFondoUterino +
     puntajeIvu +
-    puntajeColorPiel;
+    puntajeColorPiel +
+    puntajeFcFetal;
 
   const hallazgosConsulta = [
     {
@@ -317,6 +337,13 @@ export default function ConsultasPaciente() {
       criterio: "Cianótica = 4 pts",
       alerta: form.color_piel === "cianotica",
     },
+    {
+      campo: "FC Fetal",
+      valor: fcFetalNumber ? `${fcFetalNumber} lpm` : null,
+      puntos: puntajeFcFetal,
+      criterio: "<110 o >160 = 9 pts (Sufrimiento fetal)",
+      alerta: fcFetalAlerta,
+    },
   ].filter((item) => item.puntos > 0);
 
   const alertasSignosVitales = useMemo(() => {
@@ -334,7 +361,7 @@ export default function ConsultasPaciente() {
         campo: "T/A Sistólica",
         valor: `${form.ta_sistolica} mmHg`,
         nivel: "AMARILLO",
-        descripcion: "Elevada / Advertencia (140 - 159 mmHg)",
+        descripcion: "Urgencia calificada (140 - 159 mmHg)",
       });
     }
 
@@ -350,7 +377,7 @@ export default function ConsultasPaciente() {
         campo: "T/A Diastólica",
         valor: `${form.ta_diastolica} mmHg`,
         nivel: "AMARILLO",
-        descripcion: "Elevada / Advertencia (90 - 109 mmHg)",
+        descripcion: "Urgencia calificada (90 - 109 mmHg)",
       });
     }
 
@@ -384,7 +411,7 @@ export default function ConsultasPaciente() {
         campo: "Temperatura",
         valor: `${form.temperatura} °C`,
         nivel: "AMARILLO",
-        descripcion: "Febrícula / Advertencia (37.5 - 38.9 °C)",
+        descripcion: "Urgencia calificada (37.5 - 38.9 °C)",
       });
     }
 
@@ -400,7 +427,7 @@ export default function ConsultasPaciente() {
         campo: "Índice de Choque",
         valor: `${form.indice_choque}`,
         nivel: "AMARILLO",
-        descripcion: "Choque Leve / Moderado (0.7 - 0.8)",
+        descripcion: "Urgencia calificada (0.7 - 0.8)",
       });
     }
 
@@ -425,7 +452,7 @@ export default function ConsultasPaciente() {
         campo: "Color de Piel",
         valor: "Cianótica",
         nivel: "ROJO",
-        descripcion: "Hipoxia / Emergencia Obstétrica (+4 pts)",
+        descripcion: "Hipoxia / Emergencia Obstétrica",
       });
     } else if (form.color_piel === "palida") {
       list.push({
@@ -449,8 +476,17 @@ export default function ConsultasPaciente() {
       list.push({
         campo: "Respiración",
         valor: "Alterada",
-        nivel: "AMARILLO",
-        descripcion: "Respiración alterada",
+        nivel: "ROJO",
+        descripcion: "Emergencia Obstétrica Activa",
+      });
+    }
+
+    if (fcFetalAlerta) {
+      list.push({
+        campo: "FC Fetal",
+        valor: `${form.fc_fetal} lpm`,
+        nivel: "ROJO",
+        descripcion: "Sufrimiento fetal referencia inmediata a SNA",
       });
     }
 
@@ -459,7 +495,7 @@ export default function ConsultasPaciente() {
         campo: "Fondo Uterino",
         valor: "No acorde a SDG",
         nivel: "ROJO",
-        descripcion: "Desproporción / RCIU (+4 pts)",
+        descripcion: "Alteraciones del crecimiento fetal, referencia inmediata a SNA",
       });
     }
 
@@ -481,6 +517,7 @@ export default function ConsultasPaciente() {
     temperaturaAlerta, temperaturaAdvertencia, form.temperatura,
     indiceChoqueAlerta, indiceChoqueAdvertencia, form.indice_choque,
     form.hemorragia, form.color_piel, form.estado_conciencia, form.respiracion,
+    fcFetalAlerta, form.fc_fetal,
     form.fondo_uterino_acorde_sdg, form.ivu_repeticion,
   ]);
 
@@ -659,11 +696,20 @@ export default function ConsultasPaciente() {
         fecha_evento: form.fecha_evento || (form.tipo_evento !== "embarazo" ? form.fecha_consulta : null),
         complicacion_resolucion: form.complicacion_resolucion || null,
         lugar_atencion_parto: form.lugar_atencion_parto || null,
-        diagnostico: form.diagnostico || (form.tipo_evento !== "embarazo" ? "puerperio" : null),
+        diagnostico: form.tipo_evento !== "embarazo" ? "puerperio" : "seguimiento_embarazo",
         plan: form.plan || null,
         fecha_referencia: form.fecha_referencia || null,
         area_referencia: form.area_referencia || null,
         notas: form.notas || null,
+        accion_ginecologia: form.accion_ginecologia,
+        accion_medicina_interna: form.accion_medicina_interna,
+        accion_nutricion: form.accion_nutricion,
+        accion_psicologia: form.accion_psicologia,
+        accion_psiquiatria: form.accion_psiquiatria,
+        accion_odontologia: form.accion_odontologia,
+        accion_laboratorio_gabinete: form.accion_laboratorio_gabinete,
+        accion_otra_especialidad: form.accion_otra_especialidad,
+        otra_especialidad_texto: form.accion_otra_especialidad ? (form.otra_especialidad_texto || null) : null,
         created_by: 1,
         updated_by: 1,
       };
@@ -921,9 +967,11 @@ export default function ConsultasPaciente() {
                         onChange={(e) => handleChange("ta_sistolica", e.target.value)}
                         placeholder="Ej. 110"
                       />
-                      {taSistolicaAlerta && (
+                      {taSistolicaAlerta ? (
                         <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
-                      )}
+                      ) : taSistolicaAdvertencia ? (
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                      ) : null}
                     </label>
 
                     {/* T/A Diastólica */}
@@ -942,9 +990,11 @@ export default function ConsultasPaciente() {
                         onChange={(e) => handleChange("ta_diastolica", e.target.value)}
                         placeholder="Ej. 70"
                       />
-                      {taDiastolicaAlerta && (
+                      {taDiastolicaAlerta ? (
                         <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
-                      )}
+                      ) : taDiastolicaAdvertencia ? (
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                      ) : null}
                     </label>
 
                     {/* Frecuencia Cardíaca */}
@@ -1002,9 +1052,11 @@ export default function ConsultasPaciente() {
                         onChange={(e) => handleChange("temperatura", e.target.value)}
                         placeholder="Ej. 36.5"
                       />
-                      {temperaturaAlerta && (
+                      {temperaturaAlerta ? (
                         <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Temperatura Crítica! (&lt; 36 o &gt; 39 °C)</p>
-                      )}
+                      ) : temperaturaAdvertencia ? (
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                      ) : null}
                     </label>
 
                     {/* Índice de Choque */}
@@ -1024,9 +1076,11 @@ export default function ConsultasPaciente() {
                         onChange={(e) => handleChange("indice_choque", e.target.value)}
                         placeholder="Auto o manual"
                       />
-                      {indiceChoqueAlerta && (
+                      {indiceChoqueAlerta ? (
                         <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Choque &gt; 0.8! (+4 pts - Emergencia)</p>
-                      )}
+                      ) : indiceChoqueAdvertencia ? (
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                      ) : null}
                     </label>
 
                     {/* Mini Switches de Parámetros en la línea de abajo */}
@@ -1054,7 +1108,7 @@ export default function ConsultasPaciente() {
                           />
                         </div>
                         <i className={`fa-solid fa-ruler-vertical text-sm ${form.fondo_uterino_acorde_sdg ? "text-white" : "text-slate-400"}`}></i>
-                        <span className="font-bold">Fondo uterino no acorde a SDG (+4 pts)</span>
+                        <span className="font-bold">Fondo uterino no acorde a SDG</span>
                       </button>
 
                       <button
@@ -1146,14 +1200,21 @@ export default function ConsultasPaciente() {
                     <label className="space-y-1 text-xs">
                       <span className="text-slate-700 dark:text-slate-200 font-bold">Respiración</span>
                       <select
-                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500/50"
+                        className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
+                          form.respiracion === "alterada"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                            : "bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+                        }`}
                         value={form.respiracion}
                         onChange={(e) => handleChange("respiracion", e.target.value)}
                       >
                         <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
                         <option value="normal" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Normal</option>
-                        <option value="alterada" className="bg-amber-100 text-amber-950 dark:bg-slate-900 dark:text-amber-300 font-bold">Alterada</option>
+                        <option value="alterada" className="bg-rose-600 text-white font-bold">Alterada</option>
                       </select>
+                      {form.respiracion === "alterada" && (
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
+                      )}
                     </label>
 
                     {/* Color de Piel */}
@@ -1230,13 +1291,25 @@ export default function ConsultasPaciente() {
                         <div className="relative">
                           <input
                             type="text"
-                            className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 px-3 py-2 pr-10 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/50"
+                            inputMode="numeric"
+                            className={`w-full rounded-lg px-3 py-2 pr-10 text-xs transition-all ${
+                              fcFetalAlerta
+                                ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md placeholder:text-rose-200"
+                                : "bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/50"
+                            }`}
                             placeholder="ej. 145"
                             value={form.fc_fetal}
                             onChange={(e) => handleChange("fc_fetal", e.target.value)}
                           />
-                          <span className="absolute right-3 top-2 text-[11px] font-semibold text-slate-400 font-mono">lpm</span>
+                          <span className={`absolute right-3 top-2 text-[11px] font-semibold font-mono ${
+                            fcFetalAlerta ? "text-rose-100 font-bold" : "text-slate-400"
+                          }`}>lpm</span>
                         </div>
+                        {fcFetalAlerta && (
+                          <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">
+                            🚨 ¡Sufrimiento fetal! Referencia inmediata a SNA (+9 pts)
+                          </p>
+                        )}
                       </label>
 
                       {/* Movimientos Fetales (Switch segmentado de 3 opciones) */}
@@ -1365,11 +1438,11 @@ export default function ConsultasPaciente() {
 
                       {/* BH (Biometría Hemática) */}
                       <label className="space-y-1 text-xs sm:col-span-2 lg:col-span-3">
-                        <span className="text-slate-700 dark:text-slate-200 font-bold">BH (Biometría Hemática si es eso??)</span>
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">BH</span>
                         <input
                           type="text"
                           className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/50"
-                          placeholder="aqui no entiendo bien que va"
+                          placeholder="preguntar por esta"
                           value={form.bh}
                           onChange={(e) => handleChange("bh", e.target.value)}
                         />
@@ -1494,21 +1567,264 @@ export default function ConsultasPaciente() {
                       )}
                     </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Diagnóstico */}
-                    <label className="space-y-1 text-xs">
-                      <span className="text-slate-700 dark:text-slate-200 font-bold">Diagnóstico Clínico</span>
-                      <select
-                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-teal-500/50"
-                        value={form.diagnostico}
-                        onChange={(e) => handleChange("diagnostico", e.target.value)}
-                      >
-                        <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione un diagnóstico</option>
-                        <option value="seguimiento_embarazo" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seguimiento de embarazo</option>
-                        <option value="puerperio" className="bg-purple-50 text-purple-950 dark:bg-slate-900 font-bold dark:text-purple-300">Puerperio (Seguimiento postparto)</option>
-                      </select>
-                    </label>
+                  {/* ACCIONES SOLICITADAS (MINISWITCHES MULTI-SELECT) */}
+                  <div className="space-y-2.5 p-3.5 rounded-xl border border-sky-500/30 bg-sky-500/5 dark:bg-slate-900/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-sky-900 dark:text-sky-300 flex items-center gap-1.5">
+                        <i className="fa-solid fa-list-check text-sky-600 dark:text-sky-400"></i>
+                        <span>Acciones Solicitadas / Interconsultas</span>
+                      </span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                        Seleccione una o varias opciones
+                      </span>
+                    </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {/* Ginecología y Obstetricia */}
+                      <button
+                        type="button"
+                        onClick={() => handleChange("accion_ginecologia", !form.accion_ginecologia)}
+                        className={`group flex items-center gap-2.5 h-10 rounded-xl px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                          form.accion_ginecologia
+                            ? "!bg-teal-600 !border-teal-500 text-white font-bold ring-2 ring-teal-500/50 shadow-sm"
+                            : "bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        <div
+                          className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                            form.accion_ginecologia
+                              ? "bg-white shadow-xs"
+                              : "bg-slate-300 dark:bg-white/20"
+                          }`}
+                        >
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full transform transition-transform duration-200 ${
+                              form.accion_ginecologia ? "translate-x-2.5 bg-teal-600" : "translate-x-0 bg-white"
+                            }`}
+                          />
+                        </div>
+                        <i className={`fa-solid fa-user-nurse text-xs ${form.accion_ginecologia ? "text-white" : "text-teal-600 dark:text-teal-400"}`}></i>
+                        <span className="truncate">Ginecología y Obstetricia</span>
+                      </button>
+
+                      {/* Medicina Interna */}
+                      <button
+                        type="button"
+                        onClick={() => handleChange("accion_medicina_interna", !form.accion_medicina_interna)}
+                        className={`group flex items-center gap-2.5 h-10 rounded-xl px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                          form.accion_medicina_interna
+                            ? "!bg-teal-600 !border-teal-500 text-white font-bold ring-2 ring-teal-500/50 shadow-sm"
+                            : "bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        <div
+                          className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                            form.accion_medicina_interna
+                              ? "bg-white shadow-xs"
+                              : "bg-slate-300 dark:bg-white/20"
+                          }`}
+                        >
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full transform transition-transform duration-200 ${
+                              form.accion_medicina_interna ? "translate-x-2.5 bg-teal-600" : "translate-x-0 bg-white"
+                            }`}
+                          />
+                        </div>
+                        <i className={`fa-solid fa-stethoscope text-xs ${form.accion_medicina_interna ? "text-white" : "text-teal-600 dark:text-teal-400"}`}></i>
+                        <span className="truncate">Medicina Interna</span>
+                      </button>
+
+                      {/* Nutrición */}
+                      <button
+                        type="button"
+                        onClick={() => handleChange("accion_nutricion", !form.accion_nutricion)}
+                        className={`group flex items-center gap-2.5 h-10 rounded-xl px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                          form.accion_nutricion
+                            ? "!bg-teal-600 !border-teal-500 text-white font-bold ring-2 ring-teal-500/50 shadow-sm"
+                            : "bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        <div
+                          className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                            form.accion_nutricion
+                              ? "bg-white shadow-xs"
+                              : "bg-slate-300 dark:bg-white/20"
+                          }`}
+                        >
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full transform transition-transform duration-200 ${
+                              form.accion_nutricion ? "translate-x-2.5 bg-teal-600" : "translate-x-0 bg-white"
+                            }`}
+                          />
+                        </div>
+                        <i className={`fa-solid fa-apple-whole text-xs ${form.accion_nutricion ? "text-white" : "text-teal-600 dark:text-teal-400"}`}></i>
+                        <span className="truncate">Nutrición</span>
+                      </button>
+
+                      {/* Psicología */}
+                      <button
+                        type="button"
+                        onClick={() => handleChange("accion_psicologia", !form.accion_psicologia)}
+                        className={`group flex items-center gap-2.5 h-10 rounded-xl px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                          form.accion_psicologia
+                            ? "!bg-teal-600 !border-teal-500 text-white font-bold ring-2 ring-teal-500/50 shadow-sm"
+                            : "bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        <div
+                          className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                            form.accion_psicologia
+                              ? "bg-white shadow-xs"
+                              : "bg-slate-300 dark:bg-white/20"
+                          }`}
+                        >
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full transform transition-transform duration-200 ${
+                              form.accion_psicologia ? "translate-x-2.5 bg-teal-600" : "translate-x-0 bg-white"
+                            }`}
+                          />
+                        </div>
+                        <i className={`fa-solid fa-brain text-xs ${form.accion_psicologia ? "text-white" : "text-teal-600 dark:text-teal-400"}`}></i>
+                        <span className="truncate">Psicología</span>
+                      </button>
+
+                      {/* Psiquiatría */}
+                      <button
+                        type="button"
+                        onClick={() => handleChange("accion_psiquiatria", !form.accion_psiquiatria)}
+                        className={`group flex items-center gap-2.5 h-10 rounded-xl px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                          form.accion_psiquiatria
+                            ? "!bg-teal-600 !border-teal-500 text-white font-bold ring-2 ring-teal-500/50 shadow-sm"
+                            : "bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        <div
+                          className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                            form.accion_psiquiatria
+                              ? "bg-white shadow-xs"
+                              : "bg-slate-300 dark:bg-white/20"
+                          }`}
+                        >
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full transform transition-transform duration-200 ${
+                              form.accion_psiquiatria ? "translate-x-2.5 bg-teal-600" : "translate-x-0 bg-white"
+                            }`}
+                          />
+                        </div>
+                        <i className={`fa-solid fa-comments text-xs ${form.accion_psiquiatria ? "text-white" : "text-teal-600 dark:text-teal-400"}`}></i>
+                        <span className="truncate">Psiquiatría</span>
+                      </button>
+
+                      {/* Odontología */}
+                      <button
+                        type="button"
+                        onClick={() => handleChange("accion_odontologia", !form.accion_odontologia)}
+                        className={`group flex items-center gap-2.5 h-10 rounded-xl px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                          form.accion_odontologia
+                            ? "!bg-teal-600 !border-teal-500 text-white font-bold ring-2 ring-teal-500/50 shadow-sm"
+                            : "bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        <div
+                          className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                            form.accion_odontologia
+                              ? "bg-white shadow-xs"
+                              : "bg-slate-300 dark:bg-white/20"
+                          }`}
+                        >
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full transform transition-transform duration-200 ${
+                              form.accion_odontologia ? "translate-x-2.5 bg-teal-600" : "translate-x-0 bg-white"
+                            }`}
+                          />
+                        </div>
+                        <i className={`fa-solid fa-tooth text-xs ${form.accion_odontologia ? "text-white" : "text-teal-600 dark:text-teal-400"}`}></i>
+                        <span className="truncate">Odontología</span>
+                      </button>
+
+                      {/* Estudios de laboratorio y gabinete */}
+                      <button
+                        type="button"
+                        onClick={() => handleChange("accion_laboratorio_gabinete", !form.accion_laboratorio_gabinete)}
+                        className={`group flex items-center gap-2.5 h-10 rounded-xl px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                          form.accion_laboratorio_gabinete
+                            ? "!bg-teal-600 !border-teal-500 text-white font-bold ring-2 ring-teal-500/50 shadow-sm"
+                            : "bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        <div
+                          className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                            form.accion_laboratorio_gabinete
+                              ? "bg-white shadow-xs"
+                              : "bg-slate-300 dark:bg-white/20"
+                          }`}
+                        >
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full transform transition-transform duration-200 ${
+                              form.accion_laboratorio_gabinete ? "translate-x-2.5 bg-teal-600" : "translate-x-0 bg-white"
+                            }`}
+                          />
+                        </div>
+                        <i className={`fa-solid fa-vial text-xs ${form.accion_laboratorio_gabinete ? "text-white" : "text-teal-600 dark:text-teal-400"}`}></i>
+                        <span className="truncate font-bold" title="Solicitud de Estudios de Laboratorio y Gabinete">Estudios de Lab. y Gabinete</span>
+                      </button>
+
+                      {/* Otra especialidad */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextVal = !form.accion_otra_especialidad;
+                          handleChange("accion_otra_especialidad", nextVal);
+                          if (!nextVal) handleChange("otra_especialidad_texto", "");
+                        }}
+                        className={`group flex items-center gap-2.5 h-10 rounded-xl px-3 text-xs font-medium transition-all duration-150 border cursor-pointer ${
+                          form.accion_otra_especialidad
+                            ? "!bg-teal-600 !border-teal-500 text-white font-bold ring-2 ring-teal-500/50 shadow-sm"
+                            : "bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        <div
+                          className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
+                            form.accion_otra_especialidad
+                              ? "bg-white shadow-xs"
+                              : "bg-slate-300 dark:bg-white/20"
+                          }`}
+                        >
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full transform transition-transform duration-200 ${
+                              form.accion_otra_especialidad ? "translate-x-2.5 bg-teal-600" : "translate-x-0 bg-white"
+                            }`}
+                          />
+                        </div>
+                        <i className={`fa-solid fa-briefcase-medical text-xs ${form.accion_otra_especialidad ? "text-white" : "text-teal-600 dark:text-teal-400"}`}></i>
+                        <span className="truncate font-bold">Otra Especialidad</span>
+                      </button>
+                    </div>
+
+                    {form.accion_otra_especialidad && (
+                      <div className="pt-2 animate-in fade-in duration-200">
+                        <label className="space-y-1 text-xs block">
+                          <div className="flex items-center justify-between">
+                            <span className="text-teal-900 dark:text-teal-300 font-bold">Nombre de la otra especialidad *</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                              {(form.otra_especialidad_texto || "").length}/20 car.
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            maxLength={20}
+                            required
+                            className="w-full rounded-lg bg-white dark:bg-slate-900 border border-teal-400 dark:border-teal-500/40 px-3 py-2 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500/50 font-semibold"
+                            placeholder="Ej. Cardiología, Nefro..."
+                            value={form.otra_especialidad_texto || ""}
+                            onChange={(e) => handleChange("otra_especialidad_texto", e.target.value)}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Fecha de Referencia */}
                     <label className="space-y-1 text-xs">
                       <span className="text-slate-700 dark:text-slate-200 font-bold">Fecha de referencia a 2º o 3º nivel</span>
