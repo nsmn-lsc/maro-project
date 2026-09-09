@@ -93,7 +93,7 @@ SELECT
     c.movimientos_fetales AS Consulta_Mov_Fetales,
     c.proteinuria AS Consulta_Proteinuria_Tira,
     c.edema AS Consulta_Edema,
-    c.bh AS Consulta_Biometria_Hematica,
+    COALESCE(c.hemoglobina, c.bh) AS Consulta_Hemoglobina,
     c.estado_conciencia AS Consulta_Estado_Conciencia,
     c.hemorragia AS Consulta_Hemorragia_Estatus,
     c.respiracion AS Consulta_Respiracion_Estatus,

@@ -313,8 +313,10 @@ export async function POST(request: Request) {
     if (await hasColumn("edema")) {
       (payload as any).edema = body.edema || null;
     }
-    if (await hasColumn("bh")) {
-      (payload as any).bh = body.bh || null;
+    if (await hasColumn("hemoglobina")) {
+      (payload as any).hemoglobina = body.hemoglobina || body.bh || null;
+    } else if (await hasColumn("bh")) {
+      (payload as any).bh = body.hemoglobina || body.bh || null;
     }
 
     // Campos de Acciones Solicitadas (Sección 4)

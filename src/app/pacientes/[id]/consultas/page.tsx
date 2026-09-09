@@ -58,6 +58,7 @@ const initialForm = {
   movimientos_fetales: "",
   proteinuria: "",
   edema: "",
+  hemoglobina: "",
   bh: "",
   diagnostico: "",
   plan: "",
@@ -1436,15 +1437,18 @@ export default function ConsultasPaciente() {
                         )}
                       </div>
 
-                      {/* BH (Biometría Hemática) */}
+                      {/* Hemoglobina */}
                       <label className="space-y-1 text-xs sm:col-span-2 lg:col-span-3">
-                        <span className="text-slate-700 dark:text-slate-200 font-bold">BH</span>
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Hemoglobina (g/dL)</span>
                         <input
                           type="text"
                           className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/50"
-                          placeholder="preguntar por esta"
-                          value={form.bh}
-                          onChange={(e) => handleChange("bh", e.target.value)}
+                          placeholder="ej. 12.5"
+                          value={form.hemoglobina ?? form.bh ?? ""}
+                          onChange={(e) => {
+                            handleChange("hemoglobina", e.target.value);
+                            handleChange("bh", e.target.value);
+                          }}
                         />
                       </label>
 
