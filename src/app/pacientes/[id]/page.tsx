@@ -97,6 +97,25 @@ export default function PacienteDetalle() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ultimaConsulta, setUltimaConsulta] = useState<ConsultaResumen | null>(null);
+  const [detecciones, setDetecciones] = useState<{
+    prueba_vih_t3?: string | null;
+    prueba_vdrl_t3?: string | null;
+    prueba_hepatitis_c_t3?: string | null;
+    fecha_vih_t3?: string | null;
+    fecha_vdrl_t3?: string | null;
+    fecha_hepatitis_c_t3?: string | null;
+    fecha_deteccion_t3?: string | null;
+  } | null>(null);
+  const [acciones, setAcciones] = useState<{
+    id?: number;
+    td?: string | null;
+    tdpa?: string | null;
+    influenza?: string | null;
+    covid?: string | null;
+    otras?: string | null;
+    estomatologia?: string | null;
+    nutricion?: string | null;
+  } | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [alertaIndex, setAlertaIndex] = useState(0);
   const [isAlertaHovered, setIsAlertaHovered] = useState(false);
@@ -137,8 +156,8 @@ export default function PacienteDetalle() {
     }
 
     try {
-      const session = JSON.parse(stored) as SessionInfo;
-      const nivel = session.nivel ?? 0;
+      const parsed = JSON.parse(stored) as SessionInfo;
+      const nivel = parsed.nivel ?? 0;
       if (nivel >= 3) {
         router.replace(`/estatal/pacientes/${id}`);
         return;
@@ -177,9 +196,11 @@ export default function PacienteDetalle() {
     const load = async () => {
       setLoading(true);
       try {
-        const [resPaciente, resConsultas] = await Promise.all([
+        const [resPaciente, resConsultas, resDetecciones, resAcciones] = await Promise.all([
           fetch(`/api/pacientes?id=${id}`),
           fetch(`/api/consultas?paciente_id=${id}`),
+          fetch(`/api/detecciones?paciente_id=${id}`),
+          fetch(`/api/acciones?paciente_id=${id}`),
         ]);
 
         if (!resPaciente.ok) throw new Error((await resPaciente.json().catch(() => ({}))).message || "No se pudo cargar el paciente");
@@ -187,10 +208,14 @@ export default function PacienteDetalle() {
 
         const data = await resPaciente.json();
         const consultas = (await resConsultas.json()) as ConsultaResumen[];
+        const deteccionesData = resDetecciones.ok ? await resDetecciones.json() : null;
+        const accionesData = resAcciones.ok ? await resAcciones.json() : null;
 
         if (!cancelled) {
           setPatient(data);
           setUltimaConsulta(Array.isArray(consultas) && consultas.length > 0 ? consultas[0] : null);
+          setDetecciones(deteccionesData);
+          setAcciones(accionesData);
           setError(null);
         }
       } catch (err: any) {
@@ -255,9 +280,53 @@ export default function PacienteDetalle() {
   };
 
   /** Calcula SDG actuales o información de puerperio a partir del ciclo obstétrico */
+  const cicloObstetrico = useMemo(() => {
+    if (!patient) return null;
+    return evaluarCicloObstetrico({
+      fum: patient.fum,
+      estadoEmbarazo: patient.estado_embarazo,
+      fechaResolucion: patient.fecha_resolucion,
+    });
+  }, [patient]);
+
+  const es3erTrimestre = useMemo(() => {
+    if (!cicloObstetrico) return false;
+    return (
+      cicloObstetrico.estadoEmbarazo === "activo" &&
+      cicloObstetrico.semanasGestacion !== null &&
+      cicloObstetrico.semanasGestacion >= 28
+    );
+  }, [cicloObstetrico]);
+
+  const hasDeteccionesT3 = useMemo(() => {
+    if (!detecciones) return false;
+    return Boolean(
+      detecciones.prueba_vih_t3 ||
+        detecciones.prueba_vdrl_t3 ||
+        detecciones.prueba_hepatitis_c_t3 ||
+        detecciones.fecha_vih_t3 ||
+        detecciones.fecha_vdrl_t3 ||
+        detecciones.fecha_hepatitis_c_t3 ||
+        detecciones.fecha_deteccion_t3
+    );
+  }, [detecciones]);
+
+  const vacunasFaltantes = useMemo(() => {
+    const faltantes: string[] = [];
+    if (!acciones?.td) faltantes.push("TD");
+    if (!acciones?.tdpa) faltantes.push("TDPA");
+    if (!acciones?.influenza) faltantes.push("Influenza");
+    if (!acciones?.covid) faltantes.push("COVID");
+    return faltantes;
+  }, [acciones]);
+
+  const hasVacunacionIncompleta = useMemo(() => {
+    return vacunasFaltantes.length > 0;
+  }, [vacunasFaltantes]);
+
   const calcularSdgActual = (p: Patient | null): string => {
     if (!p) return "—";
-    const ciclo = evaluarCicloObstetrico({
+    const ciclo = cicloObstetrico || evaluarCicloObstetrico({
       fum: p.fum,
       estadoEmbarazo: p.estado_embarazo,
       fechaResolucion: p.fecha_resolucion,
@@ -624,8 +693,10 @@ export default function PacienteDetalle() {
     );
   }
 
+
+
   return (
-    <main className="min-h-screen relative transition-colors duration-300">
+    <main className="min-h-screen relative text-slate-900 dark:text-white transition-colors">
       {/* CAPA DE FONDO FIJA - MODO CLARO */}
       <div
         className="fixed inset-0 z-0 dark:hidden"
@@ -641,7 +712,7 @@ export default function PacienteDetalle() {
       <div
         className="fixed inset-0 z-0 hidden dark:block"
         style={{
-          backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.94), rgba(15,118,110,0.65)), url(/maro-hero.png)",
+          backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,118,110,0.65)), url(/maro-hero.png)",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
@@ -650,30 +721,28 @@ export default function PacienteDetalle() {
       />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-        {/* ENCABEZADO SUPERIOR */}
+        {/* ENCABEZADO SUPERIOR DE LA PACIENTE */}
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs uppercase tracking-[0.2em] font-bold text-emerald-700 dark:text-emerald-300">
                 Expediente Obstétrico
               </span>
-              {patient?.folio && (
-                <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-400/40 px-2.5 py-0.5 rounded-full font-mono">
-                  {patient.folio}
-                </span>
-              )}
-              {enProcesoColegiado && (
-                <span className="text-xs font-bold text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-400/40 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
-                  <i className="fa-solid fa-clock-rotate-left text-amber-600 dark:text-amber-300"></i>
-                  <span>Colegiado en Proceso</span>
+              <span className="text-xs bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-200 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                Folio: {patient?.folio || "S/F"}
+              </span>
+              {patient?.estado_embarazo === "puerperio" && (
+                <span className="text-xs bg-purple-100 dark:bg-purple-500/20 border border-purple-300 dark:border-purple-400/40 text-purple-900 dark:text-purple-200 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                  <i className="fa-solid fa-baby text-purple-600 dark:text-purple-300"></i>
+                  Puerperio Atendido
                 </span>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
-              {patient?.nombre_completo || "Paciente sin nombre"}
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+              <i className="fa-solid fa-user-nurse text-emerald-600 dark:text-emerald-400"></i>
+              {patient?.nombre_completo || "Cargando..."}
             </h1>
-            <p className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
-              <i className="fa-solid fa-hospital text-emerald-600 dark:text-emerald-400"></i>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
               <span>{patient?.unidad || "Unidad Médica"} · CLUES {patient?.clues_id || "—"}</span>
             </p>
           </div>
@@ -737,19 +806,27 @@ export default function PacienteDetalle() {
                   }] : []),
                   {
                     title: "Acciones",
-                    subtitle: "Preventivas y Educación",
+                    subtitle: hasVacunacionIncompleta ? "⚠️ Esquema Incompleto" : "Preventivas y Educación",
                     icon: "fa-solid fa-shield-heart",
                     href: `/pacientes/${patient.id}/acciones`,
-                    accent: "border-amber-300 dark:border-amber-400/40 bg-white/95 dark:bg-amber-500/10 text-amber-950 dark:text-amber-100 hover:bg-amber-50 dark:hover:bg-amber-500/20 hover:border-amber-400 dark:hover:border-amber-300",
-                    iconBox: "bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-300",
+                    accent: hasVacunacionIncompleta
+                      ? "border-amber-400 dark:border-amber-400/60 bg-amber-50/90 dark:bg-amber-500/15 text-amber-950 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-500/25 border-2 shadow-amber-500/10"
+                      : "border-amber-300 dark:border-amber-400/40 bg-white/95 dark:bg-amber-500/10 text-amber-950 dark:text-amber-100 hover:bg-amber-50 dark:hover:bg-amber-500/20 hover:border-amber-400 dark:hover:border-amber-300",
+                    iconBox: hasVacunacionIncompleta
+                      ? "bg-amber-200 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300"
+                      : "bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-300",
                   },
                   {
                     title: "Detecciones",
-                    subtitle: "Tamizajes y Laboratorios",
+                    subtitle: es3erTrimestre ? (hasDeteccionesT3 ? "3T Registrado" : "⚠️ 3T Pendiente") : "Tamizajes y Laboratorios",
                     icon: "fa-solid fa-vial-virus",
                     href: `/pacientes/${patient.id}/detecciones`,
-                    accent: "border-emerald-300 dark:border-emerald-400/40 bg-white/95 dark:bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 hover:border-emerald-400 dark:hover:border-emerald-300",
-                    iconBox: "bg-emerald-100 dark:bg-white/10 text-emerald-700 dark:text-emerald-300",
+                    accent: es3erTrimestre && !hasDeteccionesT3
+                      ? "border-amber-400 dark:border-amber-400/60 bg-amber-50/90 dark:bg-amber-500/15 text-amber-950 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-500/25 border-2 shadow-amber-500/10"
+                      : "border-emerald-300 dark:border-emerald-400/40 bg-white/95 dark:bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 hover:border-emerald-400 dark:hover:border-emerald-300",
+                    iconBox: es3erTrimestre && !hasDeteccionesT3
+                      ? "bg-amber-200 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300"
+                      : "bg-emerald-100 dark:bg-white/10 text-emerald-700 dark:text-emerald-300",
                   },
                 ].map((item) => {
                   const isHash = item.href.startsWith("#");
@@ -800,6 +877,108 @@ export default function PacienteDetalle() {
                   );
                 })}
               </div>
+
+              {/* SECCIÓN DE ALERTAS PREVENTIVAS Y DE SEGUIMIENTO */}
+              {(es3erTrimestre || (hasVacunacionIncompleta && (patient.estado_embarazo === "activo" || !patient.estado_embarazo))) && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 px-1">
+                    <i className="fa-solid fa-bell text-amber-500 dark:text-amber-400 text-xs"></i>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Alertas de Seguimiento Clínico
+                    </h3>
+                  </div>
+
+                  <div className={`grid grid-cols-1 ${(es3erTrimestre && hasVacunacionIncompleta && (patient.estado_embarazo === "activo" || !patient.estado_embarazo)) ? "md:grid-cols-2" : ""} gap-3.5`}>
+                    {/* ALERTA CLÍNICA 3ER TRIMESTRE (≥ 28 SDG) */}
+                    {es3erTrimestre && (
+                      <div className="rounded-2xl border border-amber-300 dark:border-amber-500/40 bg-gradient-to-br from-amber-50/90 via-amber-100/50 to-emerald-50/40 dark:from-amber-950/40 dark:via-amber-900/20 dark:to-emerald-950/30 p-4 shadow-md flex flex-col justify-between gap-3 transition-all">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-xl bg-amber-200/80 dark:bg-amber-800/40 text-amber-800 dark:text-amber-200 flex items-center justify-center text-base shrink-0 border border-amber-300 dark:border-amber-600/30 shadow-xs">
+                                <i className="fa-solid fa-vial-virus text-amber-700 dark:text-amber-300" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-extrabold text-amber-950 dark:text-amber-100 tracking-tight leading-snug">
+                                  3er Trimestre ({cicloObstetrico?.sdgTexto})
+                                </h4>
+                                <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300/90">
+                                  ≥ 28 Semanas de Gestación
+                                </span>
+                              </div>
+                            </div>
+
+                            {!hasDeteccionesT3 ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-rose-100 dark:bg-rose-500/20 border-rose-300 dark:border-rose-400/40 text-rose-800 dark:text-rose-200 flex items-center gap-1 shrink-0 animate-pulse">
+                                <i className="fa-solid fa-clock text-rose-600 dark:text-rose-400" />
+                                Pendiente
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-100 dark:bg-emerald-500/20 border-emerald-300 dark:border-emerald-400/40 text-emerald-800 dark:text-emerald-200 flex items-center gap-1 shrink-0">
+                                <i className="fa-solid fa-check text-emerald-600 dark:text-emerald-400" />
+                                Registrado
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-slate-700 dark:text-amber-100/90 leading-relaxed">
+                            {hasDeteccionesT3
+                              ? "Pruebas de laboratorio del 3er trimestre capturadas. Puedes consultar o actualizar el expediente."
+                              : "Etapa de 3er trimestre alcanzada. Solicitar y registrar pruebas de seguimiento (VIH, VDRL y Hepatitis C)."}
+                          </p>
+                        </div>
+
+                        <Link
+                          href={`/pacientes/${patient.id}/detecciones`}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold px-3.5 py-2 text-xs shadow-xs transition-all justify-center w-full mt-1"
+                        >
+                          <i className="fa-solid fa-vial text-xs" />
+                          {hasDeteccionesT3 ? "Ver Detecciones 3T" : "Registrar Detecciones 3T →"}
+                        </Link>
+                      </div>
+                    )}
+
+                    {/* ALERTA CLÍNICA: ESQUEMA DE VACUNACIÓN INCOMPLETO */}
+                    {hasVacunacionIncompleta && (patient.estado_embarazo === "activo" || !patient.estado_embarazo) && (
+                      <div className="rounded-2xl border border-amber-300 dark:border-amber-500/40 bg-gradient-to-br from-amber-50/90 via-amber-100/50 to-rose-50/40 dark:from-amber-950/40 dark:via-amber-900/20 dark:to-rose-950/30 p-4 shadow-md flex flex-col justify-between gap-3 transition-all">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-xl bg-amber-200/80 dark:bg-amber-800/40 text-amber-800 dark:text-amber-200 flex items-center justify-center text-base shrink-0 border border-amber-300 dark:border-amber-600/30 shadow-xs">
+                                <i className="fa-solid fa-syringe text-amber-700 dark:text-amber-300" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-extrabold text-amber-950 dark:text-amber-100 tracking-tight leading-snug">
+                                  Vacunación Incompleta
+                                </h4>
+                                <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300/90">
+                                  Esquema Preventivo
+                                </span>
+                              </div>
+                            </div>
+
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-200/80 dark:bg-amber-400/20 border-amber-400/50 text-amber-900 dark:text-amber-200 shrink-0">
+                              {vacunasFaltantes.length} {vacunasFaltantes.length === 1 ? "pendiente" : "pendientes"}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-700 dark:text-amber-100/90 leading-relaxed">
+                            Faltan vacunas: <strong className="font-bold text-amber-950 dark:text-amber-100">{vacunasFaltantes.join(", ")}</strong>. Capturar o actualizar fechas en el módulo de acciones.
+                          </p>
+                        </div>
+
+                        <Link
+                          href={`/pacientes/${patient.id}/acciones`}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold px-3.5 py-2 text-xs shadow-xs transition-all justify-center w-full mt-1"
+                        >
+                          <i className="fa-solid fa-shield-heart text-xs" />
+                          Registrar Vacunas →
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* PERFIL OBSTÉTRICO Y CRONOGRAMA GESTACIONAL */}
               <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-6 space-y-4 shadow-xl transition-colors">

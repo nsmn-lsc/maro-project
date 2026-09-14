@@ -46,7 +46,7 @@ type SessionInfo = {
 };
 
 type FilterType = "todos" | "critico" | "alto" | "bajo" | "inasistencia" | "proxima_vencer" | "al_corriente" | "vencidas";
-type TabEstadoType = "embarazo" | "puerperio" | "todos";
+type TabEstadoType = "embarazo" | "tercer_trimestre" | "puerperio" | "todos";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -224,6 +224,7 @@ export default function Dashboard() {
     let proximaVencer = 0;
     let alCorriente = 0;
     let totalEmbarazo = 0;
+    let totalTercerTrimestre = 0;
     let totalPuerperio = 0;
     let totalVencidas = 0;
 
@@ -248,6 +249,9 @@ export default function Dashboard() {
         totalPuerperio++;
       } else {
         totalEmbarazo++;
+        if (ciclo.semanasGestacion !== null && ciclo.semanasGestacion >= 28) {
+          totalTercerTrimestre++;
+        }
         if (ciclo.esFppVencida) {
           totalVencidas++;
         }
@@ -262,6 +266,7 @@ export default function Dashboard() {
       proximaVencer,
       alCorriente,
       totalEmbarazo,
+      totalTercerTrimestre,
       totalPuerperio,
       totalVencidas,
       total: patients.length,
@@ -271,9 +276,19 @@ export default function Dashboard() {
   const filteredPatients = useMemo(() => {
     let result = patients;
 
-    // 1. Filtro por Población Obstétrica (Pestañas: Embarazo / Puerperio / Todos)
+    // 1. Filtro por Población Obstétrica (Pestañas: Embarazo / 3er Trimestre / Puerperio / Todos)
     if (tabEstado === "embarazo") {
       result = result.filter((p) => p.estado_embarazo !== "puerperio" && p.estado_embarazo !== "concluido");
+    } else if (tabEstado === "tercer_trimestre") {
+      result = result.filter((p) => {
+        if (p.estado_embarazo === "puerperio" || p.estado_embarazo === "concluido") return false;
+        const ciclo = evaluarCicloObstetrico({
+          fum: p.fum,
+          estadoEmbarazo: p.estado_embarazo,
+          fechaResolucion: p.fecha_resolucion,
+        });
+        return ciclo.semanasGestacion !== null && ciclo.semanasGestacion >= 28;
+      });
     } else if (tabEstado === "puerperio") {
       result = result.filter((p) => p.estado_embarazo === "puerperio" || p.estado_embarazo === "concluido");
     }
@@ -831,6 +846,28 @@ export default function Dashboard() {
                   ⚠️ {counts.totalVencidas} vencidas
                 </span>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTabEstado("tercer_trimestre");
+                setActiveFilter("todos");
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer border ${
+                tabEstado === "tercer_trimestre"
+                  ? "bg-amber-600 text-white dark:bg-amber-500/30 dark:border-amber-400 dark:text-amber-200 shadow-md"
+                  : "bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10"
+              }`}
+            >
+              <span>🧪 3er Trimestre (≥28 SDG)</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-extrabold ${
+                tabEstado === "tercer_trimestre"
+                  ? "bg-amber-700/90 text-white dark:bg-amber-400/30"
+                  : "bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300"
+              }`}>
+                {counts.totalTercerTrimestre}
+              </span>
             </button>
 
             <button

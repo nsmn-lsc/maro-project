@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Detecciones {
   id?: number;
@@ -13,19 +14,37 @@ interface Detecciones {
   prueba_vih_t3: string | null;
   prueba_vdrl_t3: string | null;
   prueba_hepatitis_c_t3: string | null;
+  fecha_deteccion_t3?: string | null;
+  fecha_vih_t3?: string | null;
+  fecha_vdrl_t3?: string | null;
+  fecha_hepatitis_c_t3?: string | null;
   diabetes_glicemia: string | null;
   violencia: string | null;
 }
 
 const initialForm = {
   prueba_vih_t3: "",
+  fecha_vih_t3: "",
   prueba_vdrl_t3: "",
+  fecha_vdrl_t3: "",
   prueba_hepatitis_c_t3: "",
+  fecha_hepatitis_c_t3: "",
 };
 
 const VIH_OPTS = ["Reactiva", "No reactiva"];
 const VDRL_OPTS = ["Reactiva", "No reactiva"];
 const HEP_OPTS = ["Reactiva", "No reactiva"];
+
+function formatFechaMostrar(fecha: string | null | undefined) {
+  if (!fecha) return "—";
+  const clean = fecha.includes("T") ? fecha.split("T")[0] : fecha;
+  const parts = clean.split("-");
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  return fecha;
+}
 
 export default function DeteccionesPage() {
   const params = useParams();
@@ -39,6 +58,10 @@ export default function DeteccionesPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [pacienteFolio, setPacienteFolio] = useState<string | null>(null);
+
+  // Estados para Modal de Alerta Epidemiológica (Pruebas Reactivas)
+  const [showReactivaModal, setShowReactivaModal] = useState(false);
+  const [reactivasDetectadas, setReactivasDetectadas] = useState<string[]>([]);
 
   useEffect(() => {
     const stored = localStorage.getItem("maro:user");
@@ -81,6 +104,23 @@ export default function DeteccionesPage() {
     if (pacienteId) loadPaciente();
   }, [authChecked, pacienteId]);
 
+  const getReactivasFromForm = (f: typeof initialForm) => {
+    const list: string[] = [];
+    if (f.prueba_vih_t3 === "Reactiva") list.push("Prueba VIH (3er trimestre)");
+    if (f.prueba_vdrl_t3 === "Reactiva") list.push("Prueba VDRL (3er trimestre)");
+    if (f.prueba_hepatitis_c_t3 === "Reactiva") list.push("Prueba Hepatitis C (3er trimestre)");
+    return list;
+  };
+
+  const getReactivasFromData = (d: Detecciones | null) => {
+    if (!d) return [];
+    const list: string[] = [];
+    if (d.prueba_vih_t3 === "Reactiva" || d.prueba_vih === "Reactiva") list.push("Prueba VIH");
+    if (d.prueba_vdrl_t3 === "Reactiva" || d.prueba_vdrl === "Reactiva") list.push("Prueba VDRL");
+    if (d.prueba_hepatitis_c_t3 === "Reactiva" || d.prueba_hepatitis_c === "Reactiva") list.push("Prueba Hepatitis C");
+    return list;
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -91,8 +131,11 @@ export default function DeteccionesPage() {
       if (data) {
         setForm({
           prueba_vih_t3: data.prueba_vih_t3 || "",
+          fecha_vih_t3: data.fecha_vih_t3 ? data.fecha_vih_t3.split("T")[0] : (data.fecha_deteccion_t3 ? data.fecha_deteccion_t3.split("T")[0] : ""),
           prueba_vdrl_t3: data.prueba_vdrl_t3 || "",
+          fecha_vdrl_t3: data.fecha_vdrl_t3 ? data.fecha_vdrl_t3.split("T")[0] : (data.fecha_deteccion_t3 ? data.fecha_deteccion_t3.split("T")[0] : ""),
           prueba_hepatitis_c_t3: data.prueba_hepatitis_c_t3 || "",
+          fecha_hepatitis_c_t3: data.fecha_hepatitis_c_t3 ? data.fecha_hepatitis_c_t3.split("T")[0] : (data.fecha_deteccion_t3 ? data.fecha_deteccion_t3.split("T")[0] : ""),
         });
       } else {
         setForm(initialForm);
@@ -113,26 +156,44 @@ export default function DeteccionesPage() {
 
   if (!authChecked) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white flex items-center justify-center">
         Validando acceso...
       </main>
     );
   }
 
   const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const updated = { ...prev, [field]: value };
+      if (value === "Reactiva") {
+        const reactivas = getReactivasFromForm(updated);
+        setReactivasDetectadas(reactivas);
+        setShowReactivaModal(true);
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError(null);
+
+    const reactivas = getReactivasFromForm(form);
+    if (reactivas.length > 0) {
+      setReactivasDetectadas(reactivas);
+      setShowReactivaModal(true);
+    }
+
     try {
       const payload = {
         paciente_id: Number(pacienteId),
         prueba_vih_t3: form.prueba_vih_t3 || null,
+        fecha_vih_t3: form.fecha_vih_t3 || null,
         prueba_vdrl_t3: form.prueba_vdrl_t3 || null,
+        fecha_vdrl_t3: form.fecha_vdrl_t3 || null,
         prueba_hepatitis_c_t3: form.prueba_hepatitis_c_t3 || null,
+        fecha_hepatitis_c_t3: form.fecha_hepatitis_c_t3 || null,
         created_by: 1,
         updated_by: 1,
       };
@@ -156,94 +217,203 @@ export default function DeteccionesPage() {
     }
   };
 
-  const selectField = (key: keyof typeof form, label: string, options: string[], required = true) => (
-    <label className="space-y-1 text-sm">
-      <span className="text-slate-100">{label}</span>
-      <select
-        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-        value={form[key]}
-        onChange={(e) => handleChange(key, e.target.value)}
-        required={required}
-      >
-        <option value="">Selecciona…</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
+  const today = new Date().toISOString().split("T")[0];
 
   return (
-    <main
-      className="min-h-screen relative text-white"
-      style={{
-        backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(15,118,110,0.6)), url(/maro-hero.png)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      <div className="absolute inset-0 bg-black/40 mix-blend-multiply" aria-hidden />
+    <main className="min-h-screen relative text-slate-900 dark:text-white transition-colors">
+      {/* CAPA DE FONDO FIJA - MODO CLARO */}
+      <div
+        className="fixed inset-0 z-0 dark:hidden"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(241, 245, 249, 0.88), rgba(204, 251, 241, 0.75)), url(/maro-hero.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        aria-hidden="true"
+      />
+      {/* CAPA DE FONDO FIJA - MODO OSCURO */}
+      <div
+        className="fixed inset-0 z-0 hidden dark:block"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,118,110,0.65)), url(/maro-hero.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        aria-hidden="true"
+      />
 
-      <div className="relative mx-auto max-w-6xl px-6 py-10 lg:py-14 space-y-8">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-emerald-200/80">Paciente{pacienteFolio ? `: ${pacienteFolio}` : ""}</p>
-            <h1 className="text-3xl font-bold lg:text-4xl">Detecciones tercer trimestre</h1>
-            <p className="text-slate-200/80 max-w-3xl">
-              Captura las pruebas de seguimiento del tercer trimestre: VIH, VDRL y Hepatitis C.
+      <div className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.25em] font-bold text-emerald-700 dark:text-emerald-300">
+              Paciente{pacienteFolio ? `: ${pacienteFolio}` : ""}
+            </p>
+            <h1 className="text-3xl font-extrabold lg:text-4xl text-slate-900 dark:text-white tracking-tight">
+              Detecciones tercer trimestre
+            </h1>
+            <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm max-w-3xl">
+              Captura el resultado y la fecha de toma independiente de cada prueba del tercer trimestre: VIH, VDRL y Hepatitis C.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <ThemeToggle />
             <Link
               href={`/pacientes/${pacienteId}`}
-              className="rounded-full border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white/90 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-white shadow-sm transition-all"
             >
               ← Detalle paciente
             </Link>
           </div>
-        </div>
+        </header>
 
-        {error && <p className="text-sm text-red-200 bg-red-500/10 border border-red-500/40 rounded-lg px-3 py-2">{error}</p>}
+        {error && (
+          <div className="rounded-xl border border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-500/10 px-4 py-3 text-sm text-rose-900 dark:text-rose-200 flex items-center gap-2 shadow-sm">
+            <span>🚨</span> {error}
+          </div>
+        )}
 
-        <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
+        <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-sm p-6 space-y-5 shadow-xl transition-colors">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold">Registrar pruebas del tercer trimestre</h2>
-              <p className="text-sm text-slate-200/70 mt-1">Pruebas de seguimiento durante el tercer trimestre</p>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Registrar pruebas del tercer trimestre</h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5">
+                Pruebas de seguimiento durante el tercer trimestre con fecha independiente por prueba
+              </p>
             </div>
-            <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-100">
+            <span className="rounded-full border border-amber-300 dark:border-amber-400/40 bg-amber-100 dark:bg-amber-400/10 px-3 py-1 text-xs font-bold text-amber-900 dark:text-amber-100">
               3er trimestre
             </span>
           </div>
+
           <div className="space-y-5">
-            <div className="flex items-start gap-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-amber-50">
-              <span className="mt-0.5 text-lg">•</span>
-              <p className="text-sm">Captura las pruebas de VIH, VDRL y Hepatitis C de seguimiento durante el tercer trimestre del embarazo.</p>
+            <div className="flex items-start gap-3 rounded-xl border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-3.5 text-amber-950 dark:text-amber-50 shadow-sm">
+              <span className="mt-0.5 text-lg text-amber-600 dark:text-amber-400">•</span>
+              <p className="text-xs sm:text-sm leading-relaxed">
+                Puedes registrar el resultado y la fecha de toma individual de cada prueba de laboratorio según se vayan realizando en la paciente.
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-3">
-                <h3 className="text-lg font-semibold">Pruebas de laboratorio</h3>
-                <div className="grid gap-4 lg:grid-cols-3">
-                  {selectField("prueba_vih_t3", "Prueba VIH (3er trimestre)", VIH_OPTS, false)}
-                  {selectField("prueba_vdrl_t3", "Prueba VDRL (3er trimestre)", VDRL_OPTS, false)}
-                  {selectField("prueba_hepatitis_c_t3", "Prueba Hepatitis C (3er trimestre)", HEP_OPTS, false)}
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <i className="fa-solid fa-flask text-emerald-600 dark:text-emerald-400" />
+                  Pruebas de laboratorio
+                </h3>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {/* Tarjeta VIH */}
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 p-4 space-y-3 transition-colors shadow-sm">
+                    <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                      <i className="fa-solid fa-vial text-emerald-600 dark:text-emerald-400" />
+                      Prueba VIH (3er trimestre)
+                    </h4>
+                    <label className="block space-y-1 text-sm">
+                      <span className="text-slate-700 dark:text-slate-200 font-semibold">Resultado</span>
+                      <select
+                        className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/15 px-3 py-2 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500/50"
+                        value={form.prueba_vih_t3}
+                        onChange={(e) => handleChange("prueba_vih_t3", e.target.value)}
+                      >
+                        <option value="">Selecciona…</option>
+                        {VIH_OPTS.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block space-y-1 text-sm">
+                      <span className="text-slate-700 dark:text-slate-200 font-semibold">Fecha de toma</span>
+                      <input
+                        type="date"
+                        className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/15 px-3 py-2 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500/50 dark:[color-scheme:dark]"
+                        value={form.fecha_vih_t3}
+                        max={today}
+                        onChange={(e) => handleChange("fecha_vih_t3", e.target.value)}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Tarjeta VDRL */}
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 p-4 space-y-3 transition-colors shadow-sm">
+                    <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                      <i className="fa-solid fa-vial-virus text-emerald-600 dark:text-emerald-400" />
+                      Prueba VDRL (3er trimestre)
+                    </h4>
+                    <label className="block space-y-1 text-sm">
+                      <span className="text-slate-700 dark:text-slate-200 font-semibold">Resultado</span>
+                      <select
+                        className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/15 px-3 py-2 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500/50"
+                        value={form.prueba_vdrl_t3}
+                        onChange={(e) => handleChange("prueba_vdrl_t3", e.target.value)}
+                      >
+                        <option value="">Selecciona…</option>
+                        {VDRL_OPTS.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block space-y-1 text-sm">
+                      <span className="text-slate-700 dark:text-slate-200 font-semibold">Fecha de toma</span>
+                      <input
+                        type="date"
+                        className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/15 px-3 py-2 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500/50 dark:[color-scheme:dark]"
+                        value={form.fecha_vdrl_t3}
+                        max={today}
+                        onChange={(e) => handleChange("fecha_vdrl_t3", e.target.value)}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Tarjeta Hepatitis C */}
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 p-4 space-y-3 transition-colors shadow-sm">
+                    <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                      <i className="fa-solid fa-notes-medical text-emerald-600 dark:text-emerald-400" />
+                      Prueba Hepatitis C (3er trimestre)
+                    </h4>
+                    <label className="block space-y-1 text-sm">
+                      <span className="text-slate-700 dark:text-slate-200 font-semibold">Resultado</span>
+                      <select
+                        className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/15 px-3 py-2 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500/50"
+                        value={form.prueba_hepatitis_c_t3}
+                        onChange={(e) => handleChange("prueba_hepatitis_c_t3", e.target.value)}
+                      >
+                        <option value="">Selecciona…</option>
+                        {HEP_OPTS.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block space-y-1 text-sm">
+                      <span className="text-slate-700 dark:text-slate-200 font-semibold">Fecha de toma</span>
+                      <input
+                        type="date"
+                        className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/15 px-3 py-2 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500/50 dark:[color-scheme:dark]"
+                        value={form.fecha_hepatitis_c_t3}
+                        max={today}
+                        onChange={(e) => handleChange("fecha_hepatitis_c_t3", e.target.value)}
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="submit"
-                  className="rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60"
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-5 py-2.5 text-sm shadow-md shadow-emerald-600/20 transition-all disabled:opacity-60 cursor-pointer"
                   disabled={saving}
                 >
                   {saving ? "Guardando..." : "Guardar"}
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg border border-white/20 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+                  className="rounded-xl border border-slate-300 dark:border-white/20 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-white px-5 py-2.5 text-sm font-semibold transition-all cursor-pointer"
                   onClick={() => setForm(initialForm)}
                 >
                   Limpiar
@@ -253,31 +423,70 @@ export default function DeteccionesPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
+        <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-sm p-6 space-y-5 shadow-xl transition-colors">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Pruebas registradas (3er trimestre)</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Pruebas registradas (3er trimestre)</h2>
             {detecciones ? (
-              <span className="text-xs text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+              <span className="text-xs font-mono font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 px-3 py-1 rounded-full">
                 ID #{detecciones.id}
               </span>
             ) : null}
           </div>
 
           {loading ? (
-            <p className="text-sm text-slate-200/80">Cargando…</p>
-          ) : !detecciones || (!detecciones.prueba_vih_t3 && !detecciones.prueba_vdrl_t3 && !detecciones.prueba_hepatitis_c_t3) ? (
-            <p className="text-sm text-slate-200/80">Aún no hay pruebas del tercer trimestre registradas.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">Cargando…</p>
+          ) : !detecciones ||
+            (!detecciones.prueba_vih_t3 &&
+              !detecciones.prueba_vdrl_t3 &&
+              !detecciones.prueba_hepatitis_c_t3 &&
+              !detecciones.fecha_vih_t3 &&
+              !detecciones.fecha_vdrl_t3 &&
+              !detecciones.fecha_hepatitis_c_t3 &&
+              !detecciones.fecha_deteccion_t3) ? (
+            <p className="text-sm text-slate-600 dark:text-slate-300">Aún no hay pruebas del tercer trimestre registradas.</p>
           ) : (
             <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {[ 
-                  { label: "Prueba VIH (3er trimestre)", value: detecciones.prueba_vih_t3 },
-                  { label: "Prueba VDRL (3er trimestre)", value: detecciones.prueba_vdrl_t3 },
-                  { label: "Prueba Hepatitis C (3er trimestre)", value: detecciones.prueba_hepatitis_c_t3 },
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  {
+                    label: "Prueba VIH (3er trimestre)",
+                    resultado: detecciones.prueba_vih_t3,
+                    fecha: detecciones.fecha_vih_t3 || detecciones.fecha_deteccion_t3,
+                  },
+                  {
+                    label: "Prueba VDRL (3er trimestre)",
+                    resultado: detecciones.prueba_vdrl_t3,
+                    fecha: detecciones.fecha_vdrl_t3 || detecciones.fecha_deteccion_t3,
+                  },
+                  {
+                    label: "Prueba Hepatitis C (3er trimestre)",
+                    resultado: detecciones.prueba_hepatitis_c_t3,
+                    fecha: detecciones.fecha_hepatitis_c_t3 || detecciones.fecha_deteccion_t3,
+                  },
                 ].map((item) => (
-                  <div key={item.label} className="flex flex-col rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                    <span className="text-xs uppercase tracking-wide text-slate-300/70">{item.label}</span>
-                    <span className="text-sm text-white">{item.value || "—"}</span>
+                  <div
+                    key={item.label}
+                    className="flex flex-col rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 p-4 space-y-2 shadow-sm transition-colors"
+                  >
+                    <span className="text-xs uppercase tracking-wide text-emerald-800 dark:text-emerald-300 font-bold">{item.label}</span>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Resultado:</span>
+                      <span
+                        className={`text-sm font-bold ${
+                          item.resultado === "Reactiva"
+                            ? "text-rose-600 dark:text-rose-400 font-extrabold"
+                            : "text-slate-900 dark:text-white"
+                        }`}
+                      >
+                        {item.resultado || "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Fecha de toma:</span>
+                      <span className="text-xs font-mono font-medium text-slate-700 dark:text-slate-200">
+                        {formatFechaMostrar(item.fecha)}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -285,6 +494,66 @@ export default function DeteccionesPage() {
           )}
         </section>
       </div>
+
+      {/* MODAL DE ALERTA EPIDEMIOLÓGICA - PRUEBA REACTIVA */}
+      {showReactivaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-2xl border-2 border-rose-500 bg-slate-900 text-white shadow-2xl overflow-hidden">
+            {/* Encabezado Rojo */}
+            <div className="bg-rose-600 px-6 py-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl shrink-0">
+                <i className="fa-solid fa-triangle-exclamation text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-extrabold uppercase tracking-wide text-white">
+                  🚨 Alerta Epidemiológica: Prueba Reactiva
+                </h2>
+                <p className="text-xs text-rose-100 font-semibold">
+                  Protocolo de seguimiento inmediato
+                </p>
+              </div>
+            </div>
+
+            {/* Cuerpo del Modal */}
+            <div className="p-6 space-y-5 bg-slate-900">
+              {reactivasDetectadas.length > 0 && (
+                <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3.5 space-y-1">
+                  <span className="text-xs font-bold text-rose-300 uppercase tracking-wide block">
+                    Prueba(s) con resultado Reactivo:
+                  </span>
+                  <ul className="list-disc list-inside text-sm font-bold text-rose-100">
+                    {reactivasDetectadas.map((p) => (
+                      <li key={p}>{p}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-rose-500/50 bg-rose-950/80 p-4 text-center space-y-2 shadow-inner">
+                <i className="fa-solid fa-bell-concierge text-3xl text-rose-400 animate-bounce" />
+                <p className="text-sm font-black text-rose-100 leading-relaxed uppercase tracking-tight">
+                  Informar inmediatamente a enlace zonal y epidemiologia regional, seguimiento normativo hasta descarte o confirmacion
+                </p>
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed text-center">
+                Todo resultado reactivo requiere la notificación oportuna para la toma de muestra confirmatoria y la referencia prioritaria.
+              </p>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowReactivaModal(false)}
+                  className="w-full sm:w-auto rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold px-6 py-2.5 text-sm shadow-lg shadow-rose-600/40 transition-all cursor-pointer"
+                >
+                  Entendido / Notificado
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
+

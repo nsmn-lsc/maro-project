@@ -2,6 +2,22 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { assertPacienteScope, requireApiAuth } from "@/lib/apiAuth";
 
+async function hasColumn(columnName: string) {
+  try {
+    const rows = await query<any[]>(
+      `SELECT COUNT(*) as count 
+         FROM information_schema.columns 
+        WHERE table_schema = DATABASE() 
+          AND table_name = 'detecciones' 
+          AND column_name = ?`,
+      [columnName]
+    );
+    return rows[0]?.count > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(request: Request) {
   const authResult = await requireApiAuth(request, 1);
   if (!authResult.ok) return authResult.response;
@@ -24,9 +40,25 @@ export async function GET(request: Request) {
   }
 
   try {
+    const [hasFechaGeneral, hasFechaVih, hasFechaVdrl, hasFechaHep] = await Promise.all([
+      hasColumn("fecha_deteccion_t3"),
+      hasColumn("fecha_vih_t3"),
+      hasColumn("fecha_vdrl_t3"),
+      hasColumn("fecha_hepatitis_c_t3"),
+    ]);
+
+    const extraFields = [
+      hasFechaGeneral ? "fecha_deteccion_t3" : null,
+      hasFechaVih ? "fecha_vih_t3" : null,
+      hasFechaVdrl ? "fecha_vdrl_t3" : null,
+      hasFechaHep ? "fecha_hepatitis_c_t3" : null,
+    ].filter(Boolean);
+
+    const selectExtra = extraFields.length > 0 ? `, ${extraFields.join(", ")}` : "";
+
     const rows = await query(
-            `SELECT id, paciente_id, prueba_vih, prueba_vdrl, prueba_hepatitis_c,
-              prueba_vih_t3, prueba_vdrl_t3, prueba_hepatitis_c_t3,
+      `SELECT id, paciente_id, prueba_vih, prueba_vdrl, prueba_hepatitis_c,
+              prueba_vih_t3, prueba_vdrl_t3, prueba_hepatitis_c_t3${selectExtra},
               diabetes_glicemia, violencia, created_at
          FROM detecciones
         WHERE paciente_id = ?
@@ -64,7 +96,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Sin permisos para este paciente" }, { status: 403 });
     }
 
-    const payload = {
+    const payload: Record<string, any> = {
       paciente_id: pacienteIdNum,
       prueba_vih: body.prueba_vih || null,
       prueba_vdrl: body.prueba_vdrl || null,
@@ -77,6 +109,19 @@ export async function POST(request: Request) {
       created_by: auth.userId,
       updated_by: auth.userId,
     };
+
+    if (await hasColumn("fecha_deteccion_t3")) {
+      payload.fecha_deteccion_t3 = body.fecha_deteccion_t3 || null;
+    }
+    if (await hasColumn("fecha_vih_t3")) {
+      payload.fecha_vih_t3 = body.fecha_vih_t3 || null;
+    }
+    if (await hasColumn("fecha_vdrl_t3")) {
+      payload.fecha_vdrl_t3 = body.fecha_vdrl_t3 || null;
+    }
+    if (await hasColumn("fecha_hepatitis_c_t3")) {
+      payload.fecha_hepatitis_c_t3 = body.fecha_hepatitis_c_t3 || null;
+    }
 
     const placeholders = Object.keys(payload)
       .map(() => "?")

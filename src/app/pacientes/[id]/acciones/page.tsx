@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface AccionesPreventivas {
   id?: number;
@@ -25,6 +26,17 @@ const initialForm = {
   estomatologia: "",
   nutricion: "",
 };
+
+function formatFechaMostrar(fecha: string | null | undefined) {
+  if (!fecha) return "—";
+  const clean = fecha.includes("T") ? fecha.split("T")[0] : fecha;
+  const parts = clean.split("-");
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  return fecha;
+}
 
 export default function AccionesPreventivasPage() {
   const params = useParams();
@@ -89,13 +101,13 @@ export default function AccionesPreventivasPage() {
       setAcciones(data);
       if (data) {
         setForm({
-          td: data.td || "",
-          tdpa: data.tdpa || "",
-          influenza: data.influenza || "",
-          covid: data.covid || "",
-          otras: data.otras || "",
-          estomatologia: data.estomatologia || "",
-          nutricion: data.nutricion || "",
+          td: data.td ? data.td.split("T")[0] : "",
+          tdpa: data.tdpa ? data.tdpa.split("T")[0] : "",
+          influenza: data.influenza ? data.influenza.split("T")[0] : "",
+          covid: data.covid ? data.covid.split("T")[0] : "",
+          otras: data.otras ? data.otras.split("T")[0] : "",
+          estomatologia: data.estomatologia ? data.estomatologia.split("T")[0] : "",
+          nutricion: data.nutricion ? data.nutricion.split("T")[0] : "",
         });
       } else {
         setForm(initialForm);
@@ -116,7 +128,7 @@ export default function AccionesPreventivasPage() {
 
   if (!authChecked) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white flex items-center justify-center">
         Validando acceso...
       </main>
     );
@@ -163,82 +175,133 @@ export default function AccionesPreventivasPage() {
     }
   };
 
-  const dateField = (key: keyof typeof form, label: string) => (
-    <label className="space-y-1 text-sm">
-      <span className="text-slate-100">{label}</span>
-      <input
-        type="date"
-        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
-        value={form[key]}
-        onChange={(e) => handleChange(key, e.target.value)}
-      />
-    </label>
+  const today = new Date().toISOString().split("T")[0];
+
+  const dateInputCard = (key: keyof typeof form, label: string, iconClass: string) => (
+    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 p-4 space-y-2 transition-colors shadow-sm">
+      <label className="block space-y-1.5 text-sm">
+        <span className="text-slate-800 dark:text-slate-200 font-bold flex items-center gap-2">
+          <i className={`${iconClass} text-amber-600 dark:text-amber-400`} />
+          {label}
+        </span>
+        <input
+          type="date"
+          className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/15 px-3 py-2 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500/50 dark:[color-scheme:dark]"
+          value={form[key]}
+          max={today}
+          onChange={(e) => handleChange(key, e.target.value)}
+        />
+      </label>
+    </div>
   );
 
-  const displayDate = (value: string | null) => {
-    if (!value) return "—";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
-  };
-
   return (
-    <main
-      className="min-h-screen relative text-white"
-      style={{
-        backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(15,118,110,0.6)), url(/maro-hero.png)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      <div className="absolute inset-0 bg-black/40 mix-blend-multiply" aria-hidden />
+    <main className="min-h-screen relative text-slate-900 dark:text-white transition-colors">
+      {/* CAPA DE FONDO FIJA - MODO CLARO */}
+      <div
+        className="fixed inset-0 z-0 dark:hidden"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(241, 245, 249, 0.88), rgba(254, 243, 199, 0.75)), url(/maro-hero.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        aria-hidden="true"
+      />
+      {/* CAPA DE FONDO FIJA - MODO OSCURO */}
+      <div
+        className="fixed inset-0 z-0 hidden dark:block"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(180,83,9,0.35)), url(/maro-hero.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        aria-hidden="true"
+      />
 
-      <div className="relative mx-auto max-w-6xl px-6 py-10 lg:py-14 space-y-8">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-emerald-200/80">Paciente{pacienteFolio ? `: ${pacienteFolio}` : ""}</p>
-            <h1 className="text-3xl font-bold lg:text-4xl">Acciones preventivas</h1>
-            <p className="text-slate-200/80 max-w-3xl">Registra las fechas de aplicación de vacunas y referencias a estomatología y nutrición.</p>
+      <div className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.25em] font-bold text-amber-700 dark:text-amber-300">
+              Paciente{pacienteFolio ? `: ${pacienteFolio}` : ""}
+            </p>
+            <h1 className="text-3xl font-extrabold lg:text-4xl text-slate-900 dark:text-white tracking-tight">
+              Acciones preventivas
+            </h1>
+            <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm max-w-3xl">
+              Registra las fechas de aplicación de esquema de vacunas y referencias a servicios multidisciplinarios (estomatología y nutrición).
+            </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <ThemeToggle />
             <Link
               href={`/pacientes/${pacienteId}`}
-              className="rounded-full border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white/90 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-white shadow-sm transition-all"
             >
               ← Detalle paciente
             </Link>
           </div>
-        </div>
+        </header>
 
-        {error && <p className="text-sm text-red-200 bg-red-500/10 border border-red-500/40 rounded-lg px-3 py-2">{error}</p>}
+        {error && (
+          <div className="rounded-xl border border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-500/10 px-4 py-3 text-sm text-rose-900 dark:text-rose-200 flex items-center gap-2 shadow-sm">
+            <span>🚨</span> {error}
+          </div>
+        )}
 
-        <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
-          <h2 className="text-xl font-semibold">Registrar aplicación</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 lg:grid-cols-3">
-              {dateField("td", "TD")}
-              {dateField("tdpa", "TDPA")}
-              {dateField("influenza", "INFLUENZA")}
-              {dateField("covid", "COVID")}
-              {dateField("otras", "Otras")}
-              {dateField("estomatologia", "Estomatología (Fecha)")}
-              {dateField("nutricion", "Nutrición (Fecha)")}
+        <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-sm p-6 space-y-6 shadow-xl transition-colors">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-shield-heart text-amber-600 dark:text-amber-400" />
+                Registrar aplicación y consultas
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5">
+                Fechas de vacunas y valoraciones estomatológicas y de nutrición
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* GRUPO 1: INMUNIZACIONES (VACUNACIÓN) */}
+            <div className="space-y-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-syringe text-amber-600 dark:text-amber-400" />
+                Esquema de Vacunación
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {dateInputCard("td", "Vacuna TD", "fa-solid fa-shield-halved")}
+                {dateInputCard("tdpa", "Vacuna TDPA", "fa-solid fa-shield-halved")}
+                {dateInputCard("influenza", "Vacuna Influenza", "fa-solid fa-virus-slash")}
+                {dateInputCard("covid", "Vacuna COVID", "fa-solid fa-virus-covid")}
+                {dateInputCard("otras", "Otras Vacunas", "fa-solid fa-syringe")}
+              </div>
             </div>
 
-            <div className="flex gap-3">
+            {/* GRUPO 2: VALORACIONES MULTIDISCIPLINARIAS */}
+            <div className="space-y-3 pt-2">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-user-doctor text-amber-600 dark:text-amber-400" />
+                Atención Multidisciplinaria
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {dateInputCard("estomatologia", "Consulta Estomatología", "fa-solid fa-tooth")}
+                {dateInputCard("nutricion", "Consulta Nutrición", "fa-solid fa-apple-whole")}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-white/10">
               <button
                 type="submit"
-                className="rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60"
+                className="rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold px-5 py-2.5 text-sm shadow-md shadow-amber-600/20 transition-all disabled:opacity-60 cursor-pointer"
                 disabled={saving}
               >
                 {saving ? "Guardando..." : "Guardar"}
               </button>
               <button
                 type="button"
-                className="rounded-lg border border-white/20 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+                className="rounded-xl border border-slate-300 dark:border-white/20 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-white px-5 py-2.5 text-sm font-semibold transition-all cursor-pointer"
                 onClick={() => setForm(initialForm)}
               >
                 Limpiar
@@ -247,34 +310,48 @@ export default function AccionesPreventivasPage() {
           </form>
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm p-6 space-y-4 shadow-2xl">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Último registro</h2>
+        <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-sm p-6 space-y-5 shadow-xl transition-colors">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i className="fa-solid fa-history text-amber-600 dark:text-amber-400" />
+              Histórico de acciones registradas
+            </h2>
             {acciones ? (
-              <span className="text-xs text-emerald-100 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+              <span className="text-xs font-mono font-bold text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/40 px-3 py-1 rounded-full">
                 ID #{acciones.id}
               </span>
             ) : null}
           </div>
 
           {loading ? (
-            <p className="text-sm text-slate-200/80">Cargando…</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">Cargando…</p>
           ) : !acciones ? (
-            <p className="text-sm text-slate-200/80">Aún no hay registro de acciones preventivas.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">Aún no hay registro de acciones preventivas.</p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {[ 
-                { label: "TD", value: acciones.td },
-                { label: "TDPA", value: acciones.tdpa },
-                { label: "INFLUENZA", value: acciones.influenza },
-                { label: "COVID", value: acciones.covid },
-                { label: "Otras", value: acciones.otras },
-                { label: "Estomatología", value: acciones.estomatologia },
-                { label: "Nutrición", value: acciones.nutricion },
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                { label: "Vacuna TD", value: acciones.td, icon: "fa-solid fa-shield-halved" },
+                { label: "Vacuna TDPA", value: acciones.tdpa, icon: "fa-solid fa-shield-halved" },
+                { label: "Vacuna INFLUENZA", value: acciones.influenza, icon: "fa-solid fa-virus-slash" },
+                { label: "Vacuna COVID", value: acciones.covid, icon: "fa-solid fa-virus-covid" },
+                { label: "Otras Vacunas", value: acciones.otras, icon: "fa-solid fa-syringe" },
+                { label: "Consulta Estomatología", value: acciones.estomatologia, icon: "fa-solid fa-tooth" },
+                { label: "Consulta Nutrición", value: acciones.nutricion, icon: "fa-solid fa-apple-whole" },
               ].map((item) => (
-                <div key={item.label} className="flex flex-col rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                  <span className="text-xs uppercase tracking-wide text-slate-300/70">{item.label}</span>
-                  <span className="text-sm text-white">{displayDate(item.value)}</span>
+                <div
+                  key={item.label}
+                  className="flex flex-col justify-between rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 p-4 space-y-2 shadow-sm transition-colors"
+                >
+                  <span className="text-xs uppercase tracking-wide text-amber-800 dark:text-amber-300 font-bold flex items-center gap-1.5">
+                    <i className={`${item.icon} text-amber-600 dark:text-amber-400`} />
+                    {item.label}
+                  </span>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Fecha de aplicación:</span>
+                    <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                      {formatFechaMostrar(item.value)}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -284,3 +361,4 @@ export default function AccionesPreventivasPage() {
     </main>
   );
 }
+
