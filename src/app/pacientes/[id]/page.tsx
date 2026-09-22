@@ -7,6 +7,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { evaluarFactoresRiesgo, DatosFactoresPaciente } from "@/lib/riesgoFactores";
 import { evaluarTamizajes, DatosTamizajes } from "@/lib/riesgoTamizajes";
 import { evaluarCicloObstetrico } from "@/lib/resolucionEmbarazo";
+import { formatDate, formatFum } from "@/lib/validations/fechaValidations";
+
 
 type Patient = {
   id: number;
@@ -269,15 +271,6 @@ export default function PacienteDetalle() {
     }
   };
 
-  const formatDate = (value: string | null) => {
-    if (!value) return "—";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
-  };
 
   /** Calcula SDG actuales o información de puerperio a partir del ciclo obstétrico */
   const cicloObstetrico = useMemo(() => {
@@ -341,7 +334,17 @@ export default function PacienteDetalle() {
     if (ciclo.esFppVencida) {
       return `${ciclo.sdgTexto} (⚠️ FPP Vencida +${ciclo.diasVencido}d)`;
     }
+    if (ciclo.sdgTexto === "Sin FUM") {
+      if (p.semanas_gestacion != null) {
+        return `${Number(p.semanas_gestacion).toFixed(1)} SDG (USG 1T)`;
+      }
+      if (p.sdg_ingreso != null) {
+        return `${p.sdg_ingreso} SDG (USG 1T)`;
+      }
+      return "FUM no confiable";
+    }
     return ciclo.sdgTexto;
+
   };
 
   // Calcular factor de riesgo basado en los datos del paciente
@@ -996,7 +999,9 @@ export default function PacienteDetalle() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 text-center">
                     <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-medium">FUM</span>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 block">{formatDate(patient.fum)}</span>
+                    <span className={`text-sm font-bold mt-0.5 block ${!patient.fum ? "text-amber-700 dark:text-amber-300 text-xs" : "text-slate-900 dark:text-white"}`}>
+                      {formatFum(patient.fum)}
+                    </span>
                   </div>
                   <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 text-center">
                     <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-medium">FPP</span>

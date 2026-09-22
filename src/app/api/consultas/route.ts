@@ -4,6 +4,12 @@ import { getPool, query } from "@/lib/db";
 import { assertPacienteScope, requireApiAuth } from "@/lib/apiAuth";
 import { dispatchPendingTelegramAlerts } from "@/lib/telegramDispatch";
 import { isTelegramAlertsEnabled } from "@/lib/telegramAlerts";
+import {
+  consultaFechasZodSchema,
+  parseDateOnly,
+  formatDateOnly,
+} from "@/lib/validations/fechaValidations";
+
 
 const TELEGRAM_RIESGO_TIPO = "RIESGO_25_PLUS";
 
@@ -239,25 +245,47 @@ export async function POST(request: Request) {
       : puntajeCalculado;
     const riesgo25Plus = puntajeTotalConsulta >= 25 ? 1 : 0;
 
-    // Calcular SDG en la fecha de la consulta basándonos en FUM del paciente
+    // Validar fecha de consulta mediante esquema Zod
+    const fumPacienteStr = paciente.fum
+      ? (paciente.fum instanceof Date ? paciente.fum.toISOString().slice(0, 10) : String(paciente.fum).slice(0, 10))
+      : null;
+
+    const fechaValidation = consultaFechasZodSchema.safeParse({
+      fecha_consulta: body.fecha_consulta,
+      fum: fumPacienteStr,
+    });
+
+    if (!fechaValidation.success) {
+      return NextResponse.json(
+        {
+          message: fechaValidation.error.issues[0]?.message || "Fecha de consulta no válida",
+          code: "INVALID_CONSULTA_DATE",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Calcular SDG en la fecha de la consulta basándonos en FUM del paciente o valor manual
     let sdgInsertVal: number | null = null;
-    const fechaConsulta = body.fecha_consulta || null;
-    if (paciente.fum && fechaConsulta) {
-      try {
-        const fumDate = new Date(paciente.fum);
-        const consDate = new Date(fechaConsulta);
-        if (!isNaN(fumDate.getTime()) && !isNaN(consDate.getTime())) {
-          const fumUtc = Date.UTC(fumDate.getUTCFullYear(), fumDate.getUTCMonth(), fumDate.getUTCDate());
-          const consUtc = Date.UTC(consDate.getUTCFullYear(), consDate.getUTCMonth(), consDate.getUTCDate());
-          const diffInMs = consUtc - fumUtc;
-          if (diffInMs >= 0) {
-            sdgInsertVal = Math.round(diffInMs / (1000 * 60 * 60 * 24 * 7));
-          }
+    const fechaConsulta = body.fecha_consulta ? formatDateOnly(parseDateOnly(body.fecha_consulta)!) : null;
+
+    if (fumPacienteStr && fechaConsulta) {
+      const fumDate = parseDateOnly(fumPacienteStr);
+      const consDate = parseDateOnly(fechaConsulta);
+      if (fumDate && consDate) {
+        const diffInMs = consDate.getTime() - fumDate.getTime();
+        if (diffInMs >= 0) {
+          const weeks = Math.round(diffInMs / (1000 * 60 * 60 * 24 * 7));
+          sdgInsertVal = Math.min(45, Math.max(0, weeks));
         }
-      } catch (err) {
-        console.error("Error al calcular SDG para la nueva consulta:", err);
+      }
+    } else if (body.sdg !== undefined && body.sdg !== null && String(body.sdg).trim() !== "") {
+      const manualSdg = Number(body.sdg);
+      if (!isNaN(manualSdg)) {
+        sdgInsertVal = Math.min(45, Math.max(0, Math.floor(manualSdg)));
       }
     }
+
 
     const tipoEvento = body.tipo_evento || (body.diagnostico === "puerperio" ? "resolucion_sin_complicaciones" : "embarazo");
     const fechaEvento = body.fecha_evento || (tipoEvento !== "embarazo" ? (body.fecha_consulta || null) : null);

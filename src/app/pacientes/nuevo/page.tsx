@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import ContadorRiesgo from "@/app/components/ContadorRiesgo";
 import { useSaveFactorRiesgoPaciente } from "@/lib/hooks/useSaveFactorRiesgoPaciente";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  evaluarFechasObstetricas,
+  getTodayLocalString,
+  getMinFumDateString,
+} from "@/lib/validations/fechaValidations";
 
 type SessionInfo = {
   nivel?: number;
@@ -145,6 +150,7 @@ export default function NuevoPaciente() {
     // Ingreso y riesgo
     fecha_ingreso_cpn: "",
     fum: "",
+    fum_desconocida: false,
     fpp: "",
     semanas_gestacion: "",
     sdg_ingreso: "",
@@ -346,39 +352,45 @@ export default function NuevoPaciente() {
     });
   };
 
-  const computeGestacionDataFromFum = (fumValue: string) => {
-    if (!fumValue) {
-      return {
-        fpp: "",
-        semanas_gestacion: "",
-        sdg_ingreso: "",
-      };
+  const todayLocal = useMemo(() => getTodayLocalString(), []);
+  const minFumDate = useMemo(() => getMinFumDateString(form.fecha_ingreso_cpn || todayLocal), [form.fecha_ingreso_cpn, todayLocal]);
+
+  const evaluacionFechas = useMemo(() => {
+    return evaluarFechasObstetricas({
+      fum: form.fum,
+      fechaIngresoCpn: form.fecha_ingreso_cpn,
+      fumDesconocida: form.fum_desconocida,
+      sdgManual: form.semanas_gestacion,
+    });
+  }, [form.fum, form.fecha_ingreso_cpn, form.fum_desconocida, form.semanas_gestacion]);
+
+  // Sincronizar FPP y SDG calculadas automáticamente cuando no es FUM desconocida
+  useEffect(() => {
+    if (!form.fum_desconocida) {
+      const nuevaFpp = evaluacionFechas.fpp || "";
+      const nuevaSdg = evaluacionFechas.sdgAlIngresoDecimal !== null ? String(evaluacionFechas.sdgAlIngresoDecimal) : "";
+      const nuevaSdgIngreso = evaluacionFechas.sdgAlIngresoEntero !== null ? String(evaluacionFechas.sdgAlIngresoEntero) : "";
+
+      if (form.fpp !== nuevaFpp || form.semanas_gestacion !== nuevaSdg || form.sdg_ingreso !== nuevaSdgIngreso) {
+        setForm((prev) => ({
+          ...prev,
+          fpp: nuevaFpp,
+          semanas_gestacion: nuevaSdg,
+          sdg_ingreso: nuevaSdgIngreso,
+        }));
+      }
+    } else {
+      const fppUsg = evaluacionFechas.fpp || "";
+      const sdgIngresoUsg = evaluacionFechas.sdgAlIngresoEntero !== null ? String(evaluacionFechas.sdgAlIngresoEntero) : "";
+      if (form.fpp !== fppUsg || form.sdg_ingreso !== sdgIngresoUsg) {
+        setForm((prev) => ({
+          ...prev,
+          fpp: fppUsg,
+          sdg_ingreso: sdgIngresoUsg,
+        }));
+      }
     }
-
-    const base = new Date(`${fumValue}T00:00:00Z`);
-    if (Number.isNaN(base.getTime())) {
-      return {
-        fpp: "",
-        semanas_gestacion: "",
-        sdg_ingreso: "",
-      };
-    }
-
-    const fppDate = new Date(base);
-    fppDate.setUTCDate(fppDate.getUTCDate() + 280);
-
-    const now = new Date();
-    const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const totalDays = Math.max(0, Math.floor((todayUtc.getTime() - base.getTime()) / (1000 * 60 * 60 * 24)));
-    const weeks = Math.floor(totalDays / 7);
-    const days = totalDays % 7;
-
-    return {
-      fpp: fppDate.toISOString().slice(0, 10),
-      semanas_gestacion: `${weeks}.${days}`,
-      sdg_ingreso: String(weeks),
-    };
-  };
+  }, [evaluacionFechas, form.fum_desconocida, form.fpp, form.semanas_gestacion, form.sdg_ingreso]);
 
   const computeGananciaPonderalMaxFromImc = (imcValue: string) => {
     if (!imcValue) return "";
@@ -517,11 +529,19 @@ export default function NuevoPaciente() {
       return;
     }
     if (!form.fecha_ingreso_cpn.trim()) {
-      setError("La fecha de ingreso es obligatoria");
+      setError("La fecha de ingreso a control prenatal es obligatoria");
       return;
     }
-    if (!form.fum.trim()) {
-      setError("La FUM es obligatoria");
+    if (!form.fum_desconocida && !form.fum.trim()) {
+      setError("La FUM es obligatoria si no se marca como FUM desconocida / dudosa");
+      return;
+    }
+    if (form.fum_desconocida && (!form.semanas_gestacion || !String(form.semanas_gestacion).trim())) {
+      setError("Debe ingresar las semanas de gestación estimadas (por USG)");
+      return;
+    }
+    if (evaluacionFechas.bloquearSubmit) {
+      setError(evaluacionFechas.errorFum || evaluacionFechas.errorFechaIngreso || "Corrija los errores en las fechas obstétricas antes de continuar");
       return;
     }
 
@@ -600,8 +620,12 @@ export default function NuevoPaciente() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          fum: form.fum_desconocida ? null : (form.fum || null),
+          fum_desconocida: Boolean(form.fum_desconocida),
+          fpp: evaluacionFechas.fpp || form.fpp || null,
+          semanas_gestacion: evaluacionFechas.sdgAlIngresoDecimal !== null ? evaluacionFechas.sdgAlIngresoDecimal : (form.semanas_gestacion ? Number(form.semanas_gestacion) : null),
+          sdg_ingreso: evaluacionFechas.sdgAlIngresoEntero !== null ? evaluacionFechas.sdgAlIngresoEntero : (form.sdg_ingreso ? Number(form.sdg_ingreso) : null),
           edad: toNumberOrNull(form.edad),
-          sdg_ingreso: toNumberOrNull(form.sdg_ingreso),
           menarca: toNumberOrNull(form.menarca),
           gestas: toNumberOrNull(form.gestas),
           partos: toNumberOrNull(form.partos),
@@ -1171,70 +1195,178 @@ export default function NuevoPaciente() {
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-700 dark:text-slate-100 font-medium">Fecha ingreso CPN *</span>
-                <input
-                  type="date"
-                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
-                    attemptedSubmit && !form.fecha_ingreso_cpn.trim()
-                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-slate-300 dark:border-white/10"
+            <div className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-3">
+                {/* Fecha ingreso CPN */}
+                <label className="space-y-1 text-sm">
+                  <span className="text-slate-700 dark:text-slate-100 font-medium">Fecha ingreso CPN *</span>
+                  <input
+                    type="date"
+                    max={todayLocal}
+                    className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border px-3 py-2 text-slate-900 dark:text-white transition-all ${
+                      (attemptedSubmit && !form.fecha_ingreso_cpn.trim()) || evaluacionFechas.errorFechaIngreso
+                        ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                        : "border-slate-300 dark:border-white/10"
+                    }`}
+                    value={form.fecha_ingreso_cpn}
+                    onChange={(e) => handleChange("fecha_ingreso_cpn", e.target.value)}
+                  />
+                  {evaluacionFechas.errorFechaIngreso ? (
+                    <p className="text-xs text-rose-500 dark:text-rose-400 mt-1 font-semibold">✗ {evaluacionFechas.errorFechaIngreso}</p>
+                  ) : attemptedSubmit && !form.fecha_ingreso_cpn.trim() ? (
+                    <p className="text-xs text-rose-400 mt-1 font-medium">✗ La fecha de ingreso es obligatoria</p>
+                  ) : null}
+                </label>
+
+                {/* FUM */}
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-700 dark:text-slate-100 font-medium">
+                      FUM {form.fum_desconocida ? "(Opcional)" : "*"}
+                    </span>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs text-amber-700 dark:text-amber-300 font-semibold select-none">
+                      <input
+                        type="checkbox"
+                        checked={form.fum_desconocida}
+                        onChange={(e) => {
+                          const isDudosa = e.target.checked;
+                          setForm((prev) => ({
+                            ...prev,
+                            fum_desconocida: isDudosa,
+                            fum: isDudosa ? "" : prev.fum,
+                            semanas_gestacion: isDudosa ? "" : prev.semanas_gestacion,
+                            sdg_ingreso: isDudosa ? "" : prev.sdg_ingreso,
+                            fpp: isDudosa ? "" : prev.fpp,
+                          }));
+                        }}
+                        className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                      />
+                      <span>FUM desconocida / dudosa</span>
+                    </label>
+                  </div>
+
+                  <input
+                    type="date"
+                    disabled={form.fum_desconocida}
+                    max={form.fecha_ingreso_cpn || todayLocal}
+                    min={minFumDate}
+                    className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border px-3 py-2 text-slate-900 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                      !form.fum_desconocida && ((attemptedSubmit && !form.fum.trim()) || evaluacionFechas.errorFum)
+                        ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
+                        : "border-slate-300 dark:border-white/10"
+                    }`}
+                    value={form.fum}
+                    onChange={(e) => handleChange("fum", e.target.value)}
+                  />
+                  {!form.fum_desconocida && evaluacionFechas.errorFum ? (
+                    <p className="text-xs text-rose-500 dark:text-rose-400 mt-1 font-semibold">✗ {evaluacionFechas.errorFum}</p>
+                  ) : !form.fum_desconocida && attemptedSubmit && !form.fum.trim() ? (
+                    <p className="text-xs text-rose-400 mt-1 font-medium">✗ La FUM es obligatoria</p>
+                  ) : !form.fum_desconocida && evaluacionFechas.advertenciaAnoAtipico ? (
+                    <p className="text-xs text-amber-600 dark:text-amber-300 mt-1 font-medium">{evaluacionFechas.advertenciaAnoAtipico}</p>
+                  ) : null}
+                </div>
+
+                {/* Semanas de Gestación */}
+                <label className="space-y-1 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-700 dark:text-slate-100 font-medium">Semanas gestación (SDG)</span>
+                    {form.fum_desconocida && (
+                      <span className="text-[11px] text-teal-700 dark:text-teal-300 font-bold">Captura manual (USG 1T)</span>
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min={1}
+                    max={42.6}
+                    readOnly={!form.fum_desconocida}
+                    placeholder={form.fum_desconocida ? "Ej. 14.2 (Por USG)" : "Se calcula desde la FUM"}
+                    className={`w-full rounded-lg px-3 py-2 text-slate-900 dark:text-white transition-all ${
+                      form.fum_desconocida
+                        ? "bg-amber-500/10 border-2 border-amber-400/60 focus:ring-2 focus:ring-amber-500/50"
+                        : "bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10"
+                    }`}
+                    value={form.semanas_gestacion}
+                    onChange={(e) => {
+                      if (form.fum_desconocida) {
+                        handleChange("semanas_gestacion", e.target.value);
+                      }
+                    }}
+                  />
+                  {form.fum_desconocida && evaluacionFechas.errorFum && (
+                    <p className="text-xs text-rose-500 dark:text-rose-400 mt-1 font-semibold">✗ {evaluacionFechas.errorFum}</p>
+                  )}
+                </label>
+              </div>
+
+              {/* Banner Reactivo de Estado Gestacional */}
+              {(evaluacionFechas.sdgAlIngresoDecimal !== null || form.fum || form.fum_desconocida) && (
+                <div
+                  className={`rounded-xl border p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-all ${
+                    evaluacionFechas.bloquearSubmit || evaluacionFechas.esFueraDeRangoClinico
+                      ? "border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-500/15 text-rose-950 dark:text-rose-100"
+                      : "border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
                   }`}
-                  value={form.fecha_ingreso_cpn}
-                  onChange={(e) => handleChange("fecha_ingreso_cpn", e.target.value)}
-                />
-                {attemptedSubmit && !form.fecha_ingreso_cpn.trim() && (
-                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ La fecha de ingreso es obligatoria</p>
-                )}
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-700 dark:text-slate-100 font-medium">FUM *</span>
-                <input
-                  type="date"
-                  className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white transition-all ${
-                    attemptedSubmit && !form.fum.trim()
-                      ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
-                      : "border-slate-300 dark:border-white/10"
-                  }`}
-                  value={form.fum}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const gestacionData = computeGestacionDataFromFum(value);
-                    setForm((prev) => ({
-                      ...prev,
-                      fum: value,
-                      fpp: gestacionData.fpp,
-                      semanas_gestacion: gestacionData.semanas_gestacion,
-                      sdg_ingreso: gestacionData.sdg_ingreso,
-                    }));
-                  }}
-                />
-                {attemptedSubmit && !form.fum.trim() && (
-                  <p className="text-xs text-rose-400 mt-1 font-medium">✗ La FUM es obligatoria</p>
-                )}
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-700 dark:text-slate-100 font-medium">Semanas gestación</span>
-                <input
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
-                  value={form.semanas_gestacion}
-                  readOnly
-                  placeholder="Se calcula desde la FUM"
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-700 dark:text-slate-100 font-medium">FPP</span>
-                <input
-                  type="date"
-                  className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
-                  value={form.fpp}
-                  readOnly
-                />
-              </label>
+                >
+                  <div className="flex items-center gap-2.5">
+                    <i
+                      className={`text-base shrink-0 ${
+                        evaluacionFechas.bloquearSubmit || evaluacionFechas.esFueraDeRangoClinico
+                          ? "fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400"
+                          : "fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"
+                      }`}
+                    />
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm sm:text-xs">
+                          {evaluacionFechas.sdgAlIngresoDecimal !== null
+                            ? `SDG calculadas al ingreso: ${evaluacionFechas.sdgAlIngresoDecimal} semanas`
+                            : "Fecha fuera de rango gestacional"}
+                        </span>
+                        {evaluacionFechas.sdgAlIngresoDecimal !== null && evaluacionFechas.sdgAlIngresoDecimal >= 28 && (
+                          <span className="bg-amber-200 dark:bg-amber-400/30 text-amber-900 dark:text-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400/40">
+                            3er Trimestre
+                          </span>
+                        )}
+                        {evaluacionFechas.sdgAlIngresoDecimal !== null && evaluacionFechas.sdgAlIngresoDecimal < 28 && evaluacionFechas.sdgAlIngresoDecimal >= 14 && (
+                          <span className="bg-cyan-100 dark:bg-cyan-500/20 text-cyan-900 dark:text-cyan-200 text-[10px] font-bold px-2 py-0.5 rounded-full border border-cyan-400/30">
+                            2do Trimestre
+                          </span>
+                        )}
+                        {evaluacionFechas.sdgAlIngresoDecimal !== null && evaluacionFechas.sdgAlIngresoDecimal < 14 && (
+                          <span className="bg-teal-100 dark:bg-teal-500/20 text-teal-900 dark:text-teal-200 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal-400/30">
+                            1er Trimestre
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] opacity-80 mt-0.5">
+                        {evaluacionFechas.fpp
+                          ? `Fecha Probable de Parto (FPP estimada): ${evaluacionFechas.fpp}`
+                          : "Complete las fechas para proyectar la FPP"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {evaluacionFechas.sdgActualDecimal !== null && (
+                    <div className="sm:text-right font-medium text-[11px] text-slate-700 dark:text-slate-300 shrink-0">
+                      SDG proyectadas a hoy: <strong className="text-slate-900 dark:text-white font-bold">{evaluacionFechas.sdgActualDecimal} sem</strong>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                {/* FPP */}
+                <label className="space-y-1 text-sm">
+                  <span className="text-slate-700 dark:text-slate-100 font-medium">FPP (Fecha Probable de Parto)</span>
+                  <input
+                    type="date"
+                    className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white"
+                    value={form.fpp}
+                    readOnly
+                  />
+                </label>
 
               <label className="space-y-1 text-sm">
                 <span className="text-slate-700 dark:text-slate-100 font-medium">Tipo de riesgo social</span>
@@ -1305,6 +1437,7 @@ export default function NuevoPaciente() {
                   <option value="Rural">Rural</option>
                 </select>
               </label>
+            </div>
             </div>
 
             {/* FACTORES DE RIESGO: Comorbilidades y toxicomanías (Rediseño Híbrido: Grupos + Chips) */}

@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { evaluarCampoIndividual } from "@/lib/riesgoFactores";
 import { evaluarTamizajes } from "@/lib/riesgoTamizajes";
+import { formatDate, formatFum } from "@/lib/validations/fechaValidations";
+
 
 type SessionInfo = {
   nivel?: number;
@@ -106,15 +108,6 @@ type Detecciones = {
   prueba_hepatitis_c_t3: string | null;
 };
 
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  return `${dd}-${mm}-${yyyy}`;
-}
 
 function formatValue(value: string | number | null | undefined) {
   if (value === null || value === undefined || value === "") return "—";
@@ -483,7 +476,7 @@ export default function RegionPacienteResumenPage() {
                 <Info label="Municipio" value={paciente.municipio} />
                 <Info label="Fecha ingreso CPN" value={formatDate(paciente.fecha_ingreso_cpn)} />
                 <Info label="SDG ingreso" value={paciente.sdg_ingreso} />
-                <Info label="FUM" value={formatDate(paciente.fum)} />
+                <Info label="FUM" value={formatFum(paciente.fum)} />
                 <Info label="FPP" value={formatDate(paciente.fpp)} />
                 <Info label="Semanas gestación" value={paciente.semanas_gestacion} />
                 <Info label="Teléfono" value={paciente.telefono} />

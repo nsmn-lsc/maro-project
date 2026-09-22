@@ -10,8 +10,8 @@ type RouteContext = {
   }>;
 };
 
-function formatDate(value: string | Date | null, includeTime = false): string {
-  if (!value) return "-";
+function formatDate(value: string | Date | null | undefined, includeTime = false, fallback = "-"): string {
+  if (!value) return fallback;
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return sanitizePdfText(String(value));
 
@@ -268,10 +268,12 @@ export async function GET(request: Request, context: RouteContext) {
 
     // Fila 2
     page.drawText(sanitizePdfText("FUM: "), { x: margin + 8, y: y - 28, size: 8, font: fontBold, color: textDark });
-    page.drawText(sanitizePdfText(formatDate(data.fum)), { x: margin + 34, y: y - 28, size: 8, font: fontRegular, color: textDark });
+    const fumPdfText = data.fum ? formatDate(data.fum) : "Dudosa";
+    page.drawText(sanitizePdfText(fumPdfText), { x: margin + 34, y: y - 28, size: 8, font: fontRegular, color: textDark });
 
     page.drawText(sanitizePdfText("FPP: "), { x: margin + 115, y: y - 28, size: 8, font: fontBold, color: textDark });
-    page.drawText(sanitizePdfText(formatDate(data.fpp)), { x: margin + 140, y: y - 28, size: 8, font: fontRegular, color: textDark });
+    const fppPdfText = data.fpp ? formatDate(data.fpp) : "S/D";
+    page.drawText(sanitizePdfText(fppPdfText), { x: margin + 140, y: y - 28, size: 8, font: fontRegular, color: textDark });
 
     page.drawText(sanitizePdfText("SDG Consulta: "), { x: margin + 230, y: y - 28, size: 8, font: fontBold, color: textDark });
     page.drawText(sanitizePdfText(`${data.sdg ?? data.semanas_gestacion ?? "-"} sem`), { x: margin + 295, y: y - 28, size: 8, font: fontRegular, color: textDark });

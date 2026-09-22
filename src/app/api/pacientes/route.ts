@@ -3,20 +3,12 @@ import type mysql from "mysql2/promise";
 import { getPool, query } from "@/lib/db";
 import { assertCluesScope, assertPacienteScope, requireApiAuth } from "@/lib/apiAuth";
 
-function parseDateOnly(dateValue: string): Date | null {
-  if (!dateValue) return null;
+import {
+  parseDateOnly,
+  formatDateOnly,
+  pacienteFechasZodSchema,
+} from "@/lib/validations/fechaValidations";
 
-  const [year, month, day] = dateValue.split("-").map(Number);
-  if (!year || !month || !day) return null;
-  if (year < 1900 || year > 9999) return null;
-
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function formatDateOnly(dateValue: Date): string {
-  return dateValue.toISOString().slice(0, 10);
-}
 
 /**
  * Convierte días totales a notación médica SDG: semanas.días (0-6)
@@ -436,16 +428,66 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    let fechaIngresoCpnValidada = null;
-    if (body.fecha_ingreso_cpn) {
-      const parsedFecha = parseDateOnly(body.fecha_ingreso_cpn);
-      if (!parsedFecha) {
-        return NextResponse.json({ message: "La fecha de ingreso CPN no es válida o está fuera de rango" }, { status: 400 });
+
+    // Validación Zod de fechas obstétricas y SDG
+    const fechaValidation = pacienteFechasZodSchema.safeParse({
+      fecha_ingreso_cpn: body.fecha_ingreso_cpn,
+      fum: body.fum,
+      fum_desconocida: Boolean(body.fum_desconocida || body.fum_dudosa),
+      sdg_ingreso: body.sdg_ingreso,
+      semanas_gestacion: body.semanas_gestacion,
+    });
+
+    if (!fechaValidation.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of fechaValidation.error.issues) {
+        const fieldName = issue.path[0] ? String(issue.path[0]) : "general";
+        if (!fieldErrors[fieldName]) {
+          fieldErrors[fieldName] = issue.message;
+        }
       }
-      fechaIngresoCpnValidada = formatDateOnly(parsedFecha);
+      return NextResponse.json(
+        {
+          message: fechaValidation.error.issues[0]?.message || "Error de validación en fechas obstétricas",
+          errors: fieldErrors,
+          code: "INVALID_OBSTETRIC_DATES",
+        },
+        { status: 400 }
+      );
     }
 
-    const gestacionCalculada = computeGestacionDesdeFum(body.fum, fechaIngresoCpnValidada);
+    const fechaIngresoCpnValidada = formatDateOnly(parseDateOnly(body.fecha_ingreso_cpn)!);
+    const fumDesconocida = Boolean(body.fum_desconocida || body.fum_dudosa);
+
+    let fumFinal: string | null = null;
+    let fppFinal: string | null = null;
+    let semanasGestacionFinal: number | null = null;
+    let sdgIngresoFinal: number | null = null;
+
+    if (fumDesconocida) {
+      fumFinal = null;
+      const manualSdg = Number(body.semanas_gestacion || body.sdg_ingreso || 0);
+      if (manualSdg > 0) {
+        sdgIngresoFinal = Math.min(45, Math.max(0, Math.floor(manualSdg)));
+        semanasGestacionFinal = Math.min(45.0, Math.max(0.0, Number(manualSdg.toFixed(1))));
+        const ingresoDate = parseDateOnly(body.fecha_ingreso_cpn)!;
+        const diasRestantes = Math.round(280 - (manualSdg * 7));
+        const fppCalculada = new Date(ingresoDate);
+        fppCalculada.setUTCDate(fppCalculada.getUTCDate() + diasRestantes);
+        fppFinal = formatDateOnly(fppCalculada);
+      }
+    } else {
+      const gestacionCalculada = computeGestacionDesdeFum(body.fum, fechaIngresoCpnValidada);
+      fumFinal = gestacionCalculada.fum;
+      fppFinal = gestacionCalculada.fpp;
+      semanasGestacionFinal = gestacionCalculada.semanasGestacion !== null
+        ? Math.min(45.0, Math.max(0.0, gestacionCalculada.semanasGestacion))
+        : null;
+      sdgIngresoFinal = gestacionCalculada.sdgIngreso !== null
+        ? Math.min(45, Math.max(0, gestacionCalculada.sdgIngreso))
+        : null;
+    }
+
 
     const nombre = (body.nombre_completo || "").trim();
     const clues = String(body.clues_id || "").trim().toUpperCase();
@@ -547,10 +589,10 @@ export async function POST(request: Request) {
       ant_bajo_peso_macrosomia: body.ant_bajo_peso_macrosomia ? 1 : 0,
       ant_muerte_perinatal: body.ant_muerte_perinatal ? 1 : 0,
       ant_embarazo_ectopico: body.ant_embarazo_ectopico ? 1 : 0,
-      fum: gestacionCalculada.fum,
-      fpp: gestacionCalculada.fpp,
-      semanas_gestacion: gestacionCalculada.semanasGestacion,
-      sdg_ingreso: body.sdg_ingreso ? Number(body.sdg_ingreso) : gestacionCalculada.sdgIngreso,
+      fum: fumFinal,
+      fpp: fppFinal,
+      semanas_gestacion: semanasGestacionFinal,
+      sdg_ingreso: sdgIngresoFinal,
       factores_riesgo_epid: body.factores_riesgo_epid || 'ninguno',
       imc_inicial: body.imc_inicial || null,
       ganancia_ponderal_max: body.ganancia_ponderal_max || null,

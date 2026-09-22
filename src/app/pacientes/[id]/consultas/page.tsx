@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { getTodayLocalString, parseDateOnly, formatDate, formatFum } from "@/lib/validations/fechaValidations";
+
+
 
 interface Consulta {
   id: number;
@@ -606,18 +609,65 @@ export default function ConsultasPaciente() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authChecked, pacienteId]);
 
+  const todayLocal = useMemo(() => getTodayLocalString(), []);
+
   // Cálculo de SDG actual dinámico en tiempo real
   const sdgActualCalculada = useMemo(() => {
-    if (!pacienteData.fum) return null;
-    const base = new Date(`${pacienteData.fum}T00:00:00Z`);
-    if (Number.isNaN(base.getTime())) return null;
-    const now = new Date();
-    const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const totalDays = Math.max(0, Math.floor((todayUtc.getTime() - base.getTime()) / (1000 * 60 * 60 * 24)));
+    if (!pacienteData.fum) {
+      if (pacienteData.semanas_gestacion) {
+        return `${Number(pacienteData.semanas_gestacion).toFixed(1)} SDG (USG 1T)`;
+      }
+      if (pacienteData.sdg_ingreso != null) {
+        return `${pacienteData.sdg_ingreso} SDG (USG 1T)`;
+      }
+      return null;
+    }
+    const fumDate = parseDateOnly(pacienteData.fum);
+    const hoyDate = parseDateOnly(todayLocal);
+    if (!fumDate || !hoyDate) return null;
+    const totalDays = Math.max(0, Math.floor((hoyDate.getTime() - fumDate.getTime()) / (1000 * 60 * 60 * 24)));
     const weeks = Math.floor(totalDays / 7);
     const days = totalDays % 7;
     return `${weeks}.${days} SDG`;
-  }, [pacienteData.fum]);
+  }, [pacienteData.fum, pacienteData.semanas_gestacion, pacienteData.sdg_ingreso, todayLocal]);
+
+  // Cálculo reactivo de SDG a la fecha de la consulta seleccionada
+  const sdgEnConsulta = useMemo(() => {
+    if (!pacienteData.fum || !form.fecha_consulta) return null;
+    const fumDate = parseDateOnly(pacienteData.fum);
+    const consDate = parseDateOnly(form.fecha_consulta);
+    if (!fumDate || !consDate) return null;
+    const diffDays = Math.floor((consDate.getTime() - fumDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return null;
+    const weeks = Math.floor(diffDays / 7);
+    const days = diffDays % 7;
+    return {
+      decimal: Number((weeks + days * 0.1).toFixed(1)),
+      weeks,
+      days,
+      text: `${weeks}.${days} SDG`,
+      trimestre: weeks < 14 ? "1er Trimestre" : weeks < 28 ? "2do Trimestre" : "3er Trimestre",
+      esProlongado: weeks > 42,
+    };
+  }, [pacienteData.fum, form.fecha_consulta]);
+
+  const errorFechaConsulta = useMemo(() => {
+    if (!form.fecha_consulta) return null;
+    const consDate = parseDateOnly(form.fecha_consulta);
+    const hoyDate = parseDateOnly(todayLocal);
+    if (!consDate || !hoyDate) return "Fecha de consulta no válida.";
+    if (consDate.getTime() > hoyDate.getTime()) {
+      return "La fecha de consulta no puede ser posterior a la fecha actual.";
+    }
+    if (pacienteData.fum) {
+      const fumDate = parseDateOnly(pacienteData.fum);
+      if (fumDate && consDate.getTime() < fumDate.getTime()) {
+        return "La fecha de consulta no puede ser previa a la FUM de la paciente.";
+      }
+    }
+    return null;
+  }, [form.fecha_consulta, todayLocal, pacienteData.fum]);
+
 
   if (!authChecked) {
     return (
@@ -627,15 +677,6 @@ export default function ConsultasPaciente() {
     );
   }
 
-  const formatDate = (value: string | null) => {
-    if (!value) return "—";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
-  };
 
   const formatDiagnostico = (value: string | null) => {
     if (!value) return "—";
@@ -667,8 +708,15 @@ export default function ConsultasPaciente() {
     e.preventDefault();
     setError(null);
     setAlertaRiesgoEstatal(null);
+
+    if (errorFechaConsulta) {
+      setError(errorFechaConsulta);
+      return;
+    }
+
     setShowConfirmModal(true);
   };
+
 
   const executeSave = async () => {
     setShowConfirmModal(false);
@@ -942,14 +990,37 @@ export default function ConsultasPaciente() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {/* Fecha de Consulta */}
                     <label className="space-y-1 text-xs">
-                      <span className="text-slate-700 dark:text-slate-200 font-bold">Fecha de Consulta *</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Fecha de Consulta *</span>
+                        {sdgEnConsulta && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                            sdgEnConsulta.esProlongado
+                              ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
+                              : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                          }`}>
+                            {sdgEnConsulta.text} ({sdgEnConsulta.trimestre})
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="date"
-                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500/50"
+                        max={todayLocal}
+                        min={pacienteData.fum ? String(pacienteData.fum).slice(0, 10) : undefined}
+                        className={`w-full rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 ${
+                          errorFechaConsulta
+                            ? "border-2 border-rose-500 bg-rose-50 dark:bg-rose-950/30 ring-2 ring-rose-500/50"
+                            : "border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 focus:ring-emerald-500/50"
+                        }`}
                         value={form.fecha_consulta}
                         onChange={(e) => handleChange("fecha_consulta", e.target.value)}
                         required
                       />
+                      {errorFechaConsulta && (
+                        <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1 mt-0.5">
+                          <i className="fa-solid fa-circle-exclamation"></i>
+                          <span>{errorFechaConsulta}</span>
+                        </p>
+                      )}
                     </label>
 
                     {/* T/A Sistólica */}
@@ -2268,7 +2339,9 @@ export default function ConsultasPaciente() {
               <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-300">
                 <div className="bg-slate-50 dark:bg-white/5 p-2 rounded-lg border border-slate-200 dark:border-white/5">
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">FUM</span>
-                  <span className="font-bold text-slate-900 dark:text-white">{formatDate(pacienteData.fum)}</span>
+                  <span className={`font-bold ${!pacienteData.fum ? "text-amber-700 dark:text-amber-300 text-[11px]" : "text-slate-900 dark:text-white"}`}>
+                    {formatFum(pacienteData.fum)}
+                  </span>
                 </div>
                 <div className="bg-slate-50 dark:bg-white/5 p-2 rounded-lg border border-slate-200 dark:border-white/5">
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">FPP</span>
