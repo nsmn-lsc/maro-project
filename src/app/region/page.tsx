@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { REGION_CONFIGS } from "@/lib/regiones";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type SessionInfo = {
   nivel?: number;
@@ -40,6 +40,9 @@ type Metricas = {
   total: number;
   alto_riesgo: number;
   semana_actual: number;
+  al_corriente: number;
+  proximas_vencer: number;
+  inasistencias_30d: number;
 };
 
 type AlertaFlotante = {
@@ -47,28 +50,28 @@ type AlertaFlotante = {
 };
 
 function riesgoColor(puntaje: number | null): string {
-  if (puntaje === null) return "text-slate-400";
-  if (puntaje >= 25) return "text-red-400 font-bold";
-  if (puntaje > 15) return "text-amber-400 font-semibold";
-  return "text-emerald-400";
+  if (puntaje === null) return "text-slate-400 dark:text-slate-500";
+  if (puntaje >= 25) return "text-rose-700 dark:text-rose-400 font-black";
+  if (puntaje > 15) return "text-amber-700 dark:text-amber-400 font-bold";
+  return "text-emerald-700 dark:text-emerald-400 font-bold";
 }
 
 function riesgoBadge(puntaje: number | null) {
   if (puntaje === null) return null;
   if (puntaje >= 25)
     return (
-      <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-red-900/80 border border-red-400/40 text-red-200">
+      <span className="ml-1 px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 dark:bg-rose-500/25 border border-rose-300 dark:border-rose-400/40 text-rose-900 dark:text-rose-200">
         ALTO
       </span>
     );
   if (puntaje > 15)
     return (
-      <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-amber-900/80 border border-amber-400/35 text-amber-200">
+      <span className="ml-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 dark:bg-amber-500/25 border border-amber-300 dark:border-amber-400/40 text-amber-900 dark:text-amber-200">
         MEDIO
       </span>
     );
   return (
-    <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-emerald-900/80 border border-emerald-300/35 text-emerald-200">
+    <span className="ml-1 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-400/40 text-emerald-900 dark:text-emerald-200">
       BAJO
     </span>
   );
@@ -193,6 +196,9 @@ export default function RegionPage() {
           total: metData.total ?? 0,
           alto_riesgo: metData.alto_riesgo ?? 0,
           semana_actual: metData.semana_actual ?? 0,
+          al_corriente: metData.al_corriente ?? 0,
+          proximas_vencer: metData.proximas_vencer ?? 0,
+          inasistencias_30d: metData.inasistencias_30d ?? 0,
         });
 
         const nextHighRisk = new Set(
@@ -309,6 +315,45 @@ export default function RegionPage() {
     .filter((p) => (p.puntaje_total_actual ?? 0) < 25 && !esAlertaPorCriterioClinico(p))
     .sort((a, b) => (b.puntaje_total_actual ?? 0) - (a.puntaje_total_actual ?? 0));
 
+  const semaforoStats = useMemo(() => {
+    let conteoAlto = 0;
+    let conteoPuntaje25 = 0;
+    let conteoCriterioClinico = 0;
+    let conteoMedio = 0;
+    let conteoBajo = 0;
+
+    for (const p of pacientes) {
+      const score = p.puntaje_total_actual ?? 0;
+      const alertaClinica = esAlertaPorCriterioClinico(p);
+      if (score >= 25 || alertaClinica) {
+        conteoAlto++;
+        if (score >= 25) conteoPuntaje25++;
+        if (alertaClinica) conteoCriterioClinico++;
+      } else if (score > 15) {
+        conteoMedio++;
+      } else {
+        conteoBajo++;
+      }
+    }
+
+    const totalBase = Math.max(metricas?.total ?? 0, pacientes.length, 1);
+    const altoTotal = Math.max(metricas?.alto_riesgo ?? 0, conteoAlto);
+    const pctAlto = Math.min(100, Math.round((altoTotal / totalBase) * 100));
+    const pctMedio = Math.min(100 - pctAlto, Math.round((conteoMedio / totalBase) * 100));
+    const pctBajo = Math.max(0, 100 - pctAlto - pctMedio);
+
+    return {
+      conteoAlto: altoTotal,
+      conteoPuntaje25,
+      conteoCriterioClinico,
+      conteoMedio,
+      conteoBajo,
+      pctAlto,
+      pctMedio,
+      pctBajo,
+    };
+  }, [metricas, pacientes]);
+
   const limpiarFiltros = () => {
     setBusqueda("");
     setFolioFilter("");
@@ -317,50 +362,42 @@ export default function RegionPage() {
 
   if (!authChecked) {
     return (
-      <main className="min-h-dvh relative text-white bg-emerald-950">
-        <Image
-          src="/region.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-        <div
-          className="absolute inset-0 bg-gradient-to-br from-emerald-950/80 via-emerald-900/60 to-teal-900/50"
-          aria-hidden
-        />
-        <div className="relative min-h-screen flex items-center justify-center">
-          Validando acceso...
-        </div>
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white flex items-center justify-center">
+        Validando acceso...
       </main>
     );
   }
 
   return (
-    <main className="min-h-dvh relative text-white bg-emerald-950">
-      <Image
-        src="/region.png"
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover object-center"
-      />
+    <main className="min-h-screen relative transition-colors duration-300">
+      {/* CAPA DE FONDO FIJA - MODO CLARO */}
       <div
-        className="absolute inset-0 bg-gradient-to-br from-emerald-950/80 via-emerald-900/60 to-teal-900/50"
-        aria-hidden
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 dark:hidden"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(241, 245, 249, 0.70), rgba(204, 251, 241, 0.52)), url(/region.png)",
+        }}
+        aria-hidden="true"
       />
-      <div className="relative">
+      {/* CAPA DE FONDO FIJA - MODO OSCURO */}
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 hidden dark:block"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(6, 78, 59, 0.78), rgba(15, 118, 110, 0.52)), url(/region.png)",
+        }}
+        aria-hidden="true"
+      />
+
       {alertaFlotante && (
-        <div className="fixed top-4 right-4 z-50 max-w-sm rounded-xl border border-red-400/50 bg-red-900/90 px-4 py-3 shadow-2xl shadow-red-900/60 backdrop-blur-sm">
+        <div className="fixed top-4 right-4 z-50 max-w-sm rounded-2xl border border-rose-400/50 bg-rose-900/95 px-4 py-3 shadow-2xl shadow-rose-950/60 backdrop-blur-sm">
           <div className="flex items-start gap-3">
             <div className="text-xl leading-none">🚨</div>
             <div className="flex-1">
-              <p className="text-xs uppercase tracking-[0.16em] text-red-200/90">
+              <p className="text-xs uppercase tracking-[0.16em] text-rose-200 font-bold">
                 Notificación regional
               </p>
-              <p className="text-sm text-red-100 mt-1">
+              <p className="text-sm text-rose-50 mt-1">
                 {alertaFlotante.cantidad === 1
                   ? "Se detectó 1 nuevo paciente en alto riesgo activo."
                   : `Se detectaron ${alertaFlotante.cantidad} pacientes nuevos en alto riesgo activo.`}
@@ -368,7 +405,7 @@ export default function RegionPage() {
             </div>
             <button
               onClick={() => setAlertaFlotante(null)}
-              className="text-red-200/70 hover:text-red-100 text-sm"
+              className="text-rose-200/70 hover:text-white text-sm cursor-pointer"
               aria-label="Cerrar notificación"
             >
               ✕
@@ -377,29 +414,45 @@ export default function RegionPage() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="border-b border-emerald-200/20 bg-emerald-950/35 backdrop-blur-md sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-bold text-white">{regionDisplay}</h1>
-            <p className="text-xs text-emerald-100/80">Módulo Regional MARO</p>
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+        {/* ENCABEZADO SUPERIOR */}
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs uppercase tracking-[0.2em] font-bold text-emerald-700 dark:text-emerald-300">
+                Módulo Regional MARO
+              </span>
+              {session?.displayName && (
+                <span className="text-xs bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-200 px-2.5 py-0.5 rounded-full font-semibold">
+                  {session.displayName}
+                </span>
+              )}
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+              <i className="fa-solid fa-map-location-dot text-emerald-600 dark:text-emerald-400"></i>
+              <span>{regionDisplay}</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+              Vigilancia epidemiológica, estratificación de riesgo obstétrico y seguimiento regional
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-white/60 hidden sm:block">
-              {session?.displayName}
-            </span>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <ThemeToggle />
             <Link
               href="/region/colegiados"
-              className="text-xs font-medium bg-amber-600 hover:bg-amber-500 border border-amber-400/40 rounded-lg px-3 py-1.5 text-amber-100 transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl border border-amber-400/50 dark:border-amber-400/40 bg-amber-500/15 hover:bg-amber-500/25 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 px-3.5 py-2 text-xs font-bold text-amber-900 dark:text-amber-200 transition-colors cursor-pointer"
             >
-              Casos Colegiados
+              <i className="fa-solid fa-users-viewfinder text-amber-600 dark:text-amber-300"></i>
+              <span>Casos Colegiados</span>
             </Link>
             <button
               onClick={descargarReporteExcel}
               disabled={exportingReporte}
-              className="text-xs font-medium bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40 rounded-lg px-3 py-1.5 text-emerald-100 transition-colors disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 dark:border-emerald-400/40 bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-colors disabled:opacity-60 cursor-pointer"
             >
-              {exportingReporte ? "Generando Excel..." : "Descargar Reporte Excel Clínico"}
+              <i className={`fa-solid ${exportingReporte ? "fa-spinner fa-spin" : "fa-file-excel"}`}></i>
+              <span>{exportingReporte ? "Generando Excel..." : "Descargar Reporte Excel Clínico"}</span>
             </button>
             <button
               onClick={async () => {
@@ -412,60 +465,270 @@ export default function RegionPage() {
                   router.replace("/inicial");
                 }
               }}
-              className="text-xs text-white/50 hover:text-white border border-white/20 rounded-lg px-3 py-1.5 transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-white transition-colors cursor-pointer"
             >
-              Salir
+              <i className="fa-solid fa-right-from-bracket text-slate-500 dark:text-slate-300"></i>
+              <span>Salir</span>
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Métricas */}
+        {/* TARJETAS KPI - SEMÁFORO EPIDEMIOLÓGICO REGIONAL */}
         {metricas && (
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-emerald-500/12 rounded-2xl p-4 border border-emerald-300/25 text-center">
-              <div className="text-3xl font-bold text-white">
-                {metricas.total}
+          <section className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* 🟢 TARJETA 1: SEMÁFORO VERDE - POBLACIÓN EN REGIÓN Y CONTROL ÓPTIMO */}
+              <div className="relative overflow-hidden rounded-3xl border-2 border-emerald-500/50 dark:border-emerald-400/50 bg-gradient-to-br from-emerald-50/95 via-white/95 to-teal-50/90 dark:from-emerald-950/85 dark:via-slate-900/90 dark:to-slate-900/95 p-6 sm:p-7 shadow-xl shadow-emerald-950/10 dark:shadow-emerald-950/40 flex flex-col justify-between gap-5 transition-all hover:-translate-y-0.5">
+                {/* Franja superior luminosa */}
+                <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400" />
+                {/* Halo decorativo */}
+                <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-emerald-400/20 dark:bg-emerald-500/15 blur-2xl" />
+
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    {/* Indicador visual tipo Semáforo (Luz Verde encendida) */}
+                    <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/90 dark:bg-black/60 border border-emerald-400/40 px-3 py-1 shadow-inner">
+                      <span className="h-2.5 w-2.5 rounded-full bg-rose-500/25" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400/25" />
+                      <span className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] ring-2 ring-emerald-300/60" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300 ml-1">
+                        Semáforo Verde
+                      </span>
+                    </div>
+
+                    <h2 className="text-sm font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block">
+                      Pacientes en Región
+                    </h2>
+                  </div>
+
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-300/40 flex items-center justify-center text-2xl shrink-0">
+                    <i className="fa-solid fa-hospital-user"></i>
+                  </div>
+                </div>
+
+                <div className="flex items-baseline gap-3 my-1">
+                  <span className="text-5xl sm:text-6xl font-black tracking-tight text-emerald-700 dark:text-emerald-300 drop-shadow-sm">
+                    {metricas.total}
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-extrabold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
+                      Expedientes Activos
+                    </span>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      Población obstétrica en jurisdicción
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-emerald-500/20 dark:border-emerald-400/20">
+                  <div className="rounded-xl bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/30 px-3 py-2 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      Bajo Riesgo
+                    </span>
+                    <span className="text-sm font-black text-emerald-800 dark:text-white">
+                      {semaforoStats.conteoBajo}
+                    </span>
+                  </div>
+                  <div className="rounded-xl bg-teal-500/15 dark:bg-teal-500/20 border border-teal-500/30 px-3 py-2 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-teal-900 dark:text-teal-200 flex items-center gap-1.5">
+                      <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400 text-[11px]"></i>
+                      Al corriente
+                    </span>
+                    <span className="text-sm font-black text-teal-800 dark:text-white">
+                      {metricas.al_corriente}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="text-xs text-emerald-100/80 mt-1">
-                Pacientes en región
+
+              {/* 🟡 TARJETA 2: SEMÁFORO AMARILLO / ÁMBAR - VIGILANCIA E INGRESOS SEMANALES */}
+              <div className="relative overflow-hidden rounded-3xl border-2 border-amber-500/55 dark:border-amber-400/50 bg-gradient-to-br from-amber-50/95 via-white/95 to-yellow-50/90 dark:from-amber-950/85 dark:via-slate-900/90 dark:to-slate-900/95 p-6 sm:p-7 shadow-xl shadow-amber-950/10 dark:shadow-amber-950/40 flex flex-col justify-between gap-5 transition-all hover:-translate-y-0.5">
+                {/* Franja superior luminosa */}
+                <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400" />
+                {/* Halo decorativo */}
+                <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-amber-400/20 dark:bg-amber-500/15 blur-2xl" />
+
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    {/* Indicador visual tipo Semáforo (Luz Ámbar encendida) */}
+                    <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/90 dark:bg-black/60 border border-amber-400/40 px-3 py-1 shadow-inner">
+                      <span className="h-2.5 w-2.5 rounded-full bg-rose-500/25" />
+                      <span className="h-3 w-3 rounded-full bg-amber-400 shadow-[0_0_10px_#fbbf24] ring-2 ring-amber-200/70" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/25" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 ml-1">
+                        Semáforo Preventivo
+                      </span>
+                    </div>
+
+                    <h2 className="text-sm font-extrabold uppercase tracking-wider text-amber-800 dark:text-amber-300 block">
+                      Ingresos Esta Semana y Vigilancia
+                    </h2>
+                  </div>
+
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-600/30 border border-amber-300/40 flex items-center justify-center text-2xl shrink-0">
+                    <i className="fa-solid fa-calendar-check"></i>
+                  </div>
+                </div>
+
+                <div className="flex items-baseline gap-3 my-1">
+                  <span className="text-5xl sm:text-6xl font-black tracking-tight text-amber-600 dark:text-amber-400 drop-shadow-sm">
+                    {metricas.semana_actual}
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-extrabold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                      Nuevos Ingresos (7 días)
+                    </span>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      En seguimiento preventivo CPN
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-amber-500/20 dark:border-amber-400/20">
+                  <div className="rounded-xl bg-amber-500/15 dark:bg-amber-500/20 border border-amber-500/35 px-3 py-2 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      Riesgo Medio
+                    </span>
+                    <span className="text-sm font-black text-amber-800 dark:text-white">
+                      {semaforoStats.conteoMedio}
+                    </span>
+                  </div>
+                  <div className="rounded-xl bg-orange-500/15 dark:bg-orange-500/20 border border-orange-500/35 px-3 py-2 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-orange-900 dark:text-orange-200 flex items-center gap-1.5">
+                      <i className="fa-solid fa-clock text-amber-600 dark:text-amber-400 text-[11px]"></i>
+                      Próx. Cita (21-30d)
+                    </span>
+                    <span className="text-sm font-black text-orange-800 dark:text-white">
+                      {metricas.proximas_vencer}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🔴 TARJETA 3: SEMÁFORO ROJO - ALTO RIESGO ACTIVO (ALERTA CRÍTICA) */}
+              <div className="relative overflow-hidden rounded-3xl border-2 border-rose-500/65 dark:border-rose-400/60 bg-gradient-to-br from-rose-50/95 via-white/95 to-red-50/90 dark:from-rose-950/90 dark:via-slate-900/90 dark:to-slate-900/95 p-6 sm:p-7 shadow-xl shadow-rose-950/15 dark:shadow-rose-950/50 flex flex-col justify-between gap-5 transition-all hover:-translate-y-0.5">
+                {/* Franja superior luminosa */}
+                <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-rose-500 via-red-500 to-orange-500" />
+                {/* Halo decorativo */}
+                <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-rose-500/25 dark:bg-rose-500/20 blur-2xl" />
+
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    {/* Indicador visual tipo Semáforo (Luz Roja encendida con pulso) */}
+                    <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/90 dark:bg-black/60 border border-rose-400/50 px-3 py-1 shadow-inner">
+                      <span className="h-3 w-3 rounded-full bg-rose-500 shadow-[0_0_12px_#f43f5e] ring-2 ring-rose-300/80 animate-pulse" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400/25" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/25" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-rose-300 ml-1">
+                        Semáforo Rojo
+                      </span>
+                    </div>
+
+                    <h2 className="text-sm font-extrabold uppercase tracking-wider text-rose-800 dark:text-rose-300 block">
+                      Alto Riesgo Activo
+                    </h2>
+                  </div>
+
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-600 to-red-600 text-white shadow-lg shadow-rose-600/35 border border-rose-300/40 flex items-center justify-center text-2xl shrink-0">
+                    <i className="fa-solid fa-shield-heart animate-pulse"></i>
+                  </div>
+                </div>
+
+                <div className="flex items-baseline gap-3 my-1">
+                  <span className="text-5xl sm:text-6xl font-black tracking-tight text-rose-600 dark:text-rose-400 drop-shadow-sm">
+                    {semaforoStats.conteoAlto}
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-extrabold uppercase tracking-wide text-rose-900 dark:text-rose-200">
+                      Casos Prioritarios ({semaforoStats.pctAlto}%)
+                    </span>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      Puntaje ≥25 o criterio clínico mayor
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-rose-500/20 dark:border-rose-400/20">
+                  <div className="rounded-xl bg-rose-500/15 dark:bg-rose-500/25 border border-rose-500/35 px-3 py-2 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
+                      Puntaje ≥25 / Clín.
+                    </span>
+                    <span className="text-sm font-black text-rose-800 dark:text-white">
+                      {semaforoStats.conteoPuntaje25} / {semaforoStats.conteoCriterioClinico}
+                    </span>
+                  </div>
+                  <div className="rounded-xl bg-red-500/15 dark:bg-red-500/25 border border-red-500/35 px-3 py-2 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-red-900 dark:text-red-200 flex items-center gap-1.5">
+                      <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-[11px]"></i>
+                      Inasistencia &gt;30d
+                    </span>
+                    <span className="text-sm font-black text-red-800 dark:text-white">
+                      {metricas.inasistencias_30d}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="bg-amber-500/12 rounded-2xl p-4 border border-amber-300/30 text-center">
-              <div className="text-3xl font-bold text-red-400">
-                {metricas.alto_riesgo}
+
+            {/* BARRA GLOBAL DE SEMÁFORO OBSTÉTRICO REGIONAL */}
+            <div className="w-full h-8 rounded-2xl bg-white/95 dark:bg-slate-900/90 overflow-hidden flex p-1 gap-1 border border-slate-300 dark:border-white/15 shadow-lg">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-l-xl flex items-center justify-center text-xs font-black text-white drop-shadow-sm transition-all duration-500 min-w-[48px]"
+                style={{ width: `${semaforoStats.pctBajo}%` }}
+                title={`Bajo Riesgo (≤15): ${semaforoStats.conteoBajo} (${semaforoStats.pctBajo}%)`}
+              >
+                {semaforoStats.pctBajo}%
               </div>
-              <div className="text-xs text-amber-100/90 mt-1">
-                Alto riesgo activo
+              <div
+                className="h-full bg-gradient-to-r from-amber-400 to-orange-400 flex items-center justify-center text-xs font-black text-slate-950 drop-shadow-sm transition-all duration-500 min-w-[48px]"
+                style={{ width: `${semaforoStats.pctMedio}%` }}
+                title={`Riesgo Medio (16-24): ${semaforoStats.conteoMedio} (${semaforoStats.pctMedio}%)`}
+              >
+                {semaforoStats.pctMedio}%
+              </div>
+              <div
+                className="h-full bg-gradient-to-r from-rose-500 to-red-600 rounded-r-xl flex items-center justify-center text-xs font-black text-white drop-shadow-sm transition-all duration-500 min-w-[48px]"
+                style={{ width: `${semaforoStats.pctAlto}%` }}
+                title={`Alto Riesgo (≥25 / Alerta): ${semaforoStats.conteoAlto} (${semaforoStats.pctAlto}%)`}
+              >
+                {semaforoStats.pctAlto}%
               </div>
             </div>
-            <div className="bg-teal-500/14 rounded-2xl p-4 border border-teal-300/25 text-center">
-              <div className="text-3xl font-bold text-emerald-400">
-                {metricas.semana_actual}
-              </div>
-              <div className="text-xs text-teal-100/90 mt-1">
-                Ingresos esta semana
-              </div>
-            </div>
-          </div>
+          </section>
         )}
 
-        {/* Filtros */}
-        <div className="bg-emerald-950/30 rounded-2xl border border-emerald-200/20 p-4 space-y-3 backdrop-blur-sm">
-          <h3 className="text-sm font-semibold text-white">Filtros</h3>
+        {/* FILTROS */}
+        <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-5 space-y-3 shadow-xl transition-colors">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+              <i className="fa-solid fa-filter text-emerald-600 dark:text-emerald-400"></i>
+              <span>Filtros de Búsqueda Regional</span>
+            </h3>
+            {(busqueda || folioFilter || municipioFilter) && (
+              <button
+                onClick={limpiarFiltros}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg px-2.5 py-1 transition-colors whitespace-nowrap cursor-pointer"
+              >
+                <i className="fa-solid fa-rotate-left text-[10px]"></i>
+                <span>Limpiar filtros</span>
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input
               type="search"
-              placeholder="Buscar por nombre..."
+              placeholder="Buscar por nombre de paciente..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="bg-emerald-900/35 border border-emerald-200/20 rounded-lg px-3 py-2 text-sm text-white placeholder:text-emerald-100/50 focus:outline-none focus:border-emerald-300"
+              className="w-full rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-colors"
             />
             <select
               value={folioFilter}
               onChange={(e) => setFolioFilter(e.target.value)}
-              className="bg-emerald-900/50 border border-emerald-200/25 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-300"
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-white/10 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-colors"
             >
               <option value="">Todos los folios</option>
               {foliosDisponibles.map((folio) => (
@@ -480,7 +743,7 @@ export default function RegionPage() {
                 setMunicipioFilter(e.target.value);
                 setFolioFilter("");
               }}
-              className="bg-emerald-900/50 border border-emerald-200/25 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-300"
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-white/10 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-colors"
             >
               <option value="">Todos los municipios</option>
               {municipiosDisponibles.map((municipio) => (
@@ -490,107 +753,103 @@ export default function RegionPage() {
               ))}
             </select>
           </div>
-          {(busqueda || folioFilter || municipioFilter) && (
-            <button
-              onClick={limpiarFiltros}
-              className="text-xs text-white/60 hover:text-white border border-white/20 hover:border-white rounded-lg px-3 py-1.5 transition-colors"
-            >
-              Limpiar filtros
-            </button>
-          )}
-        </div>
+        </section>
 
-        {/* Estado de carga / error */}
+        {/* ESTADO DE CARGA / ERROR */}
         {loading && (
-          <div className="text-center py-12 text-white/50">
-            Cargando pacientes...
+          <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 py-12 text-center text-slate-600 dark:text-slate-300 text-sm flex items-center justify-center gap-2 shadow-xl">
+            <i className="fa-solid fa-spinner fa-spin text-emerald-600 dark:text-emerald-400"></i>
+            <span>Cargando pacientes de la región...</span>
           </div>
         )}
         {error && (
-          <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm">
-            {error}
+          <div className="rounded-xl border border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-500/20 p-4 text-sm text-rose-900 dark:text-rose-200 flex items-center gap-3 shadow-lg">
+            <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-lg"></i>
+            <span>{error}</span>
           </div>
         )}
 
-        {/* Tabla ALTO RIESGO ACTIVO */}
+        {/* TABLA: ALTO RIESGO ACTIVO */}
         {!loading && !error && altoRiesgo.length > 0 && (
-          <div className="bg-red-950/70 rounded-2xl border border-red-400/35 overflow-hidden backdrop-blur-sm">
-            <div className="px-4 py-3 border-b border-red-400/35 bg-red-900/70">
-              <h2 className="text-sm font-semibold text-red-300">
-                🚨 ALTO RIESGO ACTIVO: {altoRiesgo.length}
-              </h2>
+          <section className="rounded-2xl border border-rose-300 dark:border-rose-500/35 bg-white/95 dark:bg-slate-900/85 p-5 space-y-4 shadow-xl transition-colors">
+            <div className="flex items-center justify-between border-b border-rose-200 dark:border-rose-500/25 pb-3.5 flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-500/20 border border-rose-300 dark:border-rose-400/40 flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-lg"></i>
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-rose-900 dark:text-rose-200">
+                    Alto Riesgo Activo
+                  </h2>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    Pacientes con puntaje ≥25 o criterio clínico prioritario
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs text-rose-900 dark:text-rose-200 bg-rose-100 dark:bg-rose-500/25 border border-rose-300 dark:border-rose-400/40 px-3 py-1 rounded-full font-bold">
+                {altoRiesgo.length} {altoRiesgo.length === 1 ? "caso activo" : "casos activos"}
+              </span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-red-400/30 bg-red-900/65">
-                    <th className="text-left px-4 py-3 text-red-300/80 font-medium">
-                      Folio
-                    </th>
-                    <th className="text-left px-4 py-3 text-red-300/80 font-medium">
-                      Paciente
-                    </th>
-                    <th className="text-left px-4 py-3 text-red-300/80 font-medium hidden lg:table-cell">
-                      Unidad
-                    </th>
-                    <th className="text-left px-4 py-3 text-red-300/80 font-medium hidden md:table-cell">
-                      Municipio
-                    </th>
-                    <th className="text-left px-4 py-3 text-red-300/80 font-medium hidden lg:table-cell">
-                      Ingreso CPN
-                    </th>
-                    <th className="text-right px-4 py-3 text-red-300/80 font-medium hidden sm:table-cell">
-                      SDG
-                    </th>
-                    <th className="text-right px-4 py-3 text-red-300/80 font-medium">
-                      Puntaje
-                    </th>
-                    <th className="px-4 py-3"></th>
+
+            <div className="max-h-[380px] overflow-y-auto overflow-x-hidden rounded-xl border border-rose-200 dark:border-rose-500/25">
+              <table className="w-full text-xs table-fixed text-left">
+                <thead className="sticky top-0 z-10 bg-rose-50/95 dark:bg-slate-950/95 backdrop-blur-sm border-b border-rose-200 dark:border-rose-500/25 text-rose-900 dark:text-rose-200 font-bold">
+                  <tr className="whitespace-nowrap">
+                    <th className="w-[125px] px-3 py-2.5">Folio</th>
+                    <th className="px-3 py-2.5">Paciente</th>
+                    <th className="w-[20%] px-3 py-2.5 hidden lg:table-cell">Unidad</th>
+                    <th className="w-[12%] px-3 py-2.5 hidden md:table-cell">Municipio</th>
+                    <th className="w-[92px] px-2.5 py-2.5 hidden lg:table-cell">Ingreso CPN</th>
+                    <th className="w-[52px] text-right px-2 py-2.5 hidden sm:table-cell">SDG</th>
+                    <th className="w-[135px] text-right px-2.5 py-2.5">Puntaje</th>
+                    <th className="w-[76px] text-center pl-2 pr-3.5 py-2.5">Acción</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-red-400/20">
+                <tbody className="divide-y divide-rose-100 dark:divide-rose-500/15">
                   {altoRiesgo.map((p) => (
-                    <tr key={p.id} className="hover:bg-red-900/55 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs text-red-300/70">
+                    <tr key={p.id} className="hover:bg-rose-50/70 dark:hover:bg-rose-500/10 transition-colors whitespace-nowrap">
+                      <td className="px-3 py-2.5 font-mono font-bold text-rose-800 dark:text-rose-300 truncate" title={p.folio}>
                         {p.folio}
                       </td>
-                      <td className="px-4 py-3 text-red-100 font-medium">
+                      <td className="px-3 py-2.5 text-slate-900 dark:text-white font-semibold truncate" title={p.nombre_completo || ""}>
                         {p.nombre_completo || "—"}
                       </td>
-                      <td className="px-4 py-3 text-red-300/70 hidden lg:table-cell text-xs">
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 hidden lg:table-cell truncate" title={p.unidad || ""}>
                         {p.unidad || "—"}
                       </td>
-                      <td className="px-4 py-3 text-red-300/70 hidden md:table-cell">
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 hidden md:table-cell truncate" title={p.municipio || ""}>
                         {p.municipio || "—"}
                       </td>
-                      <td className="px-4 py-3 text-red-300/70 hidden lg:table-cell text-xs">
+                      <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-300 hidden lg:table-cell">
                         {p.fecha_ingreso_cpn
-                          ? new Date(
-                              p.fecha_ingreso_cpn
-                            ).toLocaleDateString("es-MX")
+                          ? new Date(p.fecha_ingreso_cpn).toLocaleDateString("es-MX")
                           : "—"}
                       </td>
-                      <td className="px-4 py-3 text-right text-red-300/70 hidden sm:table-cell">
+                      <td className="px-2 py-2.5 text-right text-slate-700 dark:text-slate-200 font-semibold hidden sm:table-cell">
                         {p.semanas_gestacion ?? p.sdg_ingreso ?? "—"}
                       </td>
-                      <td className="px-4 py-3 text-right text-red-400 font-bold">
+                      <td className="px-2.5 py-2.5 text-right">
                         {esAlertaPorCriterioClinico(p) ? (
-                          <div className="inline-flex flex-col items-end gap-1">
-                            <span className="px-2 py-0.5 rounded text-xs bg-amber-900/80 border border-amber-400/40 text-amber-200">
-                              Criterio clinico
+                          <div className="inline-flex items-center justify-end max-w-full" title={motivoClinico(p) || "Edad/Padecimiento"}>
+                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 dark:bg-amber-500/25 border border-amber-300 dark:border-amber-400/40 text-amber-900 dark:text-amber-200 truncate max-w-[125px]">
+                              {motivoClinico(p) || "Criterio clínico"}
                             </span>
-                            <span className="text-[10px] text-amber-200/90">{motivoClinico(p) || "Edad/Padecimiento"}</span>
                           </div>
                         ) : (
-                          <>{p.puntaje_total_actual ?? "—"}</>
+                          <div className="inline-flex items-center justify-end gap-1">
+                            <span className="text-rose-700 dark:text-rose-400 font-black">
+                              {p.puntaje_total_actual ?? "—"}
+                            </span>
+                            {riesgoBadge(p.puntaje_total_actual)}
+                          </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="pl-2 pr-3.5 py-2.5 text-center">
                         <Link
                           href={`/region/pacientes/${p.id}`}
-                          className="text-xs text-red-300 hover:text-red-100 border border-red-500/30 hover:border-red-400 rounded-lg px-2 py-1 transition-colors"
+                          className="inline-flex items-center justify-center text-xs font-bold text-rose-700 dark:text-rose-200 hover:text-white hover:bg-rose-600 dark:hover:bg-rose-500 border border-rose-300 dark:border-rose-500/40 rounded-lg px-2.5 py-1 transition-colors"
                         >
-                          Ver
+                          <span>Ver</span>
                         </Link>
                       </td>
                     </tr>
@@ -598,82 +857,82 @@ export default function RegionPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Tabla BAJO/MEDIO RIESGO (<25) */}
+        {/* TABLA: BAJO/MEDIO RIESGO (<25) */}
         {!loading && !error && bajoMedioRiesgo.length > 0 && (
-          <div className="bg-emerald-950/70 rounded-2xl border border-emerald-300/35 overflow-hidden backdrop-blur-sm">
-            <div className="px-4 py-3 border-b border-emerald-300/35 bg-emerald-900/65">
-              <h2 className="text-sm font-semibold text-emerald-300">
-                ✓ Bajo/Medio Riesgo (puntaje &lt;25): {bajoMedioRiesgo.length}
-              </h2>
+          <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-5 space-y-4 shadow-xl transition-colors">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3.5 flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-emerald-500/20 border border-teal-300 dark:border-emerald-400/40 flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-clipboard-check text-teal-700 dark:text-emerald-400 text-lg"></i>
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                    Bajo y Medio Riesgo (Puntaje &lt;25)
+                  </h2>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    Seguimiento prenatal ordinario en unidades de primer nivel
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs text-emerald-900 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-400/30 px-3 py-1 rounded-full font-bold">
+                {bajoMedioRiesgo.length} {bajoMedioRiesgo.length === 1 ? "paciente" : "pacientes"}
+              </span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-emerald-300/30 bg-emerald-900/60">
-                    <th className="text-left px-4 py-3 text-emerald-300/80 font-medium">
-                      Folio
-                    </th>
-                    <th className="text-left px-4 py-3 text-emerald-300/80 font-medium">
-                      Paciente
-                    </th>
-                    <th className="text-left px-4 py-3 text-emerald-300/80 font-medium hidden lg:table-cell">
-                      Unidad
-                    </th>
-                    <th className="text-left px-4 py-3 text-emerald-300/80 font-medium hidden md:table-cell">
-                      Municipio
-                    </th>
-                    <th className="text-left px-4 py-3 text-emerald-300/80 font-medium hidden lg:table-cell">
-                      Ingreso CPN
-                    </th>
-                    <th className="text-right px-4 py-3 text-emerald-300/80 font-medium hidden sm:table-cell">
-                      SDG
-                    </th>
-                    <th className="text-right px-4 py-3 text-emerald-300/80 font-medium">
-                      Puntaje
-                    </th>
-                    <th className="px-4 py-3"></th>
+
+            <div className="max-h-[420px] overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200 dark:border-white/10">
+              <table className="w-full text-xs table-fixed text-left">
+                <thead className="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 font-bold">
+                  <tr className="whitespace-nowrap">
+                    <th className="w-[125px] px-3 py-2.5">Folio</th>
+                    <th className="px-3 py-2.5">Paciente</th>
+                    <th className="w-[20%] px-3 py-2.5 hidden lg:table-cell">Unidad</th>
+                    <th className="w-[12%] px-3 py-2.5 hidden md:table-cell">Municipio</th>
+                    <th className="w-[92px] px-2.5 py-2.5 hidden lg:table-cell">Ingreso CPN</th>
+                    <th className="w-[52px] text-right px-2 py-2.5 hidden sm:table-cell">SDG</th>
+                    <th className="w-[135px] text-right px-2.5 py-2.5">Puntaje</th>
+                    <th className="w-[76px] text-center pl-2 pr-3.5 py-2.5">Acción</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-emerald-300/20">
+                <tbody className="divide-y divide-slate-200 dark:divide-white/5">
                   {bajoMedioRiesgo.map((p) => (
-                    <tr key={p.id} className="hover:bg-emerald-900/50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs text-emerald-300/70">
+                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors whitespace-nowrap">
+                      <td className="px-3 py-2.5 font-mono font-bold text-slate-800 dark:text-emerald-300/90 truncate" title={p.folio}>
                         {p.folio}
                       </td>
-                      <td className="px-4 py-3 text-emerald-100 font-medium">
+                      <td className="px-3 py-2.5 text-slate-900 dark:text-white font-semibold truncate" title={p.nombre_completo || ""}>
                         {p.nombre_completo || "—"}
                       </td>
-                      <td className="px-4 py-3 text-emerald-300/70 hidden lg:table-cell text-xs">
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 hidden lg:table-cell truncate" title={p.unidad || ""}>
                         {p.unidad || "—"}
                       </td>
-                      <td className="px-4 py-3 text-emerald-300/70 hidden md:table-cell">
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 hidden md:table-cell truncate" title={p.municipio || ""}>
                         {p.municipio || "—"}
                       </td>
-                      <td className="px-4 py-3 text-emerald-300/70 hidden lg:table-cell text-xs">
+                      <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-300 hidden lg:table-cell">
                         {p.fecha_ingreso_cpn
-                          ? new Date(
-                              p.fecha_ingreso_cpn
-                            ).toLocaleDateString("es-MX")
+                          ? new Date(p.fecha_ingreso_cpn).toLocaleDateString("es-MX")
                           : "—"}
                       </td>
-                      <td className="px-4 py-3 text-right text-emerald-300/70 hidden sm:table-cell">
+                      <td className="px-2 py-2.5 text-right text-slate-700 dark:text-slate-200 font-semibold hidden sm:table-cell">
                         {p.semanas_gestacion ?? p.sdg_ingreso ?? "—"}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={riesgoColor(p.puntaje_total_actual)}>
-                          {p.puntaje_total_actual ?? "—"}
-                        </span>
-                        {riesgoBadge(p.puntaje_total_actual)}
+                      <td className="px-2.5 py-2.5 text-right">
+                        <div className="inline-flex items-center justify-end gap-1">
+                          <span className={riesgoColor(p.puntaje_total_actual)}>
+                            {p.puntaje_total_actual ?? "—"}
+                          </span>
+                          {riesgoBadge(p.puntaje_total_actual)}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="pl-2 pr-3.5 py-2.5 text-center">
                         <Link
                           href={`/region/pacientes/${p.id}`}
-                          className="text-xs text-emerald-300 hover:text-emerald-100 border border-emerald-500/30 hover:border-emerald-400 rounded-lg px-2 py-1 transition-colors"
+                          className="inline-flex items-center justify-center text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:text-white hover:bg-emerald-600 dark:hover:bg-emerald-500 border border-emerald-300 dark:border-emerald-500/35 rounded-lg px-2.5 py-1 transition-colors"
                         >
-                          Ver
+                          <span>Ver</span>
                         </Link>
                       </td>
                     </tr>
@@ -681,19 +940,19 @@ export default function RegionPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Sin registros */}
+        {/* SIN REGISTROS */}
         {!loading && !error && pacientesFiltrados.length === 0 && (
-          <div className="bg-emerald-950/30 rounded-2xl border border-emerald-200/20 py-16 text-center text-emerald-100/80 text-sm">
+          <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 py-16 text-center text-slate-500 dark:text-slate-400 text-sm shadow-xl">
             {busqueda || folioFilter || municipioFilter
               ? "Sin resultados para los filtros aplicados"
               : "No hay pacientes registradas en esta región"}
           </div>
         )}
-      </main>
       </div>
     </main>
   );
 }
+

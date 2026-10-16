@@ -25,6 +25,7 @@ querys/*
 # misc
 .DS_Store
 *.pem
+*.code-workspace
 
 # debug
 npm-debug.log*
@@ -49,7 +50,9 @@ next-env.d.ts
 #pdf files
 *.pdf
 # Credenciales bootstrap — nunca versionar
-credenciales-bootstrap.csv
+credenciales-bootstrap*
+.~lock.*
+*.bak*
 
 # tar.gz archives
 *.tar.gz

@@ -230,6 +230,7 @@ async function main() {
   console.log(`- ADMIN: 1`);
   console.log("\nTodos los usuarios quedan con must_change_password = true");
   console.log("Todos los hashes usan bcrypt (cost 12)");
+  process.exit(0);
 }
 
 main().catch((err) => {

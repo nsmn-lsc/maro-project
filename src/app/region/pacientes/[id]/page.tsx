@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { evaluarCampoIndividual } from "@/lib/riesgoFactores";
 import { evaluarTamizajes } from "@/lib/riesgoTamizajes";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type SessionInfo = {
   nivel?: number;
@@ -106,10 +106,10 @@ type Detecciones = {
   prueba_hepatitis_c_t3: string | null;
 };
 
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
+function formatDate(value: string | Date | null | undefined, fallback = "—") {
+  if (!value) return fallback;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yyyy = d.getFullYear();
@@ -129,12 +129,6 @@ function normalizeRegion(value: string | null | undefined) {
   return String(value || "").trim().toLowerCase();
 }
 
-function riesgoClass(puntaje: number) {
-  if (puntaje > 25) return "text-red-300 border-red-500/40 bg-red-500/15";
-  if (puntaje > 15) return "text-amber-300 border-amber-500/40 bg-amber-500/15";
-  return "text-emerald-300 border-emerald-500/40 bg-emerald-500/15";
-}
-
 function getConsultaScores(consulta: Consulta) {
   const taS = consulta.ta_sistolica;
   const taD = consulta.ta_diastolica;
@@ -142,43 +136,37 @@ function getConsultaScores(consulta: Consulta) {
   const idx = consulta.indice_choque;
   const temp = consulta.temperatura;
 
-  const taSistolica = taS === null
-    ? 0
-    : (taS <= 89 || taS >= 160)
-      ? 4
-      : (taS >= 140 && taS <= 159)
-        ? 2
-        : 0;
+  const taSistolica =
+    taS === null
+      ? 0
+      : taS <= 89 || taS >= 160
+        ? 4
+        : taS >= 140 && taS <= 159
+          ? 2
+          : 0;
 
-  const taDiastolica = taD === null
-    ? 0
-    : (taD <= 50 || taD >= 110)
-      ? 4
-      : (taD >= 90 && taD <= 109)
-        ? 2
-        : 0;
+  const taDiastolica =
+    taD === null
+      ? 0
+      : taD <= 50 || taD >= 110
+        ? 4
+        : taD >= 90 && taD <= 109
+          ? 2
+          : 0;
 
-  const frecuenciaCardiaca = fc === null
-    ? 0
-    : (fc < 60 || fc > 100)
-      ? 4
-      : 0;
+  const frecuenciaCardiaca = fc === null ? 0 : fc < 60 || fc > 100 ? 4 : 0;
 
-  const indiceChoque = idx === null
-    ? 0
-    : idx > 0.8
-      ? 4
-      : (idx >= 0.7 && idx <= 0.8)
-        ? 2
-        : 0;
+  const indiceChoque =
+    idx === null ? 0 : idx > 0.8 ? 4 : idx >= 0.7 && idx <= 0.8 ? 2 : 0;
 
-  const temperatura = temp === null
-    ? 0
-    : (temp < 36 || temp > 39)
-      ? 4
-      : (temp >= 37.5 && temp <= 38.9)
-        ? 2
-        : 0;
+  const temperatura =
+    temp === null
+      ? 0
+      : temp < 36 || temp > 39
+        ? 4
+        : temp >= 37.5 && temp <= 38.9
+          ? 2
+          : 0;
 
   return {
     taSistolica,
@@ -191,15 +179,19 @@ function getConsultaScores(consulta: Consulta) {
 }
 
 function scoreToneClass(points: number) {
-  if (points >= 4) return "border-red-500/50 bg-red-900/30 text-red-200";
-  if (points >= 2) return "border-amber-500/50 bg-amber-900/30 text-amber-200";
-  return "border-emerald-200/15 bg-emerald-950/35 text-emerald-100";
+  if (points >= 4)
+    return "border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-900/30 text-rose-900 dark:text-rose-200";
+  if (points >= 2)
+    return "border-amber-300 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200";
+  return "";
 }
 
 function scoreBadgeClass(points: number) {
-  if (points >= 4) return "border-red-500/50 bg-red-500/20 text-red-200";
-  if (points >= 2) return "border-amber-500/50 bg-amber-500/20 text-amber-200";
-  return "border-emerald-300/35 bg-emerald-900/40 text-emerald-100";
+  if (points >= 4)
+    return "border-rose-300 dark:border-rose-500/50 bg-rose-100 dark:bg-rose-500/20 text-rose-900 dark:text-rose-200";
+  if (points >= 2)
+    return "border-amber-300 dark:border-amber-500/50 bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200";
+  return "border-emerald-300 dark:border-emerald-400/35 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-100";
 }
 
 export default function RegionPacienteResumenPage() {
@@ -382,89 +374,262 @@ export default function RegionPacienteResumenPage() {
     [ultimaConsulta]
   );
 
+  const esAltoRiesgo = puntajeTotalActual >= 25;
+  const esMedioRiesgo = puntajeTotalActual > 15 && puntajeTotalActual < 25;
+
   if (!authChecked) {
     return (
-      <main className="min-h-dvh relative text-white bg-emerald-950">
-        <Image
-          src="/region.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-        <div
-          className="absolute inset-0 bg-gradient-to-br from-emerald-950/80 via-emerald-900/60 to-teal-900/50"
-          aria-hidden
-        />
-        <div className="relative min-h-screen flex items-center justify-center">
-          Validando acceso regional...
-        </div>
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white flex items-center justify-center">
+        Validando acceso regional...
       </main>
     );
   }
 
   return (
-    <main className="min-h-dvh relative text-white bg-emerald-950">
-      <Image
-        src="/region.png"
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover object-center"
-      />
+    <main className="min-h-screen relative transition-colors duration-300">
+      {/* CAPA DE FONDO FIJA - MODO CLARO */}
       <div
-        className="absolute inset-0 bg-gradient-to-br from-emerald-950/80 via-emerald-900/60 to-teal-900/50"
-        aria-hidden
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 dark:hidden"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(241, 245, 249, 0.70), rgba(204, 251, 241, 0.52)), url(/region.png)",
+        }}
+        aria-hidden="true"
+      />
+      {/* CAPA DE FONDO FIJA - MODO OSCURO */}
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 hidden dark:block"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(6, 78, 59, 0.78), rgba(15, 118, 110, 0.52)), url(/region.png)",
+        }}
+        aria-hidden="true"
       />
 
-      <div className="relative max-w-7xl mx-auto p-6 lg:p-10 space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm uppercase tracking-[0.22em] text-emerald-200/80">Resumen regional</p>
-            <h1 className="text-3xl font-bold">Paciente {paciente?.folio ? `· ${paciente.folio}` : ""}</h1>
-            <p className="text-sm text-emerald-50/75">Vista de solo lectura. Nivel regional no puede capturar ni editar datos.</p>
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+        {/* ENCABEZADO SUPERIOR */}
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs uppercase tracking-[0.2em] font-bold text-emerald-700 dark:text-emerald-300">
+                Resumen Clínico Regional
+              </span>
+              {paciente?.folio && (
+                <span className="text-xs bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                  {paciente.folio}
+                </span>
+              )}
+              <span className="text-xs bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 px-2.5 py-0.5 rounded-full font-semibold">
+                Solo lectura
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+              <i className="fa-solid fa-file-medical text-emerald-600 dark:text-emerald-400"></i>
+              <span>{paciente?.nombre_completo || "Expediente de Paciente"}</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+              Supervisión epidemiológica jurisdiccional. El nivel regional consulta el expediente sin modificar registros clínicos.
+            </p>
           </div>
-          <Link
-            href="/region"
-            className="rounded-full border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10"
-          >
-            Volver a región
-          </Link>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <ThemeToggle />
+            <Link
+              href="/region"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white/90 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-4 py-2 text-xs font-bold text-slate-800 dark:text-white shadow-sm transition-colors cursor-pointer"
+            >
+              <i className="fa-solid fa-arrow-left text-emerald-600 dark:text-emerald-400"></i>
+              <span>Volver a Región</span>
+            </Link>
+          </div>
         </header>
 
         {loading ? (
-          <section className="rounded-2xl border border-emerald-200/15 bg-emerald-950/35 p-6 backdrop-blur-sm">Cargando resumen...</section>
+          <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 py-12 text-center text-slate-600 dark:text-slate-300 text-sm flex items-center justify-center gap-2 shadow-xl">
+            <i className="fa-solid fa-spinner fa-spin text-emerald-600 dark:text-emerald-400"></i>
+            <span>Cargando resumen clínico...</span>
+          </section>
         ) : error ? (
-          <section className="rounded-2xl border border-red-500/40 bg-red-900/20 p-6 text-red-200">{error}</section>
+          <section className="rounded-2xl border border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-900/20 p-6 text-rose-900 dark:text-rose-200 flex items-center gap-3 shadow-lg">
+            <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-lg"></i>
+            <span>{error}</span>
+          </section>
         ) : !paciente ? (
-          <section className="rounded-2xl border border-emerald-200/15 bg-emerald-950/35 p-6 backdrop-blur-sm">Paciente no encontrado.</section>
+          <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 p-8 text-center text-slate-600 dark:text-slate-300 shadow-xl">
+            Paciente no encontrado.
+          </section>
         ) : (
           <>
-            <section className="grid gap-4 md:grid-cols-4">
-              <div className="rounded-2xl border border-emerald-200/15 bg-emerald-950/35 p-4 backdrop-blur-sm">
-                <p className="text-xs text-emerald-100/60 uppercase">Puntaje total actual</p>
-                <p className={`mt-1 inline-flex rounded-lg border px-2.5 py-1 text-2xl font-bold ${riesgoClass(puntajeTotalActual)}`}>
-                  {puntajeTotalActual}
-                </p>
+            {/* TARJETAS KPI DEL EXPEDIENTE CON SEMÁFORO DE RIESGO */}
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Card 1: Semáforo de Puntaje Total Actual */}
+              <div
+                className={`relative overflow-hidden rounded-3xl border-2 p-5 sm:p-6 shadow-xl flex flex-col justify-between gap-3 transition-all ${
+                  esAltoRiesgo
+                    ? "border-rose-500/60 dark:border-rose-400/60 bg-gradient-to-br from-rose-50/95 via-white/95 to-red-50/90 dark:from-rose-950/90 dark:via-slate-900/90 dark:to-slate-900/95"
+                    : esMedioRiesgo
+                      ? "border-amber-500/60 dark:border-amber-400/60 bg-gradient-to-br from-amber-50/95 via-white/95 to-yellow-50/90 dark:from-amber-950/85 dark:via-slate-900/90 dark:to-slate-900/95"
+                      : "border-emerald-500/50 dark:border-emerald-400/50 bg-gradient-to-br from-emerald-50/95 via-white/95 to-teal-50/90 dark:from-emerald-950/85 dark:via-slate-900/90 dark:to-slate-900/95"
+                }`}
+              >
+                <div
+                  className={`absolute inset-x-0 top-0 h-1.5 ${
+                    esAltoRiesgo
+                      ? "bg-gradient-to-r from-rose-500 via-red-500 to-orange-500"
+                      : esMedioRiesgo
+                        ? "bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400"
+                        : "bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400"
+                  }`}
+                />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1.5">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/90 dark:bg-black/60 border border-white/15 px-2.5 py-0.5 shadow-inner">
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${
+                          esAltoRiesgo
+                            ? "bg-rose-500 shadow-[0_0_10px_#f43f5e] ring-2 ring-rose-300/80 animate-pulse"
+                            : "bg-rose-500/25"
+                        }`}
+                      />
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${
+                          esMedioRiesgo
+                            ? "bg-amber-400 shadow-[0_0_10px_#fbbf24] ring-2 ring-amber-200/70"
+                            : "bg-amber-400/25"
+                        }`}
+                      />
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${
+                          !esAltoRiesgo && !esMedioRiesgo
+                            ? "bg-emerald-400 shadow-[0_0_10px_#34d399] ring-2 ring-emerald-300/60"
+                            : "bg-emerald-400/25"
+                        }`}
+                      />
+                      <span className="text-[10px] font-black uppercase tracking-wider text-white ml-1">
+                        {esAltoRiesgo ? "Alto Riesgo" : esMedioRiesgo ? "Riesgo Medio" : "Bajo Riesgo"}
+                      </span>
+                    </div>
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Puntaje Total Actual
+                    </p>
+                  </div>
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl shadow-md shrink-0 ${
+                      esAltoRiesgo
+                        ? "bg-gradient-to-br from-rose-600 to-red-600"
+                        : esMedioRiesgo
+                          ? "bg-gradient-to-br from-amber-500 to-orange-500"
+                          : "bg-gradient-to-br from-emerald-500 to-teal-600"
+                    }`}
+                  >
+                    <i className="fa-solid fa-heart-pulse"></i>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span
+                    className={`text-4xl sm:text-5xl font-black tracking-tight ${
+                      esAltoRiesgo
+                        ? "text-rose-600 dark:text-rose-400"
+                        : esMedioRiesgo
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-emerald-700 dark:text-emerald-300"
+                    }`}
+                  >
+                    {puntajeTotalActual}
+                  </span>
+                  <span className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
+                    puntos MARO
+                  </span>
+                </div>
               </div>
-              <div className="rounded-2xl border border-emerald-200/15 bg-emerald-950/35 p-4 backdrop-blur-sm">
-                <p className="text-xs text-emerald-100/60 uppercase">Antecedentes</p>
-                <p className="mt-1 text-2xl font-bold text-white">{Number(paciente.factor_riesgo_antecedentes) || 0}</p>
+
+              {/* Card 2: Antecedentes */}
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl flex flex-col justify-between gap-3">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-teal-400 to-emerald-500" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-teal-700 dark:text-teal-300">
+                      Historia Clínica
+                    </span>
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                      Antecedentes
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-teal-500/15 dark:bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-700 dark:text-teal-300 text-xl shrink-0">
+                    <i className="fa-solid fa-notes-medical"></i>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
+                    {Number(paciente.factor_riesgo_antecedentes) || 0}
+                  </span>
+                  <span className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
+                    pts acumulados
+                  </span>
+                </div>
               </div>
-              <div className="rounded-2xl border border-emerald-200/15 bg-emerald-950/35 p-4 backdrop-blur-sm">
-                <p className="text-xs text-emerald-100/60 uppercase">Tamizajes</p>
-                <p className="mt-1 text-2xl font-bold text-white">{Number(paciente.factor_riesgo_tamizajes) || 0}</p>
+
+              {/* Card 3: Tamizajes */}
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl flex flex-col justify-between gap-3">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-400 to-orange-500" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                      Detección Oportuna
+                    </span>
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                      Tamizajes
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/15 dark:bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-300 text-xl shrink-0">
+                    <i className="fa-solid fa-vial-circle-check"></i>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
+                    {Number(paciente.factor_riesgo_tamizajes) || 0}
+                  </span>
+                  <span className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
+                    pts tamizaje
+                  </span>
+                </div>
               </div>
-              <div className="rounded-2xl border border-emerald-200/15 bg-emerald-950/35 p-4 backdrop-blur-sm">
-                <p className="text-xs text-emerald-100/60 uppercase">Última consulta</p>
-                <p className="mt-1 text-xl font-bold text-white">{formatDate(ultimaConsulta?.fecha_consulta || null)}</p>
+
+              {/* Card 4: Última Consulta */}
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl flex flex-col justify-between gap-3">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-500 to-cyan-500" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                      Seguimiento CPN
+                    </span>
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                      Última Consulta
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-xl shrink-0">
+                    <i className="fa-solid fa-calendar-check"></i>
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                    {formatDate(ultimaConsulta?.fecha_consulta || null, "Sin registro")}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    {consultas.length} {consultas.length === 1 ? "consulta registrada" : "consultas registradas"}
+                  </span>
+                </div>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-emerald-200/15 bg-emerald-950/40 p-5 space-y-3 backdrop-blur-sm">
-              <h2 className="text-lg font-semibold">Identificación y ubicación</h2>
+            {/* IDENTIFICACIÓN Y UBICACIÓN */}
+            <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 space-y-4 shadow-xl transition-colors">
+              <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-white/10 pb-3">
+                <i className="fa-solid fa-id-card text-emerald-600 dark:text-emerald-400 text-lg"></i>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                  Identificación y ubicación
+                </h2>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                 <Info label="Nombre" value={paciente.nombre_completo} />
                 <Info label="Folio" value={paciente.folio} />
@@ -473,7 +638,7 @@ export default function RegionPacienteResumenPage() {
                   value={paciente.edad !== null && paciente.edad !== undefined ? `${paciente.edad} años` : null}
                   toneClass={
                     Number(paciente.edad) >= 10 && Number(paciente.edad) <= 14
-                      ? "border-red-500/50 bg-red-500/15"
+                      ? "border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-900/30 text-rose-900 dark:text-rose-200"
                       : undefined
                   }
                 />
@@ -483,8 +648,8 @@ export default function RegionPacienteResumenPage() {
                 <Info label="Municipio" value={paciente.municipio} />
                 <Info label="Fecha ingreso CPN" value={formatDate(paciente.fecha_ingreso_cpn)} />
                 <Info label="SDG ingreso" value={paciente.sdg_ingreso} />
-                <Info label="FUM" value={formatDate(paciente.fum)} />
-                <Info label="FPP" value={formatDate(paciente.fpp)} />
+                <Info label="FUM" value={formatDate(paciente.fum, "No confiable / Dudosa")} />
+                <Info label="FPP" value={formatDate(paciente.fpp, "Pendiente USG")} />
                 <Info label="Semanas gestación" value={paciente.semanas_gestacion} />
                 <Info label="Teléfono" value={paciente.telefono} />
                 <Info label="Derechohabiencia" value={paciente.derechohabiencia} />
@@ -494,6 +659,7 @@ export default function RegionPacienteResumenPage() {
             <CollapsibleSection
               title="Antecedentes y factores de riesgo"
               subtitle="Campos resaltados aportan al puntaje de antecedentes"
+              icon="fa-solid fa-clipboard-list"
               defaultOpen={true}
             >
               <ScoreLegend />
@@ -535,6 +701,7 @@ export default function RegionPacienteResumenPage() {
             <CollapsibleSection
               title="Tamizajes"
               subtitle="Campos resaltados aportan al puntaje de tamizajes"
+              icon="fa-solid fa-microscope"
               defaultOpen={true}
             >
               <ScoreLegend />
@@ -553,11 +720,12 @@ export default function RegionPacienteResumenPage() {
             <CollapsibleSection
               title="Última consulta prenatal"
               subtitle="Parámetros y severidad de la consulta más reciente"
+              icon="fa-solid fa-stethoscope"
               defaultOpen={true}
             >
               <ScoreLegend />
               {!ultimaConsulta ? (
-                <p className="text-sm text-emerald-100/60">Sin consultas registradas.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Sin consultas registradas.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                   <Info label="Fecha consulta" value={formatDate(ultimaConsulta.fecha_consulta)} />
@@ -599,71 +767,84 @@ export default function RegionPacienteResumenPage() {
             <CollapsibleSection
               title="Historial de consultas"
               subtitle="Evolución de parámetros y puntajes por fecha"
+              icon="fa-solid fa-clock-rotate-left"
               defaultOpen={false}
             >
               <ScoreLegend />
               {consultas.length === 0 ? (
-                <p className="text-sm text-emerald-100/60">Sin historial de consultas.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Sin historial de consultas.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-emerald-300/25 text-left text-emerald-100/80">
-                        <th className="py-2 pr-4">Fecha</th>
-                        <th className="py-2 pr-4">SDG</th>
-                        <th className="py-2 pr-4">T/A</th>
-                        <th className="py-2 pr-4">FC</th>
-                        <th className="py-2 pr-4">FR</th>
-                        <th className="py-2 pr-4">Temp</th>
-                        <th className="py-2 pr-4">Índice choque</th>
-                        <th className="py-2 pr-4">Puntaje consulta</th>
-                        <th className="py-2 pr-4">Puntaje total</th>
-                        <th className="py-2 pr-0">Riesgo ≥25</th>
+                <div className="max-h-[360px] overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200 dark:border-white/10">
+                  <table className="w-full text-xs table-fixed text-left">
+                    <thead className="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 font-bold">
+                      <tr className="whitespace-nowrap">
+                        <th className="w-[100px] px-3 py-2.5">Fecha</th>
+                        <th className="w-[60px] px-2.5 py-2.5">SDG</th>
+                        <th className="px-2.5 py-2.5">T/A</th>
+                        <th className="px-2.5 py-2.5">FC</th>
+                        <th className="w-[60px] px-2.5 py-2.5 hidden sm:table-cell">FR</th>
+                        <th className="px-2.5 py-2.5 hidden md:table-cell">Temp</th>
+                        <th className="px-2.5 py-2.5 hidden lg:table-cell">Índice choque</th>
+                        <th className="w-[95px] px-2.5 py-2.5 text-right hidden sm:table-cell">Pts consulta</th>
+                        <th className="w-[105px] px-2.5 py-2.5 text-right">Puntaje total</th>
+                        <th className="w-[85px] px-3 py-2.5 text-center">Riesgo ≥25</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-emerald-300/15">
+                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
                       {consultas.map((consulta) => {
                         const scores = getConsultaScores(consulta);
                         return (
-                          <tr key={consulta.id} className="hover:bg-emerald-900/20">
-                            <td className="py-2 pr-4">{formatDate(consulta.fecha_consulta)}</td>
-                            <td className="py-2 pr-4 font-semibold text-white">{consulta.sdg ?? "—"}</td>
-                            <td className="py-2 pr-4">
+                          <tr key={consulta.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors whitespace-nowrap">
+                            <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 font-medium">
+                              {formatDate(consulta.fecha_consulta)}
+                            </td>
+                            <td className="px-2.5 py-2.5 font-bold text-slate-900 dark:text-white">
+                              {consulta.sdg ?? "—"}
+                            </td>
+                            <td className="px-2.5 py-2.5 text-slate-800 dark:text-slate-200">
                               {formatValue(consulta.ta_sistolica)}/{formatValue(consulta.ta_diastolica)}
-                              <span className={`ml-2 inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-semibold ${scoreBadgeClass(scores.taTotal)}`}>
+                              <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.taTotal)}`}>
                                 +{scores.taTotal}
                               </span>
                             </td>
-                            <td className="py-2 pr-4">
+                            <td className="px-2.5 py-2.5 text-slate-800 dark:text-slate-200">
                               {formatValue(consulta.frecuencia_cardiaca)}
-                              <span className={`ml-2 inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-semibold ${scoreBadgeClass(scores.frecuenciaCardiaca)}`}>
+                              <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.frecuenciaCardiaca)}`}>
                                 +{scores.frecuenciaCardiaca}
                               </span>
                             </td>
-                            <td className="py-2 pr-4">{formatValue(consulta.frecuencia_respiratoria)}</td>
-                            <td className="py-2 pr-4">
+                            <td className="px-2.5 py-2.5 text-slate-700 dark:text-slate-300 hidden sm:table-cell">
+                              {formatValue(consulta.frecuencia_respiratoria)}
+                            </td>
+                            <td className="px-2.5 py-2.5 text-slate-800 dark:text-slate-200 hidden md:table-cell">
                               {formatValue(consulta.temperatura)}
-                              <span className={`ml-2 inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-semibold ${scoreBadgeClass(scores.temperatura)}`}>
+                              <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.temperatura)}`}>
                                 +{scores.temperatura}
                               </span>
                             </td>
-                            <td className="py-2 pr-4">
+                            <td className="px-2.5 py-2.5 text-slate-800 dark:text-slate-200 hidden lg:table-cell">
                               {formatValue(consulta.indice_choque)}
-                              <span className={`ml-2 inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-semibold ${scoreBadgeClass(scores.indiceChoque)}`}>
+                              <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.indiceChoque)}`}>
                                 +{scores.indiceChoque}
                               </span>
                             </td>
-                            <td className="py-2 pr-4">{formatValue(consulta.puntaje_consulta_parametros)}</td>
-                            <td className="py-2 pr-4">
-                              <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-red-500/20 text-red-200 border border-red-500/40">
+                            <td className="px-2.5 py-2.5 text-right font-semibold text-slate-700 dark:text-slate-300 hidden sm:table-cell">
+                              {formatValue(consulta.puntaje_consulta_parametros)}
+                            </td>
+                            <td className="px-2.5 py-2.5 text-right">
+                              <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold bg-rose-100 dark:bg-rose-500/20 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-500/40">
                                 {formatValue(consulta.puntaje_total_consulta)} pts
                               </span>
                             </td>
-                            <td className="py-2 pr-0">
+                            <td className="px-3 py-2.5 text-center">
                               {consulta.riesgo_25_plus ? (
-                                <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-red-500/20 text-red-200 border border-red-500/40">Sí</span>
+                                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold bg-rose-100 dark:bg-rose-500/20 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-500/40">
+                                  Sí
+                                </span>
                               ) : (
-                                <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-500/40">No</span>
+                                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-500/40">
+                                  No
+                                </span>
                               )}
                             </td>
                           </tr>
@@ -676,27 +857,40 @@ export default function RegionPacienteResumenPage() {
             </CollapsibleSection>
 
             {puntajeTotalActual >= 25 && (
-              <section className="rounded-2xl border border-amber-500/30 bg-amber-950/25 p-5 space-y-3 backdrop-blur-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold text-amber-200">Plan Colegiado</h2>
-                    <p className="text-sm text-amber-100/70">
-                      Este paciente califica para colegiado por alto riesgo obstétrico (≥ 25 pts)
-                    </p>
+              <section className="rounded-2xl border border-amber-400/60 dark:border-amber-500/40 bg-amber-50/95 dark:bg-amber-950/35 p-5 sm:p-6 shadow-xl">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-700 dark:text-amber-300 text-xl shrink-0">
+                      <i className="fa-solid fa-users-viewfinder"></i>
+                    </div>
+                    <div>
+                      <h2 className="text-base sm:text-lg font-bold text-amber-900 dark:text-amber-200">
+                        Plan Colegiado
+                      </h2>
+                      <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-100/80">
+                        Esta paciente califica para seguimiento colegiado por alto riesgo obstétrico (≥ 25 pts)
+                      </p>
+                    </div>
                   </div>
                   <Link
                     href="/region/colegiados"
-                    className="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-400 transition"
+                    className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-md transition"
                   >
-                    Ver Casos Colegiados
+                    <i className="fa-solid fa-arrow-up-right-from-square"></i>
+                    <span>Ver Casos Colegiados</span>
                   </Link>
                 </div>
               </section>
             )}
 
-            <section className="rounded-2xl border border-emerald-200/15 bg-emerald-950/40 p-5 space-y-3 backdrop-blur-sm">
-              <h2 className="text-lg font-semibold">Acciones preventivas</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 space-y-4 shadow-xl transition-colors">
+              <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-white/10 pb-3">
+                <i className="fa-solid fa-syringe text-emerald-600 dark:text-emerald-400 text-lg"></i>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                  Acciones preventivas
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                 <Info label="TD" value={formatDate(acciones?.td || null)} />
                 <Info label="TDPA" value={formatDate(acciones?.tdpa || null)} />
                 <Info label="Influenza" value={formatDate(acciones?.influenza || null)} />
@@ -716,31 +910,39 @@ export default function RegionPacienteResumenPage() {
 function CollapsibleSection({
   title,
   subtitle,
+  icon,
   children,
   defaultOpen = true,
 }: {
   title: string;
   subtitle?: string;
+  icon?: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
 }) {
   return (
-    <details open={defaultOpen} className="group rounded-2xl border border-emerald-200/15 bg-emerald-950/40 p-5 shadow-lg">
+    <details
+      open={defaultOpen}
+      className="group rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl transition-colors"
+    >
       <summary className="list-none cursor-pointer select-none">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            {subtitle && <p className="text-xs text-emerald-100/70 mt-1">{subtitle}</p>}
+          <div className="flex items-center gap-2.5">
+            {icon && <i className={`${icon} text-emerald-600 dark:text-emerald-400 text-lg`}></i>}
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">{title}</h2>
+              {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
+            </div>
           </div>
-          <span className="text-xs px-2 py-1 rounded-full border border-emerald-300/30 text-emerald-100/80 bg-emerald-900/40 group-open:hidden">
+          <span className="text-xs font-semibold px-3 py-1 rounded-xl border border-slate-300 dark:border-white/15 text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/5 group-open:hidden">
             Mostrar
           </span>
-          <span className="hidden group-open:inline text-xs px-2 py-1 rounded-full border border-emerald-300/30 text-emerald-100/80 bg-emerald-900/40">
+          <span className="hidden group-open:inline text-xs font-semibold px-3 py-1 rounded-xl border border-slate-300 dark:border-white/15 text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/5">
             Ocultar
           </span>
         </div>
       </summary>
-      <div className="mt-4 space-y-3">{children}</div>
+      <div className="mt-4 pt-3 border-t border-slate-200 dark:border-white/10 space-y-3">{children}</div>
     </details>
   );
 }
@@ -748,9 +950,15 @@ function CollapsibleSection({
 function ScoreLegend() {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
-      <span className="inline-flex items-center rounded-md border border-emerald-300/35 bg-emerald-900/40 px-2 py-1 text-emerald-100">Sin puntos</span>
-      <span className="inline-flex items-center rounded-md border border-amber-500/50 bg-amber-500/20 px-2 py-1 text-amber-200">2 pts · alerta</span>
-      <span className="inline-flex items-center rounded-md border border-red-500/50 bg-red-500/20 px-2 py-1 text-red-200">4+ pts · alto riesgo</span>
+      <span className="inline-flex items-center rounded-lg border border-emerald-300 dark:border-emerald-400/35 bg-emerald-50 dark:bg-emerald-900/40 px-2.5 py-1 font-semibold text-emerald-800 dark:text-emerald-100">
+        Sin puntos
+      </span>
+      <span className="inline-flex items-center rounded-lg border border-amber-300 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/20 px-2.5 py-1 font-semibold text-amber-800 dark:text-amber-200">
+        2 pts · alerta
+      </span>
+      <span className="inline-flex items-center rounded-lg border border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-500/20 px-2.5 py-1 font-semibold text-rose-800 dark:text-rose-200">
+        4+ pts · alto riesgo
+      </span>
     </div>
   );
 }
@@ -765,9 +973,16 @@ function Info({
   toneClass?: string;
 }) {
   return (
-    <div className={`rounded-xl border px-3 py-2 backdrop-blur-sm ${toneClass || "border-emerald-200/15 bg-emerald-950/35"}`}>
-      <p className="text-[10px] uppercase tracking-wide text-emerald-100/55">{label}</p>
-      <p className={`text-sm mt-0.5 ${toneClass ? "text-red-100" : "text-white"}`}>{formatValue(value)}</p>
+    <div
+      className={`rounded-xl border px-3.5 py-2.5 transition-colors ${
+        toneClass ||
+        "border-slate-200 dark:border-white/10 bg-slate-50/90 dark:bg-slate-800/70 text-slate-900 dark:text-white"
+      }`}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        {label}
+      </p>
+      <p className="text-sm font-semibold mt-0.5 break-words">{formatValue(value)}</p>
     </div>
   );
 }

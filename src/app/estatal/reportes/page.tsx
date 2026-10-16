@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type SessionInfo = {
   nivel?: number;
@@ -41,7 +42,7 @@ type PuntoSerie = {
 };
 
 function formatDate(value: string | null) {
-  if (!value) return "-";
+  if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   const dd = String(date.getDate()).padStart(2, "0");
@@ -68,41 +69,124 @@ function median(numbers: number[]) {
   return sorted[mid];
 }
 
-function Card({ title, value, subtitle }: { title: string; value: string; subtitle?: string }) {
+function Card({
+  title,
+  value,
+  subtitle,
+  icon,
+  tone = "default",
+}: {
+  title: string;
+  value: string;
+  subtitle?: string;
+  icon?: string;
+  tone?: "default" | "emerald" | "amber" | "rose" | "cyan" | "teal";
+}) {
+  const toneMap = {
+    default: {
+      border: "border-slate-200/80 dark:border-white/10",
+      iconBg: "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300",
+      valText: "text-slate-900 dark:text-white",
+    },
+    emerald: {
+      border: "border-emerald-300/80 dark:border-emerald-500/30",
+      iconBg: "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+      valText: "text-emerald-700 dark:text-emerald-300",
+    },
+    amber: {
+      border: "border-amber-300/80 dark:border-amber-500/30",
+      iconBg: "bg-amber-50 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400",
+      valText: "text-amber-700 dark:text-amber-300",
+    },
+    rose: {
+      border: "border-rose-300/80 dark:border-rose-500/30",
+      iconBg: "bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400",
+      valText: "text-rose-700 dark:text-rose-300",
+    },
+    cyan: {
+      border: "border-cyan-300/80 dark:border-cyan-500/30",
+      iconBg: "bg-cyan-50 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400",
+      valText: "text-cyan-700 dark:text-cyan-300",
+    },
+    teal: {
+      border: "border-teal-300/80 dark:border-teal-500/30",
+      iconBg: "bg-teal-50 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400",
+      valText: "text-teal-700 dark:text-teal-300",
+    },
+  };
+
+  const style = toneMap[tone] || toneMap.default;
+
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-      <p className="text-sm text-slate-300">{title}</p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
-      {subtitle && <p className="mt-1 text-xs text-slate-400">{subtitle}</p>}
+    <div
+      className={`rounded-2xl border ${style.border} bg-white/80 dark:bg-slate-900/60 p-4 sm:p-5 backdrop-blur-xl shadow-lg flex flex-col justify-between transition-all hover:-translate-y-0.5`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {title}
+        </p>
+        {icon && (
+          <div
+            className={`w-8 h-8 rounded-xl ${style.iconBg} flex items-center justify-center text-xs shrink-0`}
+          >
+            <i className={`fa-solid ${icon}`} />
+          </div>
+        )}
+      </div>
+      <div className="mt-2">
+        <p className={`text-2xl sm:text-3xl font-black tracking-tight ${style.valText}`}>{value}</p>
+        {subtitle && (
+          <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            {subtitle}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
-function BarList({ title, items, tone = "cyan" }: { title: string; items: PuntoSerie[]; tone?: "cyan" | "emerald" | "amber" }) {
+function BarList({
+  title,
+  items,
+  tone = "cyan",
+}: {
+  title: string;
+  items: PuntoSerie[];
+  tone?: "cyan" | "emerald" | "amber";
+}) {
   const maxValue = Math.max(...items.map((x) => x.value), 1);
   const toneClass =
     tone === "emerald"
-      ? "bg-emerald-500/40"
+      ? "bg-gradient-to-r from-emerald-500 to-teal-400"
       : tone === "amber"
-        ? "bg-amber-500/40"
-        : "bg-cyan-500/40";
+      ? "bg-gradient-to-r from-amber-500 to-orange-400"
+      : "bg-gradient-to-r from-cyan-500 to-blue-500";
 
   return (
-    <section className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-      <h2 className="text-lg font-semibold mb-3">{title}</h2>
+    <section className="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 p-5 sm:p-6 backdrop-blur-xl shadow-xl">
+      <h2 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+        <span
+          className={`w-2.5 h-2.5 rounded-full ${
+            tone === "emerald" ? "bg-emerald-500" : tone === "amber" ? "bg-amber-500" : "bg-cyan-500"
+          }`}
+        />
+        <span>{title}</span>
+      </h2>
       {items.length === 0 ? (
-        <p className="text-sm text-slate-400">Sin datos para mostrar.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Sin datos para mostrar.</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {items.map((item) => (
-            <div key={item.label}>
-              <div className="flex items-center justify-between text-xs text-slate-300 mb-1 gap-2">
-                <span className="truncate">{item.label}</span>
-                <span className="font-semibold">{item.value}</span>
+            <div key={item.label} className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300 gap-2">
+                <span className="truncate font-medium">{item.label}</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">
+                  {item.value}
+                </span>
               </div>
-              <div className="h-2 w-full rounded bg-slate-800 overflow-hidden">
+              <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800/80 overflow-hidden">
                 <div
-                  className={`h-full ${toneClass}`}
+                  className={`h-full rounded-full transition-all duration-300 ${toneClass}`}
                   style={{ width: `${Math.max((item.value / maxValue) * 100, 2)}%` }}
                 />
               </div>
@@ -118,30 +202,45 @@ function LineChart({ title, points }: { title: string; points: PuntoSerie[] }) {
   const width = 680;
   const height = 280;
   const leftMargin = 48;
-  const bottomMargin = 24;
+  const bottomMargin = 28;
   const padding = 12;
   const max = Math.max(...points.map((p) => p.value), 1);
 
-  // Extract month/year from first point
   const getMonthLabel = () => {
     if (points.length === 0) return "";
-    const [year, month, day] = points[0].label.split("-");
+    const [year, month] = points[0].label.split("-");
     if (!year || !month) return "";
-    const monthNum = parseInt(month);
-    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    return `${monthNames[monthNum - 1]} ${year}`;
+    const monthNum = parseInt(month, 10);
+    const monthNames = [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre",
+    ];
+    return `${monthNames[monthNum - 1] || ""} ${year}`;
   };
 
   const formatDayOnly = (value: string) => {
-    const [year, month, day] = value.split("-");
+    const parts = value.split("-");
+    const day = parts[2];
     if (!day) return value;
-    return String(parseInt(day)); // Remove leading zero
+    return String(parseInt(day, 10));
   };
 
   const formatFullDate = (value: string) => {
-    const [year, month, day] = value.split("-");
-    if (!year || !month || !day) return value;
-    return `${parseInt(day)}/${month}`;
+    const parts = value.split("-");
+    const month = parts[1];
+    const day = parts[2];
+    if (!month || !day) return value;
+    return `${parseInt(day, 10)}/${month}`;
   };
 
   const plotWidth = width - leftMargin - padding;
@@ -154,46 +253,55 @@ function LineChart({ title, points }: { title: string; points: PuntoSerie[] }) {
   });
 
   const polyline = coords.map((c) => `${c.x},${c.y}`).join(" ");
-  
-  // Create gradient area
-  const areaPoints = [
-    `${coords[0].x},${height - bottomMargin}`,
-    ...coords.map((c) => `${c.x},${c.y}`),
-    `${coords[coords.length - 1].x},${height - bottomMargin}`,
-  ].join(" ");
 
-  const tickIndexes = points.length <= 7
-    ? points.map((_, index) => index)
-    : [0, 2, 4, 6, 8, 10, 12, points.length - 1];
-  const uniqueTickIndexes = Array.from(new Set(tickIndexes)).filter((index) => index >= 0 && index < points.length);
+  const areaPoints =
+    coords.length > 0
+      ? [
+          `${coords[0].x},${height - bottomMargin}`,
+          ...coords.map((c) => `${c.x},${c.y}`),
+          `${coords[coords.length - 1].x},${height - bottomMargin}`,
+        ].join(" ")
+      : "";
 
-  // Y-axis value labels
-  const yAxisValues = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+  const tickIndexes =
+    points.length <= 7
+      ? points.map((_, index) => index)
+      : [0, 2, 4, 6, 8, 10, 12, points.length - 1];
+  const uniqueTickIndexes = Array.from(new Set(tickIndexes)).filter(
+    (index) => index >= 0 && index < points.length
+  );
+
+  const yAxisValues = [0, 0.25, 0.5, 0.75, 1].map((ratio, index) => {
     const value = Math.round(ratio * max);
     const guideY = padding + (1 - ratio) * plotHeight;
-    return { value, y: guideY };
+    return { id: `y-guide-${index}-${value}`, value, y: guideY };
   });
 
   return (
-    <section className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
+    <section className="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 p-5 sm:p-6 backdrop-blur-xl shadow-xl flex flex-col justify-between">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <span className="text-xs text-slate-400">{getMonthLabel()}</span>
+        <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
+          <span>{title}</span>
+        </h2>
+        <span className="text-xs font-bold text-cyan-700 dark:text-cyan-400 bg-cyan-500/10 dark:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/20">
+          {getMonthLabel()}
+        </span>
       </div>
       {points.length === 0 ? (
-        <p className="text-sm text-slate-400">Sin datos para mostrar.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Sin datos para mostrar.</p>
       ) : (
         <>
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minHeight: "280px" }}>
-            {/* Y-axis gridlines with values */}
-            {yAxisValues.map(({ value, y }) => (
-              <g key={`y-guide-${value}`}>
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minHeight: "260px" }}>
+            {yAxisValues.map(({ id, value, y }) => (
+              <g key={id}>
                 <line
                   x1={leftMargin}
                   y1={y}
                   x2={width - padding}
                   y2={y}
-                  stroke="#334155"
+                  stroke="currentColor"
+                  className="text-slate-200 dark:text-slate-800"
                   strokeWidth="1"
                   strokeDasharray="4 4"
                 />
@@ -202,7 +310,8 @@ function LineChart({ title, points }: { title: string; points: PuntoSerie[] }) {
                   y={y + 4}
                   textAnchor="end"
                   fontSize="10"
-                  fill="#94a3b8"
+                  fill="currentColor"
+                  className="text-slate-400 dark:text-slate-500 font-mono"
                   fontWeight="500"
                 >
                   {value}
@@ -211,42 +320,77 @@ function LineChart({ title, points }: { title: string; points: PuntoSerie[] }) {
             ))}
 
             {/* Axes */}
-            <line x1={leftMargin} y1={padding} x2={leftMargin} y2={height - bottomMargin} stroke="#64748b" strokeWidth="2" />
-            <line x1={leftMargin} y1={height - bottomMargin} x2={width - padding} y2={height - bottomMargin} stroke="#64748b" strokeWidth="2" />
+            <line
+              x1={leftMargin}
+              y1={padding}
+              x2={leftMargin}
+              y2={height - bottomMargin}
+              stroke="currentColor"
+              className="text-slate-300 dark:text-slate-700"
+              strokeWidth="2"
+            />
+            <line
+              x1={leftMargin}
+              y1={height - bottomMargin}
+              x2={width - padding}
+              y2={height - bottomMargin}
+              stroke="currentColor"
+              className="text-slate-300 dark:text-slate-700"
+              strokeWidth="2"
+            />
 
             {/* Y-axis label */}
-            <text x="8" y={height / 2} textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="500" transform={`rotate(-90 8 ${height / 2})`}>
+            <text
+              x="12"
+              y={height / 2}
+              textAnchor="middle"
+              fontSize="10"
+              fill="currentColor"
+              className="text-slate-400 dark:text-slate-500 font-bold"
+              transform={`rotate(-90 12 ${height / 2})`}
+            >
               Casos
             </text>
 
-            {/* Gradient area under line */}
+            {/* Gradient area */}
             <defs>
               <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.2" />
-                <stop offset="100%" stopColor="#22d3ee" stopOpacity="0.02" />
+                <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.02" />
               </linearGradient>
             </defs>
-            <polygon fill="url(#areaGradient)" points={areaPoints} />
+            {areaPoints && <polygon fill="url(#areaGradient)" points={areaPoints} />}
 
-            {/* Line */}
-            <polyline fill="none" stroke="#06b6d4" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={polyline} />
+            {/* Polyline */}
+            <polyline
+              fill="none"
+              stroke="#0891b2"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={polyline}
+            />
 
             {/* Data points */}
             {coords.map((c) => (
               <g key={`${c.label}-${c.value}`}>
-                <circle cx={c.x} cy={c.y} r="4" fill="#06b6d4" />
-                <circle cx={c.x} cy={c.y} r="6" fill="#06b6d4" fillOpacity="0.2" />
+                <circle cx={c.x} cy={c.y} r="4" fill="#0891b2" />
+                <circle cx={c.x} cy={c.y} r="7" fill="#0891b2" fillOpacity="0.2" />
                 <title>{`${formatFullDate(c.label)}: ${c.value} casos`}</title>
               </g>
             ))}
           </svg>
 
-          {/* X-axis labels: days only */}
-          <div className="mt-4 flex items-start justify-between gap-1 text-[10px] text-slate-400 px-1">
+          {/* X-axis labels */}
+          <div className="mt-3 flex items-start justify-between gap-1 text-[10px] text-slate-500 dark:text-slate-400 px-1">
             {uniqueTickIndexes.map((index) => (
               <div key={`tick-${points[index].label}`} className="min-w-0 flex-1 text-center">
-                <div className="font-semibold text-slate-200">{formatDayOnly(points[index].label)}</div>
-                <div className="mt-0.5 text-slate-500">{points[index].value}</div>
+                <div className="font-bold text-slate-800 dark:text-slate-200">
+                  {formatDayOnly(points[index].label)}
+                </div>
+                <div className="mt-0.5 font-mono text-[9px] text-slate-500 dark:text-slate-400">
+                  {points[index].value}
+                </div>
               </div>
             ))}
           </div>
@@ -264,7 +408,9 @@ export default function ReportesEstatalesPage() {
   const [registros, setRegistros] = useState<RegistroRiesgo[]>([]);
   const [regionFilter, setRegionFilter] = useState("");
   const [unidadFilter, setUnidadFilter] = useState("");
-  const [colegiadoFilter, setColegiadoFilter] = useState<"todos" | "colegiados" | "no_colegiados">("todos");
+  const [colegiadoFilter, setColegiadoFilter] = useState<"todos" | "colegiados" | "no_colegiados">(
+    "todos"
+  );
   const [origenFilter, setOrigenFilter] = useState<"todos" | "puntaje" | "criterio">("todos");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
@@ -310,36 +456,24 @@ export default function ReportesEstatalesPage() {
 
   useEffect(() => {
     if (!authChecked) return;
-
     loadReportes(false);
   }, [authChecked, loadReportes]);
 
   useEffect(() => {
     if (!authChecked) return;
 
-    const handleWindowFocus = () => {
-      loadReportes(true);
-    };
-
+    const handleWindowFocus = () => loadReportes(true);
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        loadReportes(true);
-      }
+      if (document.visibilityState === "visible") loadReportes(true);
     };
-
     const handleStorageSync = (event: StorageEvent) => {
       if (event.key === "maro:colegiado-updated" || event.key === "maro:estatal-riesgo-updated") {
         loadReportes(true);
       }
     };
+    const handleCustomSync = () => loadReportes(true);
 
-    const handleCustomSync = () => {
-      loadReportes(true);
-    };
-
-    const intervalId = window.setInterval(() => {
-      loadReportes(true);
-    }, 15000);
+    const intervalId = window.setInterval(() => loadReportes(true), 15000);
 
     window.addEventListener("focus", handleWindowFocus);
     document.addEventListener("visibilitychange", handleVisibility);
@@ -384,8 +518,10 @@ export default function ReportesEstatalesPage() {
 
   const registrosFiltrados = useMemo(() => {
     return registros.filter((r) => {
-      const matchRegion = !regionFilter || String(r.region || "").toLowerCase() === regionFilter.toLowerCase();
-      const matchUnidad = !unidadFilter || String(r.unidad || "").toLowerCase() === unidadFilter.toLowerCase();
+      const matchRegion =
+        !regionFilter || String(r.region || "").toLowerCase() === regionFilter.toLowerCase();
+      const matchUnidad =
+        !unidadFilter || String(r.unidad || "").toLowerCase() === unidadFilter.toLowerCase();
       return matchRegion && matchUnidad;
     });
   }, [registros, regionFilter, unidadFilter]);
@@ -529,143 +665,42 @@ export default function ReportesEstatalesPage() {
         throw new Error("No hay casos para exportar con los filtros seleccionados");
       }
 
-      const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
-      const pdfDoc = await PDFDocument.create();
-      const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-      const pageWidth = 841.89;
-      const pageHeight = 595.28;
-      const margin = 24;
-      const contentWidth = pageWidth - margin * 2;
-
-      const teal = rgb(0.06, 0.28, 0.22);
-      const tealLight = rgb(0.83, 0.92, 0.88);
-      const amber = rgb(0.72, 0.48, 0.04);
-      const border = rgb(0.30, 0.42, 0.38);
-      const textDark = rgb(0.10, 0.12, 0.16);
-      const white = rgb(1, 1, 1);
-      const rowAlt = rgb(0.96, 0.97, 0.96);
-
-      let logoImage: any = null;
-      try {
-        const logoRes = await fetch("/logo_maro_re.png");
-        if (logoRes.ok) {
-          const logoBuffer = await logoRes.arrayBuffer();
-          logoImage = await pdfDoc.embedPng(logoBuffer);
-        }
-      } catch {
-      }
-
-      const fitText = (text: string, maxWidth: number, size: number, font = regular) => {
-        const raw = String(text || "—");
-        if (font.widthOfTextAtSize(raw, size) <= maxWidth) return raw;
-        let out = raw;
-        while (out.length > 1 && font.widthOfTextAtSize(`${out}...`, size) > maxWidth) {
-          out = out.slice(0, -1);
-        }
-        return `${out}...`;
+      const payload = {
+        meta: {
+          region: regionFilter || undefined,
+          unidad: unidadFilter || undefined,
+          colegiadoFilter,
+          origenFilter,
+          fechaDesde: fechaDesde || undefined,
+          fechaHasta: fechaHasta || undefined,
+        },
+        kpis: {
+          total: kpis.total,
+          colegiados: kpis.colegiados,
+          pendientes: kpis.pendientes,
+          promedio: kpis.promedio,
+          mediana: kpis.mediana,
+          tasaColegiado: kpis.tasaColegiado,
+        },
+        topRegiones,
+        topUnidades,
+        distribucionPuntaje,
+        tendencia14dias,
+        rows: registrosReporte.slice(0, 100),
       };
 
-      let page = pdfDoc.addPage([pageWidth, pageHeight]);
-      let y = pageHeight - margin;
-
-      const drawHeader = () => {
-        const logoH = 48;
-        if (logoImage) {
-          const logoW = Math.round(logoH * (logoImage.width / logoImage.height));
-          page.drawImage(logoImage, { x: margin, y: y - logoH, width: logoW, height: logoH });
-        }
-
-        const title = "REPORTE ESTATAL DE CASOS";
-        const titleSize = 18;
-        const titleW = bold.widthOfTextAtSize(title, titleSize);
-        page.drawText(title, { x: pageWidth - margin - titleW, y: y - 16, size: titleSize, font: bold, color: amber });
-
-        const subtitle = `Casos seleccionados: ${registrosReporte.length}`;
-        const subW = regular.widthOfTextAtSize(subtitle, 9);
-        page.drawText(subtitle, { x: pageWidth - margin - subW, y: y - 31, size: 9, font: regular, color: textDark });
-
-        const filtros = `Filtros: Region=${regionFilter || "Todas"} | Unidad=${unidadFilter || "Todas"} | Colegiado=${colegiadoFilter} | Origen=${origenFilter} | Desde=${fechaDesde || "—"} | Hasta=${fechaHasta || "—"}`;
-        page.drawText(fitText(filtros, contentWidth, 7), { x: margin, y: y - 58, size: 7, font: regular, color: textDark });
-
-        const lineY = y - 64;
-        page.drawLine({ start: { x: margin, y: lineY }, end: { x: pageWidth - margin, y: lineY }, thickness: 0.8, color: border });
-        y = lineY - 10;
-      };
-
-      drawHeader();
-
-      const cols = [
-        { key: "folio", label: "Folio", w: 100 },
-        { key: "paciente", label: "Paciente", w: 150 },
-        { key: "region", label: "Region", w: 70 },
-        { key: "unidad", label: "Unidad", w: 115 },
-        { key: "fecha", label: "Fecha", w: 62 },
-        { key: "origen", label: "Origen", w: 64 },
-        { key: "motivo", label: "Motivo", w: 78 },
-        { key: "puntaje", label: "Puntaje", w: 48 },
-        { key: "colegiado", label: "Colegiado", w: 54 },
-      ];
-
-      const headerH = 20;
-      const rowH = 17;
-
-      const drawTableHeader = () => {
-        let x = margin;
-        for (const col of cols) {
-          page.drawRectangle({ x, y: y - headerH, width: col.w, height: headerH, color: teal, borderColor: border, borderWidth: 0.8 });
-          page.drawText(col.label, { x: x + 4, y: y - 13, size: 7.5, font: bold, color: white });
-          x += col.w;
-        }
-        y -= headerH;
-      };
-
-      drawTableHeader();
-
-      registrosReporte.forEach((r, idx) => {
-        if (y - rowH < margin) {
-          page = pdfDoc.addPage([pageWidth, pageHeight]);
-          y = pageHeight - margin;
-          drawHeader();
-          drawTableHeader();
-        }
-
-        const esCriterio = Number(r.alerta_por_criterio_clinico) === 1;
-        const values: Record<string, string> = {
-          folio: r.folio || "—",
-          paciente: r.nombre_completo || "Sin nombre",
-          region: r.region || "—",
-          unidad: r.unidad || "—",
-          fecha: formatDate(r.fecha_consulta || r.consulta_creada),
-          origen: esCriterio ? "Criterio" : "Puntaje",
-          motivo: r.motivo_alerta || (esCriterio ? "Edad/Padecimiento" : "—"),
-          puntaje: esCriterio ? "—" : String(Number(r.puntaje_total_consulta) || 0),
-          colegiado: Number(r.colegiado) === 1 ? "Si" : "No",
-        };
-
-        let x = margin;
-        for (const col of cols) {
-          page.drawRectangle({
-            x,
-            y: y - rowH,
-            width: col.w,
-            height: rowH,
-            color: idx % 2 === 0 ? white : rowAlt,
-            borderColor: border,
-            borderWidth: 0.5,
-          });
-          const txt = fitText(values[col.key], col.w - 8, 7);
-          page.drawText(txt, { x: x + 4, y: y - 11.5, size: 7, font: regular, color: textDark });
-          x += col.w;
-        }
-        y -= rowH;
+      const res = await fetch("/api/estatal/reportes/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      const pdfBytes = await pdfDoc.save();
-      const pdfBuffer = new ArrayBuffer(pdfBytes.byteLength);
-      new Uint8Array(pdfBuffer).set(pdfBytes);
-      const blob = new Blob([pdfBuffer], { type: "application/pdf" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Error al generar el reporte PDF");
+      }
+
+      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -690,7 +725,9 @@ export default function ReportesEstatalesPage() {
     const scores = registrosFiltrados
       .filter((r) => Number(r.alerta_por_criterio_clinico) !== 1)
       .map((r) => Number(r.puntaje_total_consulta) || 0);
-    const promedio = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : 0;
+    const promedio = scores.length
+      ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
+      : 0;
     const med = scores.length ? Math.round(median(scores) * 10) / 10 : 0;
 
     return {
@@ -776,263 +813,486 @@ export default function ReportesEstatalesPage() {
     return sorted[0];
   }, [registrosFiltrados]);
 
-  const bgStyle = {
-    backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(15,118,110,0.6)), url(/maro_back_estatal.png)",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat" as const,
-  };
-
   if (!authChecked) {
     return (
-      <main className="min-h-screen relative text-slate-100" style={bgStyle}>
-        <div className="absolute inset-0 bg-black/45" aria-hidden />
-        <div className="relative min-h-screen flex items-center justify-center">Validando acceso estatal...</div>
+      <main className="min-h-screen relative flex items-center justify-center bg-slate-100/80 dark:bg-slate-950 text-slate-800 dark:text-white transition-colors duration-300">
+        <div
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 dark:hidden"
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, rgba(248, 250, 252, 0.78), rgba(204, 251, 241, 0.60)), url(/maro-hero.png)",
+          }}
+          aria-hidden="true"
+        />
+        <div
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 hidden dark:block"
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(6, 78, 59, 0.60)), url(/maro-hero.png)",
+          }}
+          aria-hidden="true"
+        />
+        <div className="relative z-10 text-center space-y-3">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent" />
+          <p className="text-sm font-semibold tracking-wide text-slate-600 dark:text-slate-300">
+            Validando acceso estatal...
+          </p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen relative text-slate-100" style={bgStyle}>
-      <div className="absolute inset-0 bg-black/45" aria-hidden />
+    <main className="min-h-screen relative text-slate-800 dark:text-white transition-colors duration-300">
+      {/* CAPA DE FONDO FIJA - MODO CLARO */}
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 dark:hidden"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(248, 250, 252, 0.78), rgba(204, 251, 241, 0.60)), url(/maro-hero.png)",
+        }}
+        aria-hidden="true"
+      />
 
-      <div className="relative max-w-7xl mx-auto space-y-6 p-6 lg:p-10">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-2">
-            <p className="text-sm uppercase tracking-[0.2em] text-cyan-300/80">Nivel estatal</p>
-            <h1 className="text-3xl font-bold">Modulo de graficos y reportes</h1>
-            <p className="text-slate-300/80">Vista analitica de pacientes con riesgo alto y seguimiento colegiado</p>
+      {/* CAPA DE FONDO FIJA - MODO OSCURO */}
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 hidden dark:block"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(6, 78, 59, 0.60)), url(/maro-hero.png)",
+        }}
+        aria-hidden="true"
+      />
+
+      {/* PATRÓN CLÍNICO DE PUNTOS / RETÍCULA SUTIL */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 opacity-40 dark:opacity-20"
+        style={{
+          backgroundImage: "radial-gradient(circle, #059669 1.1px, transparent 1.1px)",
+          backgroundSize: "28px 28px",
+        }}
+        aria-hidden="true"
+      />
+
+      <div className="relative z-10 max-w-7xl mx-auto space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* ENCABEZADO */}
+        <header className="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 p-6 backdrop-blur-xl shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20">
+              <i className="fa-solid fa-chart-pie text-[11px]" />
+              <span>NIVEL ESTATAL · INTELIGENCIA EPIDEMIOLÓGICA</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              Módulo de Gráficos y Reportes
+            </h1>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Vista analítica de pacientes con riesgo alto obstétrico y seguimiento colegiado
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Link href="/estatal" className="text-sm px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400">
-              Volver a estatal
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              href="/estatal"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-300 dark:border-white/15 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition shadow-sm"
+            >
+              <i className="fa-solid fa-arrow-left" />
+              <span>Volver a estatal</span>
             </Link>
-            <Link href="/colegiados" className="text-sm px-3 py-1.5 rounded-full border border-emerald-500/50 text-emerald-200 hover:border-emerald-300">
-              Ver colegiados
+            <Link
+              href="/colegiados"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition shadow-sm"
+            >
+              <i className="fa-solid fa-users-viewfinder text-emerald-600 dark:text-emerald-400" />
+              <span>Ver colegiados</span>
             </Link>
+            <ThemeToggle />
           </div>
         </header>
 
-        <section className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-          <div className="grid gap-3 md:grid-cols-3">
-            <select
-              value={regionFilter}
-              onChange={(e) => {
-                setRegionFilter(e.target.value);
-                setUnidadFilter("");
-              }}
-              className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
-            >
-              <option value="">Todas las regiones</option>
-              {regionesDisponibles.map((region) => (
-                <option key={region} value={region}>
-                  {region}
-                </option>
-              ))}
-            </select>
-            <select
-              value={unidadFilter}
-              onChange={(e) => setUnidadFilter(e.target.value)}
-              className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
-            >
-              <option value="">Todas las unidades</option>
-              {unidadesDisponibles.map((unidad) => (
-                <option key={unidad} value={unidad}>
-                  {unidad}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => {
-                setRegionFilter("");
-                setUnidadFilter("");
-                setColegiadoFilter("todos");
-                setOrigenFilter("todos");
-                setFechaDesde("");
-                setFechaHasta("");
-              }}
-              className="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:border-slate-400"
-            >
-              Limpiar filtros
-            </button>
+        {/* FILTROS Y DESCARGA */}
+        <section className="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 p-5 sm:p-6 backdrop-blur-xl shadow-xl space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+                Región
+              </label>
+              <select
+                value={regionFilter}
+                onChange={(e) => {
+                  setRegionFilter(e.target.value);
+                  setUnidadFilter("");
+                }}
+                className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950/60 px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+              >
+                <option value="">Todas las regiones</option>
+                {regionesDisponibles.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+                Unidad Médica
+              </label>
+              <select
+                value={unidadFilter}
+                onChange={(e) => setUnidadFilter(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950/60 px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+              >
+                <option value="">Todas las unidades</option>
+                {unidadesDisponibles.map((unidad) => (
+                  <option key={unidad} value={unidad}>
+                    {unidad}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setRegionFilter("");
+                  setUnidadFilter("");
+                  setColegiadoFilter("todos");
+                  setOrigenFilter("todos");
+                  setFechaDesde("");
+                  setFechaHasta("");
+                }}
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/10 transition cursor-pointer"
+              >
+                <i className="fa-solid fa-filter-circle-xmark" />
+                <span>Limpiar filtros</span>
+              </button>
+            </div>
           </div>
 
-          <div className="mt-3 grid gap-3 md:grid-cols-4">
-            <select
-              value={colegiadoFilter}
-              onChange={(e) => setColegiadoFilter(e.target.value as "todos" | "colegiados" | "no_colegiados")}
-              className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
-            >
-              <option value="todos">Todos los casos</option>
-              <option value="colegiados">Solo colegiados</option>
-              <option value="no_colegiados">Solo no colegiados</option>
-            </select>
-            <select
-              value={origenFilter}
-              onChange={(e) => setOrigenFilter(e.target.value as "todos" | "puntaje" | "criterio")}
-              className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
-            >
-              <option value="todos">Todos los orígenes</option>
-              <option value="puntaje">Alerta por puntaje</option>
-              <option value="criterio">Alerta por criterio clínico</option>
-            </select>
-            <input
-              type="date"
-              value={fechaDesde}
-              onChange={(e) => setFechaDesde(e.target.value)}
-              className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
-            />
-            <input
-              type="date"
-              value={fechaHasta}
-              onChange={(e) => setFechaHasta(e.target.value)}
-              className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
-            />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 pt-3 border-t border-slate-200/70 dark:border-white/10">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+                Colegiados
+              </label>
+              <select
+                value={colegiadoFilter}
+                onChange={(e) =>
+                  setColegiadoFilter(e.target.value as "todos" | "colegiados" | "no_colegiados")
+                }
+                className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950/60 px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+              >
+                <option value="todos">Todos los casos</option>
+                <option value="colegiados">Solo colegiados</option>
+                <option value="no_colegiados">Solo no colegiados</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+                Origen de Alerta
+              </label>
+              <select
+                value={origenFilter}
+                onChange={(e) =>
+                  setOrigenFilter(e.target.value as "todos" | "puntaje" | "criterio")
+                }
+                className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950/60 px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+              >
+                <option value="todos">Todos los orígenes</option>
+                <option value="puntaje">Alerta por puntaje</option>
+                <option value="criterio">Alerta por criterio clínico</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+                Fecha Desde
+              </label>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => setFechaDesde(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950/60 px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+                Fecha Hasta
+              </label>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => setFechaHasta(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950/60 px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+              />
+            </div>
           </div>
 
-          <div className="mt-6 border-t border-slate-700/50 pt-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-200">Opciones de Descarga</h3>
-              <p className="text-xs text-slate-400">
-                Casos seleccionados: <span className="font-semibold text-cyan-200">{registrosReporte.length}</span>
+          {/* Opciones de descarga */}
+          <div className="pt-4 border-t border-slate-200/70 dark:border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <i className="fa-solid fa-cloud-arrow-down text-cyan-500" />
+                <span>Opciones de Exportación y Descarga</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Casos filtrados para exportación:{" "}
+                <span className="font-bold text-cyan-600 dark:text-cyan-400 font-mono">
+                  {registrosReporte.length}
+                </span>
               </p>
             </div>
-            
+
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <button
                 type="button"
                 onClick={descargarExcel}
                 disabled={exportingExcel}
-                className="flex flex-col items-start rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-left transition hover:border-emerald-500/60 hover:bg-emerald-500/20 disabled:opacity-50"
+                className="flex flex-col items-start rounded-2xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/40 p-4 text-left transition hover:border-emerald-500/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 disabled:opacity-50 shadow-sm cursor-pointer"
               >
-                <div className="flex items-center gap-2 text-emerald-300 font-medium text-sm mb-1">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h8M8 14h8" /></svg>
-                  {exportingExcel ? "Generando..." : "Excel Estándar"}
+                <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm mb-1">
+                  <i className="fa-solid fa-file-excel text-emerald-600 dark:text-emerald-400" />
+                  <span>{exportingExcel ? "Generando..." : "Excel Estándar"}</span>
                 </div>
-                <p className="text-[10px] text-emerald-200/70">Resumen de los casos mostrados en la tabla con los filtros actuales.</p>
+                <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300/70">
+                  Resumen de los casos de la tabla con los filtros actuales aplicados.
+                </p>
               </button>
-              
+
               <button
                 type="button"
                 onClick={descargarReporteClinico}
                 disabled={exportingClinico}
-                className="flex flex-col items-start rounded-xl border border-teal-500/30 bg-teal-500/10 p-3 text-left transition hover:border-teal-500/60 hover:bg-teal-500/20 disabled:opacity-50"
+                className="flex flex-col items-start rounded-2xl border border-teal-500/30 bg-teal-50 dark:bg-teal-950/40 p-4 text-left transition hover:border-teal-500/60 hover:bg-teal-100 dark:hover:bg-teal-900/50 disabled:opacity-50 shadow-sm cursor-pointer"
               >
-                <div className="flex items-center gap-2 text-teal-300 font-medium text-sm mb-1">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  {exportingClinico ? "Generando..." : "Excel Clínico"}
+                <div className="flex items-center gap-2 text-teal-800 dark:text-teal-300 font-bold text-sm mb-1">
+                  <i className="fa-solid fa-file-medical text-teal-600 dark:text-teal-400" />
+                  <span>{exportingClinico ? "Generando..." : "Excel Clínico"}</span>
                 </div>
-                <p className="text-[10px] text-teal-200/70">Detalles médicos y parámetros de las consultas seleccionadas.</p>
+                <p className="text-[11px] text-teal-700/80 dark:text-teal-300/70">
+                  Detalles médicos, factores de riesgo y parámetros clínicos completos.
+                </p>
               </button>
-              
+
               <button
                 type="button"
                 onClick={descargarReporteCompleto}
                 disabled={exportingCompleto}
-                className="flex flex-col items-start rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 text-left transition hover:border-cyan-500/60 hover:bg-cyan-500/20 disabled:opacity-50"
+                className="flex flex-col items-start rounded-2xl border border-cyan-500/30 bg-cyan-50 dark:bg-cyan-950/40 p-4 text-left transition hover:border-cyan-500/60 hover:bg-cyan-100 dark:hover:bg-cyan-900/50 disabled:opacity-50 shadow-sm cursor-pointer"
               >
-                <div className="flex items-center gap-2 text-cyan-300 font-medium text-sm mb-1">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
-                  {exportingCompleto ? "Generando..." : "Base de Datos (SQL)"}
+                <div className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300 font-bold text-sm mb-1">
+                  <i className="fa-solid fa-database text-cyan-600 dark:text-cyan-400" />
+                  <span>{exportingCompleto ? "Generando..." : "Base de Datos (SQL)"}</span>
                 </div>
-                <p className="text-[10px] text-cyan-200/70">Toda la sábana de datos en crudo (exportación completa).</p>
+                <p className="text-[11px] text-cyan-700/80 dark:text-cyan-300/70">
+                  Toda la sábana de datos en crudo para cruces analíticos y auditoría.
+                </p>
               </button>
-              
+
               <button
                 type="button"
                 onClick={descargarPdf}
                 disabled={exportingPdf}
-                className="flex flex-col items-start rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-left transition hover:border-amber-500/60 hover:bg-amber-500/20 disabled:opacity-50"
+                className="flex flex-col items-start rounded-2xl border border-amber-500/30 bg-amber-50 dark:bg-amber-950/40 p-4 text-left transition hover:border-amber-500/60 hover:bg-amber-100 dark:hover:bg-amber-900/50 disabled:opacity-50 shadow-sm cursor-pointer"
               >
-                <div className="flex items-center gap-2 text-amber-300 font-medium text-sm mb-1">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                  {exportingPdf ? "Generando..." : "Documento PDF"}
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm mb-1">
+                  <i className="fa-solid fa-file-pdf text-amber-600 dark:text-amber-400" />
+                  <span>{exportingPdf ? "Generando..." : "Documento PDF"}</span>
                 </div>
-                <p className="text-[10px] text-amber-200/70">Formato listo para imprimir o presentar como reporte formal.</p>
+                <p className="text-[11px] text-amber-700/80 dark:text-amber-300/70">
+                  Formato formal oficial para impresión o presentación ejecutiva.
+                </p>
               </button>
             </div>
           </div>
 
-          <p className="mt-3 text-xs text-slate-400">
-            Registros considerados: {registrosFiltrados.length} de {registros.length}
-            {ultimoRegistro ? ` · Ultimo registro: ${formatDate(ultimoRegistro.fecha_consulta || ultimoRegistro.consulta_creada)}` : ""}
-          </p>
+          <div className="text-xs text-slate-500 dark:text-slate-400 pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/50 dark:border-white/5">
+            <span>
+              Registros considerados: <strong>{registrosFiltrados.length}</strong> de{" "}
+              {registros.length}
+            </span>
+            {ultimoRegistro && (
+              <span>
+                Último registro procesado:{" "}
+                <strong>
+                  {formatDate(ultimoRegistro.fecha_consulta || ultimoRegistro.consulta_creada)}
+                </strong>
+              </span>
+            )}
+          </div>
         </section>
 
+        {/* CONTENIDO PRINCIPAL */}
         {loading ? (
-          <section className="rounded-2xl border border-slate-700 bg-slate-900/60 p-6">
-            Cargando reportes estatales...
-          </section>
+          <div className="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 p-12 text-center space-y-3 backdrop-blur-xl shadow-xl">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-cyan-500 border-t-transparent" />
+            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">
+              Cargando reportes y analítica estatal...
+            </p>
+          </div>
         ) : error ? (
-          <section className="rounded-2xl border border-red-500/40 bg-red-900/20 p-6 text-red-200">
-            {error}
-          </section>
+          <div className="rounded-3xl border border-rose-300/80 dark:border-rose-500/40 bg-rose-50/80 dark:bg-rose-900/20 p-6 text-center space-y-3 backdrop-blur-xl shadow-xl">
+            <p className="text-sm text-rose-700 dark:text-rose-200 font-semibold">{error}</p>
+            <button
+              type="button"
+              onClick={() => loadReportes(false)}
+              className="px-4 py-1.5 text-xs font-bold rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition"
+            >
+              Reintentar
+            </button>
+          </div>
         ) : (
           <>
-            <section className="rounded-2xl border border-slate-700 bg-slate-900/60 overflow-hidden">
+            {/* VISTA PREVIA DE CASOS A EXPORTAR (ACORDEÓN) */}
+            <section className="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl shadow-xl overflow-hidden">
               <button
                 type="button"
                 onClick={() => setPreviewOpen((o) => !o)}
-                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-800/40 transition-colors"
+                className="w-full flex items-center justify-between gap-3 p-5 text-left hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-semibold text-slate-100">Vista previa de casos a exportar</span>
-                  <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300">{registrosReporte.length}</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-sm">
+                    <i className="fa-solid fa-table-list" />
+                  </div>
+                  <div>
+                    <span className="text-base font-bold text-slate-900 dark:text-white block">
+                      Vista previa de casos a exportar
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      Muestra rápida de expedientes según filtros activos
+                    </span>
+                  </div>
+                  <span className="ml-2 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 border border-cyan-500/30 px-2.5 py-0.5 text-xs font-mono font-bold text-cyan-700 dark:text-cyan-300">
+                    {registrosReporte.length}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   {previewOpen && (
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
                       Mostrando {registrosPreview.length} de {registrosReporte.length}
                     </span>
                   )}
-                  <svg
-                    className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${previewOpen ? "rotate-180" : ""}`}
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <i
+                    className={`fa-solid fa-chevron-down text-xs text-slate-400 transition-transform duration-200 ${
+                      previewOpen ? "rotate-180" : ""
+                    }`}
+                  />
                 </div>
               </button>
 
               {previewOpen && (
-                <div className="border-t border-slate-700 p-4">
+                <div className="border-t border-slate-200/80 dark:border-white/10 p-4">
                   {registrosReporte.length === 0 ? (
-                    <p className="text-sm text-slate-400">No hay casos con los filtros actuales.</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">
+                      No hay casos que coincidan con los filtros actuales.
+                    </p>
                   ) : (
-                    <div className="overflow-x-auto max-h-80 overflow-y-auto">
-                      <table className="min-w-full text-sm">
-                        <thead className="sticky top-0 bg-slate-900">
-                          <tr className="border-b border-slate-700 text-left text-slate-300">
-                            <th className="py-2 pr-4">Folio</th>
-                            <th className="py-2 pr-4">Paciente</th>
-                            <th className="py-2 pr-4">Región</th>
-                            <th className="py-2 pr-4">Unidad</th>
-                            <th className="py-2 pr-4">Fecha</th>
-                            <th className="py-2 pr-4">Origen</th>
-                            <th className="py-2 pr-4">Motivo</th>
-                            <th className="py-2 pr-4">Puntaje</th>
-                            <th className="py-2 pr-0">Colegiado</th>
+                    <div className="overflow-y-auto max-h-80">
+                      <table className="w-full table-fixed text-xs text-left">
+                        <thead className="sticky top-0 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 border-b border-slate-200/80 dark:border-white/10">
+                          <tr>
+                            <th className="w-[155px] px-3.5 py-2.5">Folio</th>
+                            <th className="min-w-[170px] px-3.5 py-2.5">Paciente</th>
+                            <th className="w-[130px] px-3.5 py-2.5 hidden sm:table-cell">Región</th>
+                            <th className="w-[160px] px-3.5 py-2.5 hidden md:table-cell">Unidad</th>
+                            <th className="w-[105px] px-3.5 py-2.5 text-center">Fecha</th>
+                            <th className="w-[130px] px-3.5 py-2.5 text-center">Origen</th>
+                            <th className="min-w-[140px] px-3.5 py-2.5 hidden lg:table-cell">
+                              Motivo
+                            </th>
+                            <th className="w-[90px] px-3.5 py-2.5 text-right">Puntaje</th>
+                            <th className="w-[85px] px-3.5 py-2.5 text-center">Colegiado</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-slate-200/70 dark:divide-white/5">
                           {registrosPreview.map((row) => {
                             const esCriterio = Number(row.alerta_por_criterio_clinico) === 1;
                             return (
-                              <tr key={`${row.consulta_id}-${row.paciente_id}`} className="hover:bg-slate-800/40">
-                                <td className="py-2 pr-4">{row.folio || "—"}</td>
-                                <td className="py-2 pr-4">{row.nombre_completo || "Sin nombre"}</td>
-                                <td className="py-2 pr-4">{row.region || "—"}</td>
-                                <td className="py-2 pr-4">{row.unidad || "—"}</td>
-                                <td className="py-2 pr-4">{formatDate(row.fecha_consulta || row.consulta_creada)}</td>
-                                <td className="py-2 pr-4">
-                                  <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold border ${esCriterio ? "bg-amber-500/20 text-amber-200 border-amber-500/40" : "bg-red-500/20 text-red-200 border-red-500/40"}`}>
-                                    {esCriterio ? "Criterio clínico" : "Puntaje"}
+                              <tr
+                                key={`${row.consulta_id}-${row.paciente_id}`}
+                                className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
+                              >
+                                <td className="w-[155px] px-3.5 py-2.5 font-mono font-bold text-emerald-800 dark:text-emerald-300">
+                                  <span className="truncate block" title={row.folio || "—"}>
+                                    {row.folio || "—"}
                                   </span>
                                 </td>
-                                <td className="py-2 pr-4 text-xs text-slate-300">{row.motivo_alerta || (esCriterio ? "Edad/Padecimiento" : "—")}</td>
-                                <td className="py-2 pr-4">{esCriterio ? "—" : `${Number(row.puntaje_total_consulta) || 0} pts`}</td>
-                                <td className="py-2 pr-0">{Number(row.colegiado) === 1 ? "Sí" : "No"}</td>
+                                <td className="px-3.5 py-2.5 font-semibold text-slate-900 dark:text-white">
+                                  <span
+                                    className="truncate block"
+                                    title={row.nombre_completo || "Sin nombre"}
+                                  >
+                                    {row.nombre_completo || "Sin nombre"}
+                                  </span>
+                                </td>
+                                <td
+                                  className="px-3.5 py-2.5 text-slate-700 dark:text-slate-300 hidden sm:table-cell truncate"
+                                  title={row.region || "—"}
+                                >
+                                  <span className="truncate block">{row.region || "—"}</span>
+                                </td>
+                                <td
+                                  className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400 hidden md:table-cell truncate"
+                                  title={row.unidad || "—"}
+                                >
+                                  <span className="truncate block">{row.unidad || "—"}</span>
+                                </td>
+                                <td className="px-3.5 py-2.5 text-center font-mono text-slate-600 dark:text-slate-400">
+                                  {formatDate(row.fecha_consulta || row.consulta_creada)}
+                                </td>
+                                <td className="px-3.5 py-2.5 text-center">
+                                  <span
+                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                                      esCriterio
+                                        ? "bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-500/40"
+                                        : "bg-rose-100 dark:bg-rose-500/20 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-500/40"
+                                    }`}
+                                  >
+                                    <i
+                                      className={`fa-solid ${
+                                        esCriterio ? "fa-stethoscope" : "fa-chart-line"
+                                      } text-[9px]`}
+                                    />
+                                    <span>{esCriterio ? "Criterio clínico" : "Puntaje"}</span>
+                                  </span>
+                                </td>
+                                <td
+                                  className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400 hidden lg:table-cell truncate text-[11px]"
+                                  title={
+                                    row.motivo_alerta || (esCriterio ? "Edad/Padecimiento" : "—")
+                                  }
+                                >
+                                  <span className="truncate block">
+                                    {row.motivo_alerta || (esCriterio ? "Edad/Padecimiento" : "—")}
+                                  </span>
+                                </td>
+                                <td className="px-3.5 py-2.5 text-right">
+                                  {esCriterio ? (
+                                    <span className="text-slate-400 font-mono">—</span>
+                                  ) : (
+                                    <span className="inline-flex items-center justify-center rounded-md px-1.5 py-0.5 text-[11px] font-black bg-rose-100 dark:bg-rose-500/20 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-500/40 font-mono">
+                                      {Number(row.puntaje_total_consulta) || 0} pts
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3.5 py-2.5 text-center">
+                                  <span
+                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                                      Number(row.colegiado) === 1
+                                        ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-500/40"
+                                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700"
+                                    }`}
+                                  >
+                                    <i
+                                      className={`fa-solid ${
+                                        Number(row.colegiado) === 1 ? "fa-check" : "fa-minus"
+                                      } text-[9px]`}
+                                    />
+                                    <span>{Number(row.colegiado) === 1 ? "Sí" : "No"}</span>
+                                  </span>
+                                </td>
                               </tr>
                             );
                           })}
@@ -1044,18 +1304,56 @@ export default function ReportesEstatalesPage() {
               )}
             </section>
 
-            <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-              <Card title="Casos alto riesgo" value={String(kpis.total)} />
-              <Card title="Colegiados" value={String(kpis.colegiados)} />
-              <Card title="Pendientes" value={String(kpis.pendientes)} />
-              <Card title="Tasa colegiado" value={`${kpis.tasaColegiado}%`} />
-              <Card title="Puntaje promedio (sin criterio clinico)" value={`${kpis.promedio}`} />
-              <Card title="Puntaje mediana (sin criterio clinico)" value={`${kpis.mediana}`} />
+            {/* SECCIÓN DE TARJETAS KPIS */}
+            <section className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+              <Card
+                title="Alto Riesgo"
+                value={String(kpis.total)}
+                subtitle="Prioridad de atención"
+                icon="fa-triangle-exclamation"
+                tone="rose"
+              />
+              <Card
+                title="Colegiados"
+                value={String(kpis.colegiados)}
+                subtitle="Con plan acordado"
+                icon="fa-user-check"
+                tone="emerald"
+              />
+              <Card
+                title="Pendientes"
+                value={String(kpis.pendientes)}
+                subtitle="Sin plan colegiado"
+                icon="fa-clock"
+                tone="amber"
+              />
+              <Card
+                title="Tasa Colegiado"
+                value={`${kpis.tasaColegiado}%`}
+                subtitle="Cobertura de casos"
+                icon="fa-chart-pie"
+                tone="cyan"
+              />
+              <Card
+                title="Promedio Score"
+                value={`${kpis.promedio}`}
+                subtitle="Puntaje sin criterio"
+                icon="fa-calculator"
+                tone="teal"
+              />
+              <Card
+                title="Mediana Score"
+                value={`${kpis.mediana}`}
+                subtitle="Puntaje sin criterio"
+                icon="fa-chart-simple"
+                tone="default"
+              />
             </section>
 
-            <section className="grid gap-4 xl:grid-cols-2">
-              <LineChart title="Tendencia de casos (ultimos 14 dias)" points={tendencia14dias} />
-              <BarList title="Distribucion de puntaje" items={distribucionPuntaje} tone="amber" />
+            {/* SECCIÓN DE GRÁFICOS */}
+            <section className="grid gap-5 xl:grid-cols-2">
+              <LineChart title="Tendencia de casos (últimos 14 días)" points={tendencia14dias} />
+              <BarList title="Distribución de puntaje" items={distribucionPuntaje} tone="amber" />
               <BarList title="Top regiones con mayor volumen" items={topRegiones} tone="cyan" />
               <BarList title="Top unidades con mayor volumen" items={topUnidades} tone="emerald" />
             </section>

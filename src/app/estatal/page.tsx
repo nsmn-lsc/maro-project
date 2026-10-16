@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type SessionInfo = {
   nivel?: number;
@@ -116,20 +117,7 @@ export default function ModuloEstatalRiesgoPage() {
 
   useEffect(() => {
     if (!authChecked) return;
-
-    let cancelled = false;
-
-    const run = async () => {
-      try {
-        await loadRegistros(false);
-      } catch {
-      }
-    };
-
-    run();
-    return () => {
-      cancelled = true;
-    };
+    loadRegistros(false).catch(() => {});
   }, [authChecked, loadRegistros]);
 
   useEffect(() => {
@@ -176,6 +164,7 @@ export default function ModuloEstatalRiesgoPage() {
   }, [authChecked, loadRegistros]);
 
   const totalRegistros = registros.length;
+
   const registrosFiltrados = useMemo(() => {
     return registros.filter((row) => {
       const matchRegion =
@@ -186,7 +175,8 @@ export default function ModuloEstatalRiesgoPage() {
         String(row.unidad || "").toLowerCase().includes(unidadFilter.toLowerCase());
       const matchFolio =
         folioFilter === "" ||
-        String(row.folio || "").toLowerCase().includes(folioFilter.toLowerCase());
+        String(row.folio || "").toLowerCase().includes(folioFilter.toLowerCase()) ||
+        String(row.nombre_completo || "").toLowerCase().includes(folioFilter.toLowerCase());
       return matchRegion && matchUnidad && matchFolio;
     });
   }, [folioFilter, regionFilter, registros, unidadFilter]);
@@ -205,6 +195,34 @@ export default function ModuloEstatalRiesgoPage() {
     () => registrosFiltrados.filter((r) => Number(r.colegiado) === 1).length,
     [registrosFiltrados]
   );
+
+  const semaforoEstatal = useMemo(() => {
+    const total = Math.max(registros.length, 1);
+    const colegiados = registros.filter((r) => Number(r.colegiado) === 1).length;
+    const criterioClinico = registros.filter(
+      (r) => Number(r.colegiado) !== 1 && Number(r.alerta_por_criterio_clinico) === 1
+    ).length;
+    const criticosSinColegiar = Math.max(0, registros.length - colegiados - criterioClinico);
+
+    const puntaje25Total = registros.filter((r) => Number(r.alerta_por_criterio_clinico) !== 1).length;
+    const alertaClinicaTotal = registros.filter((r) => Number(r.alerta_por_criterio_clinico) === 1).length;
+    const pendientesTotal = registros.filter((r) => Number(r.colegiado) !== 1).length;
+
+    const pctVerde = Math.min(100, Math.round((colegiados / total) * 100));
+    const pctAmarillo = Math.min(100 - pctVerde, Math.round((criterioClinico / total) * 100));
+    const pctRojo = Math.max(0, 100 - pctVerde - pctAmarillo);
+
+    return {
+      colegiados,
+      pendientesTotal,
+      puntaje25Total,
+      alertaClinicaTotal,
+      criticosSinColegiar,
+      pctVerde,
+      pctAmarillo,
+      pctRojo,
+    };
+  }, [registros]);
 
   const registrosSegmentados = useMemo(() => {
     if (estadoCorte === "no_colegiados") {
@@ -288,36 +306,50 @@ export default function ModuloEstatalRiesgoPage() {
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  const estatalBackgroundStyle = {
-    backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(15,118,110,0.6)), url(/maro_back_estatal.png)",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat" as const,
-  };
-
   if (!authChecked) {
     return (
-      <main className="min-h-screen relative text-slate-100" style={estatalBackgroundStyle}>
-        <div className="absolute inset-0 bg-black/45" aria-hidden />
-        <div className="relative min-h-screen flex items-center justify-center">
-          Validando acceso estatal...
-        </div>
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white flex items-center justify-center">
+        Validando acceso estatal...
       </main>
     );
   }
 
   return (
-    <main
-      className="min-h-screen relative text-slate-100"
-      style={estatalBackgroundStyle}
-    >
+    <main className="min-h-screen relative transition-colors duration-300">
+      {/* CAPA DE FONDO FIJA - MODO CLARO */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 dark:hidden bg-slate-100/50"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(241, 245, 249, 0.78), rgba(204, 251, 241, 0.62)), url(/maro_back_estatal.png)",
+          backgroundSize: "contain",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        aria-hidden="true"
+      />
+      {/* CAPA DE FONDO FIJA - MODO OSCURO */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 hidden dark:block bg-slate-950"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(15, 118, 110, 0.65)), url(/maro_back_estatal.png)",
+          backgroundSize: "contain",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        aria-hidden="true"
+      />
+
       {alertaFlotante && (
-        <div className="fixed top-4 right-4 z-50 max-w-sm rounded-xl border border-red-400/50 bg-red-900/90 px-4 py-3 shadow-2xl shadow-red-900/60 backdrop-blur-sm">
+        <div className="fixed top-4 right-4 z-50 max-w-sm rounded-2xl border border-rose-400/50 bg-rose-900/95 px-4 py-3 shadow-2xl shadow-rose-950/60 backdrop-blur-sm">
           <div className="flex items-start gap-3">
             <div className="text-xl leading-none">🚨</div>
             <div className="flex-1">
-              <p className="text-xs uppercase tracking-[0.16em] text-red-200/90">Notificación estatal</p>
-              <p className="text-sm text-red-100 mt-1">
+              <p className="text-xs uppercase tracking-[0.16em] text-rose-200 font-bold">
+                Notificación estatal
+              </p>
+              <p className="text-sm text-rose-50 mt-1">
                 {alertaFlotante.cantidad === 1
                   ? "Se detectó 1 nuevo paciente en alto riesgo activo."
                   : `Se detectaron ${alertaFlotante.cantidad} pacientes nuevos en alto riesgo activo.`}
@@ -325,7 +357,7 @@ export default function ModuloEstatalRiesgoPage() {
             </div>
             <button
               onClick={() => setAlertaFlotante(null)}
-              className="text-red-200/70 hover:text-red-100 text-sm"
+              className="text-rose-200/70 hover:text-white text-sm cursor-pointer"
               aria-label="Cerrar notificación"
             >
               ✕
@@ -334,111 +366,290 @@ export default function ModuloEstatalRiesgoPage() {
         </div>
       )}
 
-      <div className="absolute inset-0 bg-black/45" aria-hidden />
-
-      <div className="relative max-w-7xl mx-auto space-y-6 p-6 lg:p-10">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-2">
-            <p className="text-sm uppercase tracking-[0.2em] text-cyan-300/80">Nivel estatal</p>
-            <h1 className="text-3xl font-bold">Pacientes en alto riesgo activo</h1>
-            <p className="text-slate-300/80">Vista consolidada de todas las unidades · Sesión: {sessionName}</p>
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+        {/* ENCABEZADO SUPERIOR */}
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs uppercase tracking-[0.2em] font-bold text-emerald-700 dark:text-emerald-300">
+                Módulo Estatal MARO
+              </span>
+              <span className="text-xs bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-200 px-2.5 py-0.5 rounded-full font-semibold">
+                {sessionName}
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+              <i className="fa-solid fa-shield-heart text-emerald-600 dark:text-emerald-400"></i>
+              <span>Pacientes en Alto Riesgo Activo</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+              Vigilancia epidemiológica consolidada de todas las jurisdicciones y unidades médicas del estado
+            </p>
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <ThemeToggle />
+            <Link
+              href="/estatal/reportes"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/40 dark:border-cyan-400/40 bg-cyan-500/15 hover:bg-cyan-500/25 dark:bg-cyan-500/20 dark:hover:bg-cyan-500/30 px-3.5 py-2 text-xs font-bold text-cyan-900 dark:text-cyan-200 transition-colors cursor-pointer"
+            >
+              <i className="fa-solid fa-chart-pie text-cyan-600 dark:text-cyan-300"></i>
+              <span>Ver Reportes</span>
+            </Link>
+            <Link
+              href="/colegiados"
+              className="inline-flex items-center gap-2 rounded-xl border border-amber-400/50 dark:border-amber-400/40 bg-amber-500/15 hover:bg-amber-500/25 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 px-3.5 py-2 text-xs font-bold text-amber-900 dark:text-amber-200 transition-colors cursor-pointer"
+            >
+              <i className="fa-solid fa-users-viewfinder text-amber-600 dark:text-amber-300"></i>
+              <span>Ver Colegiados</span>
+            </Link>
             <Link
               href="/gestion-accesos"
-              className="text-sm px-3 py-1.5 rounded-full border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200 transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 dark:border-emerald-400/40 bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-colors cursor-pointer"
             >
-              Gestión de Accesos
+              <i className="fa-solid fa-user-shield"></i>
+              <span>Gestión de Accesos</span>
             </Link>
             <button
               type="button"
               onClick={cerrarSesion}
-              className="text-sm px-3 py-1.5 rounded-full border border-slate-500 text-slate-200 hover:border-slate-300 hover:text-white transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white/90 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-white transition-colors cursor-pointer"
             >
-              Cerrar sesión
+              <i className="fa-solid fa-right-from-bracket text-slate-500 dark:text-slate-300"></i>
+              <span>Salir</span>
             </button>
           </div>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <Card title="Registros activos" value={String(totalRegistros)} />
-          <Card title="Puntaje promedio" value={`${promedioPuntaje} pts`} />
-          <Card title="Cobertura" value="Todas las unidades" />
-        </section>
+        {/* TARJETAS KPI - SEMÁFORO EPIDEMIOLÓGICO ESTATAL */}
+        <section className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* 🟢 TARJETA 1: SEMÁFORO VERDE - CASOS COLEGIADOS Y COBERTURA ESTATAL */}
+            <div className="relative overflow-hidden rounded-3xl border-2 border-emerald-500/50 dark:border-emerald-400/50 bg-gradient-to-br from-emerald-50/95 via-white/95 to-teal-50/90 dark:from-emerald-950/85 dark:via-slate-900/90 dark:to-slate-900/95 p-6 sm:p-7 shadow-xl shadow-emerald-950/10 dark:shadow-emerald-950/40 flex flex-col justify-between gap-5 transition-all hover:-translate-y-0.5">
+              <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400" />
+              <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-emerald-400/20 dark:bg-emerald-500/15 blur-2xl" />
 
-        <section className="bg-slate-900/60 border border-slate-700 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Concentrado estatal de riesgo alto</h2>
-            <div className="flex items-center gap-2">
-              <Link href="/estatal/reportes" className="text-sm px-3 py-1.5 rounded-full border border-cyan-500/50 text-cyan-200 hover:border-cyan-300">
-                Ver reportes
-              </Link>
-              <Link href="/colegiados" className="text-sm px-3 py-1.5 rounded-full border border-emerald-500/50 text-emerald-200 hover:border-emerald-300">
-                Ver colegiados
-              </Link>
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/90 dark:bg-black/60 border border-emerald-400/40 px-3 py-1 shadow-inner">
+                    <span className="h-2.5 w-2.5 rounded-full bg-rose-500/25" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400/25" />
+                    <span className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] ring-2 ring-emerald-300/60" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300 ml-1">
+                      Semáforo Verde
+                    </span>
+                  </div>
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block">
+                    Casos Colegiados y Cobertura
+                  </h2>
+                </div>
+
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-300/40 flex items-center justify-center text-2xl shrink-0">
+                  <i className="fa-solid fa-hospital-user"></i>
+                </div>
+              </div>
+
+              <div className="flex items-baseline gap-3 my-1">
+                <span className="text-5xl sm:text-6xl font-black tracking-tight text-emerald-700 dark:text-emerald-300 drop-shadow-sm">
+                  {semaforoEstatal.colegiados}
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-xs font-extrabold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
+                    Pacientes Colegiados ({semaforoEstatal.pctVerde}%)
+                  </span>
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    Con plan multidisciplinario activo
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-emerald-500/20 dark:border-emerald-400/20">
+                <div className="rounded-xl bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/30 px-3 py-2 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    Regiones Activas
+                  </span>
+                  <span className="text-sm font-black text-emerald-800 dark:text-white">
+                    {regionesDisponibles.length}
+                  </span>
+                </div>
+                <div className="rounded-xl bg-teal-500/15 dark:bg-teal-500/20 border border-teal-500/30 px-3 py-2 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-teal-900 dark:text-teal-200 flex items-center gap-1.5">
+                    <i className="fa-solid fa-building-user text-emerald-600 dark:text-emerald-400 text-[11px]"></i>
+                    Unidades
+                  </span>
+                  <span className="text-sm font-black text-teal-800 dark:text-white">
+                    {unidadesDisponibles.length}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 🟡 TARJETA 2: SEMÁFORO AMARILLO / ÁMBAR - PENDIENTES DE COLEGIAR Y PROMEDIO */}
+            <div className="relative overflow-hidden rounded-3xl border-2 border-amber-500/55 dark:border-amber-400/50 bg-gradient-to-br from-amber-50/95 via-white/95 to-yellow-50/90 dark:from-amber-950/85 dark:via-slate-900/90 dark:to-slate-900/95 p-6 sm:p-7 shadow-xl shadow-amber-950/10 dark:shadow-amber-950/40 flex flex-col justify-between gap-5 transition-all hover:-translate-y-0.5">
+              <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400" />
+              <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-amber-400/20 dark:bg-amber-500/15 blur-2xl" />
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/90 dark:bg-black/60 border border-amber-400/40 px-3 py-1 shadow-inner">
+                    <span className="h-2.5 w-2.5 rounded-full bg-rose-500/25" />
+                    <span className="h-3 w-3 rounded-full bg-amber-400 shadow-[0_0_10px_#fbbf24] ring-2 ring-amber-200/70" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/25" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 ml-1">
+                      Semáforo Preventivo
+                    </span>
+                  </div>
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-amber-800 dark:text-amber-300 block">
+                    Pendientes de Colegiar y Promedio
+                  </h2>
+                </div>
+
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-600/30 border border-amber-300/40 flex items-center justify-center text-2xl shrink-0">
+                  <i className="fa-solid fa-scale-balanced"></i>
+                </div>
+              </div>
+
+              <div className="flex items-baseline gap-3 my-1">
+                <span className="text-5xl sm:text-6xl font-black tracking-tight text-amber-600 dark:text-amber-400 drop-shadow-sm">
+                  {semaforoEstatal.pendientesTotal}
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-xs font-extrabold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                    Por Dictaminar / Colegiar
+                  </span>
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    Requieren revisión por comité estatal
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-amber-500/20 dark:border-amber-400/20">
+                <div className="rounded-xl bg-amber-500/15 dark:bg-amber-500/20 border border-amber-500/35 px-3 py-2 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    Puntaje Promedio
+                  </span>
+                  <span className="text-sm font-black text-amber-800 dark:text-white">
+                    {promedioPuntaje} pts
+                  </span>
+                </div>
+                <div className="rounded-xl bg-orange-500/15 dark:bg-orange-500/20 border border-orange-500/35 px-3 py-2 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-orange-900 dark:text-orange-200 flex items-center gap-1.5">
+                    <i className="fa-solid fa-stethoscope text-amber-600 dark:text-amber-400 text-[11px]"></i>
+                    Criterio Clínico
+                  </span>
+                  <span className="text-sm font-black text-orange-800 dark:text-white">
+                    {semaforoEstatal.alertaClinicaTotal}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 🔴 TARJETA 3: SEMÁFORO ROJO - CONCENTRADO ESTATAL DE ALTO RIESGO */}
+            <div className="relative overflow-hidden rounded-3xl border-2 border-rose-500/65 dark:border-rose-400/60 bg-gradient-to-br from-rose-50/95 via-white/95 to-red-50/90 dark:from-rose-950/90 dark:via-slate-900/90 dark:to-slate-900/95 p-6 sm:p-7 shadow-xl shadow-rose-950/15 dark:shadow-rose-950/50 flex flex-col justify-between gap-5 transition-all hover:-translate-y-0.5">
+              <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-rose-500 via-red-500 to-orange-500" />
+              <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-rose-500/25 dark:bg-rose-500/20 blur-2xl" />
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/90 dark:bg-black/60 border border-rose-400/50 px-3 py-1 shadow-inner">
+                    <span className="h-3 w-3 rounded-full bg-rose-500 shadow-[0_0_12px_#f43f5e] ring-2 ring-rose-300/80 animate-pulse" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400/25" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/25" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-rose-300 ml-1">
+                      Semáforo Rojo
+                    </span>
+                  </div>
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-rose-800 dark:text-rose-300 block">
+                    Registros en Alto Riesgo Activo
+                  </h2>
+                </div>
+
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-600 to-red-600 text-white shadow-lg shadow-rose-600/35 border border-rose-300/40 flex items-center justify-center text-2xl shrink-0">
+                  <i className="fa-solid fa-triangle-exclamation animate-pulse"></i>
+                </div>
+              </div>
+
+              <div className="flex items-baseline gap-3 my-1">
+                <span className="text-5xl sm:text-6xl font-black tracking-tight text-rose-600 dark:text-rose-400 drop-shadow-sm">
+                  {totalRegistros}
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-xs font-extrabold uppercase tracking-wide text-rose-900 dark:text-rose-200">
+                    Casos Críticos Estatales
+                  </span>
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    Puntaje ≥25 o alerta clínica prioritaria
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-rose-500/20 dark:border-rose-400/20">
+                <div className="rounded-xl bg-rose-500/15 dark:bg-rose-500/25 border border-rose-500/35 px-3 py-2 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
+                    Por Puntaje ≥25
+                  </span>
+                  <span className="text-sm font-black text-rose-800 dark:text-white">
+                    {semaforoEstatal.puntaje25Total}
+                  </span>
+                </div>
+                <div className="rounded-xl bg-red-500/15 dark:bg-red-500/25 border border-red-500/35 px-3 py-2 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-red-900 dark:text-red-200 flex items-center gap-1.5">
+                    <i className="fa-solid fa-bell text-rose-600 dark:text-rose-400 text-[11px]"></i>
+                    Sin Colegiar ≥25
+                  </span>
+                  <span className="text-sm font-black text-red-800 dark:text-white">
+                    {semaforoEstatal.criticosSinColegiar}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="mb-4 space-y-3 rounded-xl border border-slate-700 bg-slate-950/50 p-4">
-            <div className="grid gap-3 md:grid-cols-3">
-              <select
-                value={regionFilter}
-                onChange={(e) => {
-                  setRegionFilter(e.target.value);
-                  setUnidadFilter("");
-                }}
-                className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-400"
-              >
-                <option value="">Todas las regiones</option>
-                {regionesDisponibles.map((region) => (
-                  <option key={region} value={region}>
-                    {region}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={unidadFilter}
-                onChange={(e) => setUnidadFilter(e.target.value)}
-                className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-400"
-              >
-                <option value="">Todas las unidades</option>
-                {unidadesDisponibles.map((unidad) => (
-                  <option key={unidad} value={unidad}>
-                    {unidad}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="search"
-                placeholder="Filtrar por folio..."
-                value={folioFilter}
-                onChange={(e) => setFolioFilter(e.target.value)}
-                className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-400"
-              />
+          {/* BARRA GLOBAL DE DISTRIBUCIÓN DEL SEMÁFORO ESTATAL */}
+          <div className="w-full h-8 rounded-2xl bg-white/95 dark:bg-slate-900/90 overflow-hidden flex p-1 gap-1 border border-slate-300 dark:border-white/15 shadow-lg">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-l-xl flex items-center justify-center text-xs font-black text-white drop-shadow-sm transition-all duration-500 min-w-[48px]"
+              style={{ width: `${semaforoEstatal.pctVerde}%` }}
+              title={`Casos Colegiados: ${semaforoEstatal.colegiados} (${semaforoEstatal.pctVerde}%)`}
+            >
+              {semaforoEstatal.pctVerde}%
             </div>
-            {(regionFilter || unidadFilter || folioFilter) && (
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-slate-400">
-                  Mostrando {registrosSegmentados.length} de {registros.length} registros
-                </p>
-                <button
-                  type="button"
-                  onClick={limpiarFiltros}
-                  className="text-xs px-3 py-1.5 rounded-full border border-slate-600 text-slate-300 hover:border-slate-400 hover:text-white"
-                >
-                  Limpiar filtros
-                </button>
-              </div>
-            )}
+            <div
+              className="h-full bg-gradient-to-r from-amber-400 to-orange-400 flex items-center justify-center text-xs font-black text-slate-950 drop-shadow-sm transition-all duration-500 min-w-[48px]"
+              style={{ width: `${semaforoEstatal.pctAmarillo}%` }}
+              title={`Alerta Clínica en Revisión: ${semaforoEstatal.alertaClinicaTotal} (${semaforoEstatal.pctAmarillo}%)`}
+            >
+              {semaforoEstatal.pctAmarillo}%
+            </div>
+            <div
+              className="h-full bg-gradient-to-r from-rose-500 to-red-600 rounded-r-xl flex items-center justify-center text-xs font-black text-white drop-shadow-sm transition-all duration-500 min-w-[48px]"
+              style={{ width: `${semaforoEstatal.pctRojo}%` }}
+              title={`Críticos ≥25 Pendientes: ${semaforoEstatal.criticosSinColegiar} (${semaforoEstatal.pctRojo}%)`}
+            >
+              {semaforoEstatal.pctRojo}%
+            </div>
+          </div>
+        </section>
 
-            <div className="flex flex-wrap items-center gap-2 pt-1">
+        {/* FILTROS DE BÚSQUEDA ESTATAL */}
+        <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 space-y-3.5 shadow-xl transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+              <i className="fa-solid fa-filter text-emerald-600 dark:text-emerald-400"></i>
+              <span>Filtros de Concentrado Estatal</span>
+            </h3>
+
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setEstadoCorte("todos")}
-                className={`text-xs px-3 py-1.5 rounded-full border ${
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
                   estadoCorte === "todos"
-                    ? "border-cyan-400 bg-cyan-500/20 text-cyan-200"
-                    : "border-slate-600 text-slate-300 hover:border-slate-400 hover:text-white"
+                    ? "border-cyan-500 dark:border-cyan-400 bg-cyan-500/15 dark:bg-cyan-500/25 text-cyan-900 dark:text-cyan-200 shadow-sm"
+                    : "border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10"
                 }`}
               >
                 Todos ({registrosFiltrados.length})
@@ -446,10 +657,10 @@ export default function ModuloEstatalRiesgoPage() {
               <button
                 type="button"
                 onClick={() => setEstadoCorte("no_colegiados")}
-                className={`text-xs px-3 py-1.5 rounded-full border ${
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
                   estadoCorte === "no_colegiados"
-                    ? "border-amber-400 bg-amber-500/20 text-amber-200"
-                    : "border-slate-600 text-slate-300 hover:border-slate-400 hover:text-white"
+                    ? "border-amber-500 dark:border-amber-400 bg-amber-500/15 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200 shadow-sm"
+                    : "border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10"
                 }`}
               >
                 No colegiados ({conteoNoColegiados})
@@ -457,108 +668,211 @@ export default function ModuloEstatalRiesgoPage() {
               <button
                 type="button"
                 onClick={() => setEstadoCorte("colegiados")}
-                className={`text-xs px-3 py-1.5 rounded-full border ${
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
                   estadoCorte === "colegiados"
-                    ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
-                    : "border-slate-600 text-slate-300 hover:border-slate-400 hover:text-white"
+                    ? "border-emerald-500 dark:border-emerald-400 bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 shadow-sm"
+                    : "border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10"
                 }`}
               >
                 Colegiados ({conteoColegiados})
               </button>
+
+              {(regionFilter || unidadFilter || folioFilter) && (
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl px-2.5 py-1.5 transition-colors whitespace-nowrap cursor-pointer"
+                >
+                  <i className="fa-solid fa-rotate-left text-[10px]"></i>
+                  <span>Limpiar filtros</span>
+                </button>
+              )}
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <select
+              value={regionFilter}
+              onChange={(e) => {
+                setRegionFilter(e.target.value);
+                setUnidadFilter("");
+              }}
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-white/10 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-colors"
+            >
+              <option value="">Todas las regiones</option>
+              {regionesDisponibles.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
+            <select
+              value={unidadFilter}
+              onChange={(e) => setUnidadFilter(e.target.value)}
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-white/10 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-colors"
+            >
+              <option value="">Todas las unidades</option>
+              {unidadesDisponibles.map((unidad) => (
+                <option key={unidad} value={unidad}>
+                  {unidad}
+                </option>
+              ))}
+            </select>
+            <div className="relative">
+              <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+              <input
+                type="search"
+                placeholder="Buscar por folio o nombre..."
+                value={folioFilter}
+                onChange={(e) => setFolioFilter(e.target.value)}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-white/10 pl-9 pr-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-colors"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* CONCENTRADO ESTATAL DE RIESGO ALTO */}
+        <section className="rounded-2xl border border-rose-300 dark:border-rose-500/35 bg-white/95 dark:bg-slate-900/85 p-5 space-y-4 shadow-xl transition-colors">
+          <div className="flex items-center justify-between border-b border-rose-200 dark:border-rose-500/25 pb-3.5 flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-500/20 border border-rose-300 dark:border-rose-400/40 flex items-center justify-center shrink-0">
+                <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-lg"></i>
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-rose-900 dark:text-rose-200">
+                  Concentrado Estatal de Alto Riesgo
+                </h2>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Mostrando {registrosSegmentados.length} de {registros.length} expedientes prioritarios
+                </p>
+              </div>
+            </div>
+            <span className="text-xs text-rose-900 dark:text-rose-200 bg-rose-100 dark:bg-rose-500/25 border border-rose-300 dark:border-rose-400/40 px-3 py-1 rounded-full font-bold">
+              {registrosSegmentados.length} {registrosSegmentados.length === 1 ? "caso" : "casos"}
+            </span>
+          </div>
+
           {loading ? (
-            <p className="text-slate-300">Cargando registros...</p>
+            <div className="py-12 text-center text-slate-600 dark:text-slate-300 text-sm flex items-center justify-center gap-2">
+              <i className="fa-solid fa-spinner fa-spin text-emerald-600 dark:text-emerald-400"></i>
+              <span>Cargando registros estatales...</span>
+            </div>
           ) : error ? (
-            <p className="text-red-300">{error}</p>
+            <div className="rounded-xl border border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-500/20 p-4 text-sm text-rose-900 dark:text-rose-200 flex items-center gap-3">
+              <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400"></i>
+              <span>{error}</span>
+            </div>
           ) : registros.length === 0 ? (
-            <p className="text-slate-300">No hay pacientes en alto riesgo activo.</p>
+            <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">
+              No hay pacientes en alto riesgo activo.
+            </div>
           ) : registrosSegmentados.length === 0 ? (
-            <p className="text-slate-300">No hay coincidencias para los filtros aplicados.</p>
+            <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">
+              No hay coincidencias para los filtros aplicados.
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-700 text-left text-slate-300">
-                    <th className="py-2 pr-4">Folio</th>
-                    <th className="py-2 pr-4">Paciente</th>
-                    <th className="py-2 pr-4">Región</th>
-                    <th className="py-2 pr-4">Unidad</th>
-                    <th className="py-2 pr-4">Fecha consulta</th>
-                    <th className="py-2 pr-4">Riesgo / Motivo</th>
-                    <th className="py-2 pr-4">Colegiado</th>
-                    <th className="py-2 pr-0 text-right">Acción</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {registrosPaginados.map((row) => (
-                    <tr
-                      key={`${row.consulta_id}-${row.paciente_id}`}
-                      className={
-                        Number(row.edad) >= 10 && Number(row.edad) <= 14
-                          ? "hover:bg-rose-900/20 bg-rose-950/25 border-l-2 border-rose-500"
-                          : "hover:bg-slate-800/40"
-                      }
-                    >
-                      <td className="py-2 pr-4">{row.folio || "—"}</td>
-                      <td className="py-2 pr-4">
-                        <div>{row.nombre_completo || "Sin nombre"}</div>
-                        {Number(row.edad) >= 10 && Number(row.edad) <= 14 && (
-                          <span className="inline-flex items-center gap-1 mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-rose-500/25 text-rose-300 border border-rose-500/40">
-                            ⚠ Alerta Edad · {row.edad} años
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 pr-4">{row.region || "—"}</td>
-                      <td className="py-2 pr-4">
-                        <div>{row.unidad || "—"}</div>
-                        <div className="text-xs text-slate-400">{row.clues_id || ""}</div>
-                      </td>
-                      <td className="py-2 pr-4">{formatDate(row.fecha_consulta)}</td>
-                      <td className="py-2 pr-4">
-                        {Number(row.alerta_por_criterio_clinico) === 1 ? (
-                          <div className="space-y-1">
-                            <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-amber-500/20 text-amber-200 border border-amber-500/40">
-                              Criterio clinico
-                            </span>
-                            <div className="text-[11px] text-amber-100/80">
-                              {row.motivo_alerta || "Edad/Padecimiento"}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-red-500/20 text-red-200 border border-red-500/40">
-                            {row.puntaje_total_consulta} pts
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 pr-4">
-                        {Number(row.colegiado) === 1 ? (
-                          <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-500/40">
-                            Sí
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-slate-700/40 text-slate-200 border border-slate-600">
-                            No
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 pr-0 text-right">
-                        <Link
-                          href={`/estatal/pacientes/${row.paciente_id}`}
-                          className="text-xs px-2 py-1 rounded-full border border-cyan-500/40 text-cyan-200 hover:border-cyan-300"
-                        >
-                          Ver paciente
-                        </Link>
-                      </td>
+            <>
+              <div className="max-h-[440px] overflow-y-auto overflow-x-hidden rounded-xl border border-rose-200 dark:border-rose-500/25">
+                <table className="w-full text-xs table-fixed text-left">
+                  <thead className="sticky top-0 z-10 bg-rose-50/95 dark:bg-slate-950/95 backdrop-blur-sm border-b border-rose-200 dark:border-rose-500/25 text-rose-900 dark:text-rose-200 font-bold">
+                    <tr className="whitespace-nowrap">
+                      <th className="w-[125px] px-3 py-2.5">Folio</th>
+                      <th className="px-3 py-2.5">Paciente</th>
+                      <th className="w-[12%] px-2.5 py-2.5 hidden md:table-cell">Región</th>
+                      <th className="w-[22%] px-3 py-2.5 hidden lg:table-cell">Unidad</th>
+                      <th className="w-[95px] px-2.5 py-2.5 hidden sm:table-cell">Consulta</th>
+                      <th className="w-[150px] text-right px-2.5 py-2.5">Riesgo / Motivo</th>
+                      <th className="w-[82px] text-center px-2 py-2.5 hidden sm:table-cell">Colegiado</th>
+                      <th className="w-[78px] text-center pl-2 pr-3.5 py-2.5">Acción</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-rose-100 dark:divide-rose-500/15">
+                    {registrosPaginados.map((row) => {
+                      const esEdadCritica = Number(row.edad) >= 10 && Number(row.edad) <= 14;
+                      return (
+                        <tr
+                          key={`${row.consulta_id}-${row.paciente_id}`}
+                          className={`transition-colors whitespace-nowrap ${
+                            esEdadCritica
+                              ? "bg-rose-50/80 dark:bg-rose-950/35 hover:bg-rose-100/80 dark:hover:bg-rose-900/30"
+                              : "hover:bg-rose-50/60 dark:hover:bg-rose-500/10"
+                          }`}
+                        >
+                          <td className="px-3 py-2.5 font-mono font-bold text-rose-800 dark:text-rose-300 truncate" title={row.folio || ""}>
+                            {row.folio || "—"}
+                          </td>
+                          <td className="px-3 py-2.5 text-slate-900 dark:text-white font-semibold truncate" title={row.nombre_completo || ""}>
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="truncate">{row.nombre_completo || "Sin nombre"}</span>
+                              {esEdadCritica && (
+                                <span className="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-100 dark:bg-rose-500/25 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-500/40">
+                                  ⚠ {row.edad}a
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-300 hidden md:table-cell truncate" title={row.region || ""}>
+                            {row.region || "—"}
+                          </td>
+                          <td
+                            className="px-3 py-2.5 text-slate-600 dark:text-slate-300 hidden lg:table-cell truncate"
+                            title={`${row.unidad || ""}${row.clues_id ? ` (${row.clues_id})` : ""}`}
+                          >
+                            {row.unidad || "—"}
+                            {row.clues_id && (
+                              <span className="ml-1.5 text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                                ({row.clues_id})
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-300 hidden sm:table-cell">
+                            {formatDate(row.fecha_consulta)}
+                          </td>
+                          <td className="px-2.5 py-2.5 text-right">
+                            {Number(row.alerta_por_criterio_clinico) === 1 ? (
+                              <div
+                                className="inline-flex items-center justify-end max-w-full"
+                                title={row.motivo_alerta || "Criterio clínico"}
+                              >
+                                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 dark:bg-amber-500/25 border border-amber-300 dark:border-amber-400/40 text-amber-900 dark:text-amber-200 truncate max-w-[140px]">
+                                  {row.motivo_alerta || "Criterio clínico"}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-bold bg-rose-100 dark:bg-rose-500/25 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-400/40">
+                                {row.puntaje_total_consulta} pts · ALTO
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2 py-2.5 text-center hidden sm:table-cell">
+                            {Number(row.colegiado) === 1 ? (
+                              <span className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-400/40">
+                                Sí
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/15">
+                                No
+                              </span>
+                            )}
+                          </td>
+                          <td className="pl-2 pr-3.5 py-2.5 text-center">
+                            <Link
+                              href={`/estatal/pacientes/${row.paciente_id}`}
+                              className="inline-flex items-center justify-center text-xs font-bold text-rose-700 dark:text-rose-200 hover:text-white hover:bg-rose-600 dark:hover:bg-rose-500 border border-rose-300 dark:border-rose-500/40 rounded-lg px-2.5 py-1 transition-colors"
+                            >
+                              <span>Ver</span>
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
               {registrosSegmentados.length > perPage && (
-                <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-800 pt-3">
-                  <p className="text-xs text-slate-400">
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
                     Página {page} de {totalPages}
                   </p>
                   <div className="flex items-center gap-2">
@@ -566,7 +880,7 @@ export default function ModuloEstatalRiesgoPage() {
                       type="button"
                       onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                       disabled={page === 1}
-                      className="text-xs px-3 py-1.5 rounded-full border border-slate-600 text-slate-300 hover:border-slate-400 hover:text-white disabled:opacity-40"
+                      className="text-xs font-bold px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/10 disabled:opacity-40 transition-colors cursor-pointer"
                     >
                       Anterior
                     </button>
@@ -574,26 +888,17 @@ export default function ModuloEstatalRiesgoPage() {
                       type="button"
                       onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                       disabled={page === totalPages}
-                      className="text-xs px-3 py-1.5 rounded-full border border-slate-600 text-slate-300 hover:border-slate-400 hover:text-white disabled:opacity-40"
+                      className="text-xs font-bold px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/10 disabled:opacity-40 transition-colors cursor-pointer"
                     >
                       Siguiente
                     </button>
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
         </section>
       </div>
     </main>
-  );
-}
-
-function Card({ title, value }: { title: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-      <p className="text-sm text-slate-300">{title}</p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
-    </div>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type SessionInfo = {
   nivel?: number;
@@ -65,10 +66,38 @@ type ApiResponse = {
   }>;
 };
 
-const NIVELES: Array<{ key: NivelAtencion; title: string; tone: string }> = [
-  { key: "primer_nivel", title: "Acciones a realizar por primer nivel", tone: "border-emerald-500/40 bg-emerald-950/40" },
-  { key: "segundo_nivel", title: "Acciones a realizar por segundo nivel", tone: "border-cyan-500/40 bg-cyan-950/40" },
-  { key: "tercer_nivel", title: "Acciones a realizar por tercer nivel", tone: "border-fuchsia-500/40 bg-fuchsia-950/40" },
+const NIVELES_CONFIG: Array<{
+  key: NivelAtencion;
+  title: string;
+  icon: string;
+  cardTone: string;
+  badgeTone: string;
+  buttonTone: string;
+}> = [
+  {
+    key: "primer_nivel",
+    title: "Acciones a realizar por Primer Nivel",
+    icon: "fa-solid fa-house-medical",
+    cardTone: "border-emerald-300/80 dark:border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-950/20",
+    badgeTone: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-200 dark:border-emerald-500/40",
+    buttonTone: "bg-emerald-600 hover:bg-emerald-500 text-white",
+  },
+  {
+    key: "segundo_nivel",
+    title: "Acciones a realizar por Segundo Nivel",
+    icon: "fa-solid fa-hospital",
+    cardTone: "border-cyan-300/80 dark:border-cyan-500/40 bg-cyan-50/40 dark:bg-cyan-950/20",
+    badgeTone: "bg-cyan-100 text-cyan-900 border-cyan-300 dark:bg-cyan-500/20 dark:text-cyan-200 dark:border-cyan-500/40",
+    buttonTone: "bg-cyan-600 hover:bg-cyan-500 text-white",
+  },
+  {
+    key: "tercer_nivel",
+    title: "Acciones a realizar por Tercer Nivel",
+    icon: "fa-solid fa-hospital-user",
+    cardTone: "border-purple-300/80 dark:border-purple-500/40 bg-purple-50/40 dark:bg-purple-950/20",
+    badgeTone: "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-500/20 dark:text-purple-200 dark:border-purple-500/40",
+    buttonTone: "bg-purple-600 hover:bg-purple-500 text-white",
+  },
 ];
 
 function formatDate(value: string | null, includeTime = false) {
@@ -208,6 +237,16 @@ export default function DetalleColegiadoPage() {
       .filter((item) => item.cumplido).length;
   }, [acciones]);
 
+  const porcentajeAvance = useMemo(() => {
+    if (totalAcciones === 0) return 0;
+    return Math.round((accionesCompletadas / totalAcciones) * 100);
+  }, [accionesCompletadas, totalAcciones]);
+
+  const esAltoRiesgo = useMemo(() => {
+    if (!consulta) return false;
+    return Number(consulta.riesgo_25_plus) === 1 || (Number(consulta.puntaje_total_consulta) || 0) >= 25;
+  }, [consulta]);
+
   const updateAction = (nivel: NivelAtencion, index: number, patch: Partial<AccionColegiada>) => {
     setSaveMessage(null);
     setAcciones((prev) => ({
@@ -316,253 +355,551 @@ export default function DetalleColegiadoPage() {
     }
   };
 
-  const backgroundStyle = {
-    backgroundImage: "linear-gradient(135deg, rgba(15,23,42,0.94), rgba(12,74,110,0.68)), url(/maro_back_estatal.png)",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat" as const,
-  };
-
   if (!authChecked) {
     return (
-      <main className="min-h-screen relative text-slate-100" style={backgroundStyle}>
-        <div className="absolute inset-0 bg-black/45" aria-hidden />
-        <div className="relative min-h-screen flex items-center justify-center">Validando acceso estatal...</div>
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white flex items-center justify-center">
+        Validando acceso estatal...
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen relative text-slate-100" style={backgroundStyle}>
-      <div className="absolute inset-0 bg-black/45" aria-hidden />
+    <main className="min-h-screen relative transition-colors duration-300">
+      {/* CAPA DE FONDO FIJA - MODO CLARO */}
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 dark:hidden"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(248, 250, 252, 0.78), rgba(204, 251, 241, 0.60)), url(/maro-hero.png)",
+        }}
+        aria-hidden="true"
+      />
+      {/* CAPA DE FONDO FIJA - MODO OSCURO */}
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 hidden dark:block"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(6, 78, 59, 0.60)), url(/maro-hero.png)",
+        }}
+        aria-hidden="true"
+      />
+      {/* PATRÓN CLÍNICO DE PUNTOS / RETÍCULA SUTIL */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 opacity-40 dark:opacity-20"
+        style={{
+          backgroundImage: "radial-gradient(circle, #059669 1.1px, transparent 1.1px)",
+          backgroundSize: "28px 28px",
+        }}
+        aria-hidden="true"
+      />
 
-      <div className="relative max-w-7xl mx-auto space-y-6 p-6 lg:p-10">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-2">
-            <p className="text-sm uppercase tracking-[0.2em] text-cyan-300/80">Nivel estatal</p>
-            <h1 className="text-3xl font-bold">Plan de Acciones Colegiadas</h1>
-            <p className="text-slate-300/80">Definición de seguimiento por nivel de atención</p>
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+        {/* ENCABEZADO SUPERIOR */}
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs uppercase tracking-[0.2em] font-bold text-emerald-700 dark:text-emerald-300">
+                Nivel Estatal · Caso Colegiado
+              </span>
+              <span className="text-xs bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                Consulta #{consultaId}
+              </span>
+              <span
+                className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+                  plan?.estatus === "completo"
+                    ? "border-emerald-400/60 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-200"
+                    : "border-amber-400/60 bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200"
+                }`}
+              >
+                {plan?.estatus === "completo" ? "Plan Completo" : "Plan en Borrador"}
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+              <i className="fa-solid fa-list-check text-emerald-600 dark:text-emerald-400"></i>
+              <span>Plan de Acciones Colegiadas</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+              Definición y seguimiento normativo de intervenciones clínicas por nivel de atención
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <ThemeToggle />
             <a
               href={`/api/colegiados/${consultaId}/pdf`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm px-3.5 py-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-500 text-white font-medium shadow-sm transition inline-flex items-center gap-1.5"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 text-xs shadow-sm transition-colors cursor-pointer"
             >
-              <span>📄</span>
-              <span>Descargar Cédula PDF</span>
+              <i className="fa-solid fa-file-pdf text-sm"></i>
+              <span>Cédula PDF</span>
             </a>
-            <Link href={`/colegiados/${consultaId}/formato`} className="text-sm px-3 py-1.5 rounded-full border border-emerald-500/40 text-emerald-200 hover:border-emerald-300">
-              Vista Formato
+            <Link
+              href={`/colegiados/${consultaId}/formato`}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 dark:border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-3.5 py-2 text-xs font-bold text-emerald-900 dark:text-emerald-200 transition-colors cursor-pointer"
+            >
+              <i className="fa-solid fa-table-list"></i>
+              <span>Vista Formato</span>
             </Link>
-            <Link href="/colegiados/planes" className="text-sm px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400">
-              Casos con acciones
+            <Link
+              href="/colegiados/planes"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white/90 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-white transition-colors cursor-pointer"
+            >
+              <i className="fa-solid fa-clipboard-check text-slate-500 dark:text-slate-400"></i>
+              <span>Casos con acciones</span>
             </Link>
-            <Link href="/colegiados" className="text-sm px-3 py-1.5 rounded-full border border-slate-600 hover:border-slate-400">
-              Volver a colegiados
+            <Link
+              href="/colegiados"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white/90 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-white transition-colors cursor-pointer"
+            >
+              <i className="fa-solid fa-arrow-left text-slate-500 dark:text-slate-400"></i>
+              <span>Volver a colegiados</span>
             </Link>
             {consulta && (
-              <Link href={`/estatal/pacientes/${consulta.paciente_id}`} className="text-sm px-3 py-1.5 rounded-full border border-cyan-500/40 text-cyan-200 hover:border-cyan-300">
-                Ver expediente estatal
+              <Link
+                href={`/estatal/pacientes/${consulta.paciente_id}`}
+                className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/50 dark:border-cyan-400/30 bg-cyan-500/10 hover:bg-cyan-500/20 px-3.5 py-2 text-xs font-bold text-cyan-900 dark:text-cyan-200 transition-colors cursor-pointer"
+              >
+                <i className="fa-solid fa-file-medical"></i>
+                <span>Expediente estatal</span>
               </Link>
             )}
           </div>
         </header>
 
         {loading ? (
-          <section className="rounded-2xl border border-slate-700 bg-slate-900/60 p-6">
-            <p className="text-slate-300">Cargando plan colegiado...</p>
+          <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 py-12 text-center text-slate-600 dark:text-slate-300 text-sm flex items-center justify-center gap-2 shadow-xl">
+            <i className="fa-solid fa-spinner fa-spin text-emerald-600 dark:text-emerald-400"></i>
+            <span>Cargando plan colegiado...</span>
           </section>
         ) : error && !consulta ? (
-          <section className="rounded-2xl border border-red-500/40 bg-red-950/40 p-6 text-red-200">
-            {error}
+          <section className="rounded-2xl border border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-900/20 p-6 text-rose-900 dark:text-rose-200 flex items-center gap-3 shadow-lg">
+            <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-lg"></i>
+            <span>{error}</span>
           </section>
         ) : consulta ? (
           <>
-            <section className="grid gap-4 md:grid-cols-4">
-              <MetricCard title="Región / Unidad" value={consulta.region || "—"} note={consulta.unidad || "—"} />
-              <MetricCard title="Fecha consulta" value={formatDate(consulta.fecha_consulta)} note={formatDate(consulta.fecha_colegiado, true)} />
-              <MetricCard title="Puntaje total" value={`${Number(consulta.puntaje_total_consulta) || 0} pts`} note={Number(consulta.riesgo_25_plus) === 1 ? "Riesgo ≥ 25" : "Riesgo < 25"} />
-              <MetricCard title="SDG / Diagnóstico" value={`${consulta.semanas_gestacion ?? consulta.sdg_ingreso ?? "—"}`} note={consulta.diagnostico || "Sin diagnóstico"} />
+            {/* TARJETAS KPI DEL CASO COLEGIADO */}
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Card 1: Región y Unidad */}
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl flex flex-col justify-between gap-3">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-teal-400 to-emerald-500" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-teal-700 dark:text-teal-300">
+                      Jurisdicción
+                    </span>
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                      Región / Unidad
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-teal-500/15 dark:bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-700 dark:text-teal-300 text-xl shrink-0">
+                    <i className="fa-solid fa-hospital"></i>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white truncate" title={consulta.region || ""}>
+                    {consulta.region || "—"}
+                  </h3>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 truncate mt-0.5" title={consulta.unidad || ""}>
+                    {consulta.unidad || "Sin unidad especificada"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 2: Fechas del Caso */}
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl flex flex-col justify-between gap-3">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-500 to-cyan-500" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                      Cronología
+                    </span>
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                      Fecha Consulta / Colegiado
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-xl shrink-0">
+                    <i className="fa-solid fa-calendar-check"></i>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    {formatDate(consulta.fecha_consulta)}
+                  </span>
+                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    Colegiado: {formatDate(consulta.fecha_colegiado, true)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 3: Semáforo de Riesgo y Puntaje */}
+              <div
+                className={`relative overflow-hidden rounded-3xl border-2 p-5 sm:p-6 shadow-xl flex flex-col justify-between gap-3 transition-all ${
+                  esAltoRiesgo
+                    ? "border-rose-500/60 dark:border-rose-400/60 bg-gradient-to-br from-rose-50/95 via-white/95 to-red-50/90 dark:from-rose-950/90 dark:via-slate-900/90 dark:to-slate-900/95"
+                    : "border-amber-500/60 dark:border-amber-400/60 bg-gradient-to-br from-amber-50/95 via-white/95 to-yellow-50/90 dark:from-amber-950/85 dark:via-slate-900/90 dark:to-slate-900/95"
+                }`}
+              >
+                <div
+                  className={`absolute inset-x-0 top-0 h-1.5 ${
+                    esAltoRiesgo
+                      ? "bg-gradient-to-r from-rose-500 via-red-500 to-orange-500"
+                      : "bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400"
+                  }`}
+                />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1.5">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/90 dark:bg-black/60 border border-white/15 px-2.5 py-0.5 shadow-inner">
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${
+                          esAltoRiesgo
+                            ? "bg-rose-500 shadow-[0_0_10px_#f43f5e] ring-2 ring-rose-300/80 animate-pulse"
+                            : "bg-amber-400 shadow-[0_0_10px_#fbbf24] ring-2 ring-amber-200/70"
+                        }`}
+                      />
+                      <span className="text-[10px] font-black uppercase tracking-wider text-white ml-1">
+                        {esAltoRiesgo ? "Alto Riesgo (≥25)" : "Riesgo < 25"}
+                      </span>
+                    </div>
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Puntaje Consulta
+                    </p>
+                  </div>
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl shadow-md shrink-0 ${
+                      esAltoRiesgo
+                        ? "bg-gradient-to-br from-rose-600 to-red-600"
+                        : "bg-gradient-to-br from-amber-500 to-orange-500"
+                    }`}
+                  >
+                    <i className="fa-solid fa-heart-pulse"></i>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span
+                    className={`text-4xl sm:text-5xl font-black tracking-tight ${
+                      esAltoRiesgo ? "text-rose-600 dark:text-rose-400" : "text-amber-600 dark:text-amber-400"
+                    }`}
+                  >
+                    {Number(consulta.puntaje_total_consulta) || 0}
+                  </span>
+                  <span className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
+                    puntos MARO
+                  </span>
+                </div>
+              </div>
+
+              {/* Card 4: Semanas de Gestación y Diagnóstico */}
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl flex flex-col justify-between gap-3">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-purple-400 to-indigo-500" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-purple-700 dark:text-purple-300">
+                      Etapa Obstétrica
+                    </span>
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                      SDG / Diagnóstico
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-purple-500/15 dark:bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-700 dark:text-purple-300 text-xl shrink-0">
+                    <i className="fa-solid fa-person-pregnant"></i>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    {consulta.semanas_gestacion ?? consulta.sdg_ingreso ?? "—"} SDG
+                  </span>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 truncate mt-0.5" title={consulta.diagnostico || ""}>
+                    {consulta.diagnostico || "Sin diagnóstico asentado"}
+                  </p>
+                </div>
+              </div>
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-              <div className="rounded-2xl border border-slate-700 bg-slate-900/65 p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold">Observaciones generales</h2>
-                    <p className="text-sm text-slate-300/80">Comentarios globales del plan colegiado</p>
+            {/* SECCIÓN DE OBSERVACIONES Y RESUMEN DEL PLAN */}
+            <section className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+              {/* Observaciones generales */}
+              <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl space-y-3 transition-colors">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <i className="fa-solid fa-comment-medical text-emerald-600 dark:text-emerald-400 text-lg"></i>
+                    <div>
+                      <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                        Observaciones Generales
+                      </h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Comentarios globales, acuerdos de dictaminación o notas de la sesión colegiada
+                      </p>
+                    </div>
                   </div>
-                  <span className="inline-flex items-center rounded-full border border-slate-600 px-3 py-1 text-xs text-slate-200">
+                  <span
+                    className={`text-xs px-3 py-1 rounded-full font-bold border ${
+                      plan?.estatus === "completo"
+                        ? "border-emerald-400/60 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-200"
+                        : "border-amber-400/60 bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200"
+                    }`}
+                  >
                     {plan?.estatus === "completo" ? "Completo" : "Borrador"}
                   </span>
                 </div>
+
                 <textarea
                   value={observaciones}
                   onChange={(event) => {
                     setSaveMessage(null);
                     setObservaciones(event.target.value);
                   }}
-                  rows={5}
-                  className="mt-4 w-full rounded-2xl border border-slate-600 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
-                  placeholder="Agrega aquí observaciones generales, acuerdos o notas del colegiado"
+                  rows={4}
+                  className="w-full rounded-2xl border border-slate-300 dark:border-white/15 bg-slate-50/70 dark:bg-slate-950/70 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 placeholder:text-slate-400"
+                  placeholder="Escribe aquí las observaciones generales, acuerdos de la mesa colegiada o compromisos interinstitucionales..."
                 />
               </div>
 
-              <div className="rounded-2xl border border-slate-700 bg-slate-900/65 p-5 space-y-4">
-                <div>
-                  <h2 className="text-lg font-semibold">Resumen del plan</h2>
-                  <p className="text-sm text-slate-300/80">Control rápido del seguimiento</p>
+              {/* Resumen del plan */}
+              <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl space-y-4 transition-colors flex flex-col justify-between">
+                <div className="border-b border-slate-200 dark:border-white/10 pb-3 flex items-center gap-2.5">
+                  <i className="fa-solid fa-chart-pie text-emerald-600 dark:text-emerald-400 text-lg"></i>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                      Resumen del Plan
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Avance de cumplimiento y acciones
+                    </p>
+                  </div>
                 </div>
-                <MetricMini title="Acciones capturadas" value={String(totalAcciones)} />
-                <MetricMini title="Cumplidas" value={String(accionesCompletadas)} />
-                <MetricMini title="Última actualización" value={formatDate(plan?.updated_at || null, true)} />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <span>Avance Global</span>
+                    <span className="font-mono text-emerald-700 dark:text-emerald-300 font-extrabold text-sm">
+                      {porcentajeAvance}%
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                      style={{ width: `${porcentajeAvance}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 p-3 text-center">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block tracking-wider">
+                      Acciones
+                    </span>
+                    <span className="text-2xl font-black text-slate-900 dark:text-white">
+                      {totalAcciones}
+                    </span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 p-3 text-center">
+                    <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 block tracking-wider">
+                      Cumplidas
+                    </span>
+                    <span className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
+                      {accionesCompletadas}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+                  Última actualización: {formatDate(plan?.updated_at || null, true)}
+                </p>
               </div>
             </section>
 
+            {/* SECCIÓN DE ACCIONES POR NIVEL DE ATENCIÓN */}
             <section className="space-y-4">
-              {NIVELES.map((nivel) => {
+              {NIVELES_CONFIG.map((nivel) => {
                 const items = acciones[nivel.key];
                 const isCollapsed = collapsed[nivel.key];
                 const completadas = items.filter((i) => i.cumplido).length;
+
                 return (
-                  <div key={nivel.key} className={`rounded-2xl border ${nivel.tone}`}>
-                    {/* Cabecera siempre visible — actúa como toggle */}
+                  <div
+                    key={nivel.key}
+                    className={`rounded-2xl border shadow-xl transition-colors overflow-hidden ${nivel.cardTone}`}
+                  >
+                    {/* Cabecera / Acordeón */}
                     <div
-                      className="flex flex-wrap items-center justify-between gap-3 p-5 cursor-pointer select-none"
+                      className="flex flex-wrap items-center justify-between gap-3 p-5 sm:p-6 cursor-pointer select-none bg-white/70 dark:bg-slate-900/60 backdrop-blur-sm border-b border-inherit"
                       onClick={() => toggleCollapsed(nivel.key)}
                     >
                       <div className="flex items-center gap-3">
                         <span
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/20 text-xs text-white transition-transform duration-200"
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-slate-300 dark:border-white/20 text-xs text-slate-700 dark:text-white transition-transform duration-200 bg-white/80 dark:bg-white/5"
                           style={{ transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
                         >
-                          ▼
+                          <i className="fa-solid fa-chevron-down text-xs"></i>
                         </span>
-                        <div>
-                          <h2 className="text-lg font-semibold">{nivel.title}</h2>
-                          <p className="text-xs text-slate-300/70">
-                            {items.length === 0
-                              ? "Sin acciones"
-                              : `${completadas}/${items.length} completadas`}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); addAction(nivel.key); }}
-                        disabled={items.length >= 5}
-                        className="rounded-full border border-white/20 px-3 py-1.5 text-sm text-white hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Agregar acción
-                      </button>
-                    </div>
-
-                    {!isCollapsed && <div className="px-5 pb-5 space-y-3">
-                      {items.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-white/15 bg-black/10 px-4 py-5 text-sm text-slate-300/80">
-                          Sin acciones capturadas en este nivel.
-                        </div>
-                      ) : (
-                        items.map((item, index) => (
-                          <div key={`${nivel.key}-${index}-${item.id || "nuevo"}`} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <span className="inline-flex items-center rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.14em] text-slate-200">
-                                Acción {index + 1}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => removeAction(nivel.key, index)}
-                                className="text-xs rounded-full border border-red-500/30 px-3 py-1 text-red-200 hover:border-red-400/60"
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-
-                            <textarea
-                              value={item.descripcion}
-                              onChange={(event) => updateAction(nivel.key, index, { descripcion: event.target.value })}
-                              rows={3}
-                              maxLength={500}
-                              className="mt-3 w-full rounded-2xl border border-slate-600 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
-                              placeholder="Describe la acción a realizar"
-                            />
-                            <div className="mt-1 flex justify-end">
-                              <span className={`text-xs ${item.descripcion.length >= 480 ? 'text-rose-400' : 'text-slate-400'}`}>
-                                {item.descripcion.length} / 500
-                              </span>
-                            </div>
-
-                            <label className="mt-3 flex items-center gap-3 text-sm text-slate-200">
-                              <input
-                                type="checkbox"
-                                checked={item.cumplido}
-                                onChange={(event) => updateAction(nivel.key, index, { cumplido: event.target.checked })}
-                                className="h-4 w-4 rounded border-slate-500 bg-slate-900"
-                              />
-                              Cumplimiento realizado
-                            </label>
-
-                            <p className="mt-2 text-xs text-slate-400">
-                              {item.cumplido
-                                ? `Fecha de cumplimiento: ${formatDate(item.fecha_cumplimiento || null, true)}`
-                                : "Pendiente de cumplimiento"}
+                        <div className="flex items-center gap-2.5">
+                          <i className={`${nivel.icon} text-lg text-slate-700 dark:text-slate-300`}></i>
+                          <div>
+                            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                              {nivel.title}
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {items.length === 0
+                                ? "Sin acciones registradas"
+                                : `${completadas} de ${items.length} completadas (${Math.round((completadas / items.length) * 100)}%)`}
                             </p>
                           </div>
-                        ))
-                      )}
-                    </div>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-xs px-2.5 py-1 rounded-full font-bold border ${nivel.badgeTone}`}
+                        >
+                          {items.length}/5 acciones
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addAction(nivel.key);
+                          }}
+                          disabled={items.length >= 5}
+                          className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold shadow-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${nivel.buttonTone}`}
+                        >
+                          <i className="fa-solid fa-plus text-xs"></i>
+                          <span>Agregar acción</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {!isCollapsed && (
+                      <div className="p-5 sm:p-6 space-y-4">
+                        {items.length === 0 ? (
+                          <div className="rounded-2xl border-2 border-dashed border-slate-300 dark:border-white/15 bg-white/40 dark:bg-black/20 p-8 text-center text-sm text-slate-500 dark:text-slate-400 space-y-1">
+                            <i className="fa-solid fa-circle-info text-xl text-slate-400 block mb-1"></i>
+                            <p className="font-semibold">Sin acciones capturadas en este nivel</p>
+                            <p className="text-xs">
+                              Haz clic en &quot;Agregar acción&quot; para registrar tareas para {nivel.title.toLowerCase()}.
+                            </p>
+                          </div>
+                        ) : (
+                          items.map((item, index) => (
+                            <div
+                              key={`${nivel.key}-${index}-${item.id || "nuevo"}`}
+                              className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/90 p-4 sm:p-5 shadow-md space-y-3 transition-colors"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-white/10 pb-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/15 px-3 py-0.5 text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                                    Acción {index + 1}
+                                  </span>
+                                  {item.cumplido && (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-200">
+                                      <i className="fa-solid fa-check text-[10px]"></i>
+                                      Cumplida
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeAction(nivel.key, index)}
+                                  className="inline-flex items-center gap-1 text-xs rounded-xl border border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-900/20 px-3 py-1 text-rose-700 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors cursor-pointer"
+                                >
+                                  <i className="fa-solid fa-trash text-xs"></i>
+                                  <span>Eliminar</span>
+                                </button>
+                              </div>
+
+                              <textarea
+                                value={item.descripcion}
+                                onChange={(event) =>
+                                  updateAction(nivel.key, index, { descripcion: event.target.value })
+                                }
+                                rows={3}
+                                maxLength={500}
+                                className="w-full rounded-2xl border border-slate-300 dark:border-white/15 bg-slate-50/70 dark:bg-slate-950/70 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 placeholder:text-slate-400"
+                                placeholder="Describe puntualmente la acción técnica, médica o administrativa a realizar..."
+                              />
+
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                                <label className="inline-flex items-center gap-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={item.cumplido}
+                                    onChange={(event) =>
+                                      updateAction(nivel.key, index, { cumplido: event.target.checked })
+                                    }
+                                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                  />
+                                  <span>Cumplimiento realizado</span>
+                                </label>
+
+                                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                                  <span>
+                                    {item.cumplido
+                                      ? `Fecha: ${formatDate(item.fecha_cumplimiento || null, true)}`
+                                      : "Pendiente"}
+                                  </span>
+                                  <span
+                                    className={
+                                      item.descripcion.length >= 480
+                                        ? "text-rose-600 dark:text-rose-400 font-bold"
+                                        : "text-slate-400"
+                                    }
+                                  >
+                                    {item.descripcion.length} / 500
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </section>
 
+            {/* AVISOS DE GUARDADO / ERROR */}
             {(error || saveMessage) && (
-              <section className={`rounded-2xl border p-4 ${error ? "border-red-500/40 bg-red-950/40 text-red-200" : "border-emerald-500/40 bg-emerald-950/40 text-emerald-200"}`}>
-                {error || saveMessage}
+              <section
+                className={`rounded-2xl border p-4 text-sm flex items-center gap-3 shadow-lg ${
+                  error
+                    ? "border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-900/20 text-rose-900 dark:text-rose-200"
+                    : "border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-900 dark:text-emerald-200"
+                }`}
+              >
+                <i
+                  className={`fa-solid ${
+                    error ? "fa-triangle-exclamation text-rose-600 text-lg" : "fa-circle-check text-emerald-600 text-lg"
+                  }`}
+                ></i>
+                <span>{error || saveMessage}</span>
               </section>
             )}
 
-            <div className="flex flex-wrap justify-end gap-3">
+            {/* BARRA DE ACCIONES INFERIOR */}
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => router.push("/colegiados")}
-                className="rounded-full border border-slate-600 px-4 py-2 text-sm text-slate-100 hover:border-slate-400"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white/90 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-5 py-2.5 text-xs font-bold text-slate-800 dark:text-white shadow-sm transition-colors cursor-pointer"
               >
-                Cancelar
+                <i className="fa-solid fa-xmark"></i>
+                <span>Cancelar</span>
               </button>
               <button
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-full bg-cyan-500 px-5 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/50 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 text-xs font-bold shadow-md transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {saving ? "Guardando..." : "Guardar plan colegiado"}
+                <i className={`fa-solid ${saving ? "fa-spinner fa-spin" : "fa-floppy-disk"}`}></i>
+                <span>{saving ? "Guardando..." : "Guardar plan colegiado"}</span>
               </button>
             </div>
           </>
         ) : null}
       </div>
     </main>
-  );
-}
-
-function MetricCard({ title, value, note }: { title: string; value: string; note: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-900/65 p-4">
-      <p className="text-sm text-slate-300">{title}</p>
-      <p className="mt-2 text-lg font-semibold">{value}</p>
-      <p className="mt-1 text-xs text-slate-400">{note}</p>
-    </div>
-  );
-}
-
-function MetricMini({ title, value }: { title: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-950/55 p-4">
-      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{title}</p>
-      <p className="mt-2 text-xl font-semibold text-slate-100">{value}</p>
-    </div>
   );
 }
