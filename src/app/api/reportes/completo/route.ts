@@ -2,21 +2,56 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { query } from "@/lib/db";
+import { requireApiAuth } from "@/lib/apiAuth";
 import ExcelJS from "exceljs";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    // Validar sesión autenticada
+    const authResult = await requireApiAuth(request, 1);
+    if (!authResult.ok) return authResult.response;
+    const { auth } = authResult;
+
     const { searchParams } = new URL(request.url);
     const format = searchParams.get("format"); // "json" o "excel" (por defecto excel)
 
+    // Restringir el alcance de los datos según el nivel del usuario
+    const whereConditions: string[] = [];
+    const queryParams: Array<string | number> = [];
+
+    if (auth.nivel === 1) {
+      if (!auth.cluesId) {
+        return NextResponse.json(
+          { error: "Usuario CLUES sin unidad asignada" },
+          { status: 403 }
+        );
+      }
+      whereConditions.push("UPPER(u.clues) = ?");
+      queryParams.push(auth.cluesId);
+    } else if (auth.nivel === 2) {
+      if (!auth.region) {
+        return NextResponse.json(
+          { error: "Usuario regional sin región asignada" },
+          { status: 403 }
+        );
+      }
+      whereConditions.push("UPPER(u.region) = ?");
+      queryParams.push(auth.region);
+    }
+
     // 1. Leer el archivo SQL
     const sqlPath = path.join(process.cwd(), "querys", "query_all.sql");
-    const sql = fs.readFileSync(sqlPath, "utf-8");
+    const baseSql = fs.readFileSync(sqlPath, "utf-8").trim().replace(/;+\s*$/, "");
 
-    // 2. Ejecutar la consulta
-    const rows = await query<any[]>(sql);
+    const finalSql =
+      whereConditions.length > 0
+        ? `${baseSql}\nWHERE ${whereConditions.join(" AND ")};`
+        : `${baseSql};`;
+
+    // 2. Ejecutar la consulta con alcance aplicado
+    const rows = await query<any[]>(finalSql, queryParams);
 
     // 3. Limpiar los datos (similar a lo que hacía Polars: quitar saltos de línea y comillas extra)
     const cleanedRows = rows.map(row => {
@@ -41,8 +76,17 @@ export async function GET(request: Request) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Reporte Pacientes");
 
-    // Agregar el encabezado general indicando que es el total
-    worksheet.addRow([`NOTA: Este archivo contiene el total de registros de la base de datos (${cleanedRows.length} casos). No se aplican filtros.`]);
+    // Agregar el encabezado general indicando el alcance del reporte
+    const alcanceTexto =
+      auth.nivel === 1
+        ? `la unidad ${auth.cluesId}`
+        : auth.nivel === 2
+        ? `la región ${auth.region}`
+        : "la base de datos estatal";
+
+    worksheet.addRow([
+      `NOTA: Este archivo contiene el total de registros de ${alcanceTexto} (${cleanedRows.length} filas).`,
+    ]);
     worksheet.mergeCells('A1:J1');
     worksheet.getRow(1).font = { bold: true, color: { argb: 'FFD97706' }, size: 12 };
     worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'left' };
