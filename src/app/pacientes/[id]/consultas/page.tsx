@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { determinarProtocoloTriage } from "@/lib/triage-protocolo";
 
 interface Consulta {
   id: number;
@@ -439,10 +440,17 @@ export default function ConsultasPaciente() {
         nivel: "ROJO",
         descripcion: "Emergencia Obstétrica Activa",
       });
-    } else if (form.hemorragia === "no visible o moderada" || form.hemorragia === "no visible o escasa") {
+    } else if (form.hemorragia === "no visible o moderada") {
       list.push({
         campo: "Hemorragia",
-        valor: form.hemorragia,
+        valor: "No visible o moderada",
+        nivel: "AMARILLO",
+        descripcion: "Urgencia calificada",
+      });
+    } else if (form.hemorragia === "no visible o escasa") {
+      list.push({
+        campo: "Hemorragia",
+        valor: "No visible o escasa",
         nivel: "AMARILLO",
         descripcion: "Hemorragia detectada",
       });
@@ -460,7 +468,7 @@ export default function ConsultasPaciente() {
         campo: "Color de Piel",
         valor: "Pálida",
         nivel: "AMARILLO",
-        descripcion: "Pálida / Posible anemia",
+        descripcion: "Urgencia calificada",
       });
     }
 
@@ -471,6 +479,13 @@ export default function ConsultasPaciente() {
         nivel: "ROJO",
         descripcion: "Alteración neurológica / Estado mental",
       });
+    } else if (form.estado_conciencia === "conciente") {
+      list.push({
+        campo: "Estado de Conciencia",
+        valor: "Consciente",
+        nivel: "AMARILLO",
+        descripcion: "Urgencia calificada",
+      });
     }
 
     if (form.respiracion === "alterada") {
@@ -479,6 +494,13 @@ export default function ConsultasPaciente() {
         valor: "Alterada",
         nivel: "ROJO",
         descripcion: "Emergencia Obstétrica Activa",
+      });
+    } else if (form.respiracion === "normal") {
+      list.push({
+        campo: "Respiración",
+        valor: "Normal",
+        nivel: "AMARILLO",
+        descripcion: "Urgencia calificada",
       });
     }
 
@@ -521,6 +543,12 @@ export default function ConsultasPaciente() {
     fcFetalAlerta, form.fc_fetal,
     form.fondo_uterino_acorde_sdg, form.ivu_repeticion,
   ]);
+
+  const protocoloTriage = useMemo(
+    () => determinarProtocoloTriage(alertasSignosVitales),
+    [alertasSignosVitales]
+  );
+  const { tieneEmergenciaObstetrica, tieneUrgenciaCalificada } = protocoloTriage;
 
   const puntajeRiesgoTotal =
     (pacienteData.factor_riesgo_antecedentes || 0) +
@@ -1162,14 +1190,26 @@ export default function ConsultasPaciente() {
                     <label className="space-y-1 text-xs">
                       <span className="text-slate-700 dark:text-slate-200 font-bold">Estado de Conciencia</span>
                       <select
-                        className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500/50"
+                        className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
+                          form.estado_conciencia === "alteraciones"
+                            ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                            : form.estado_conciencia === "conciente"
+                            ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                            : "bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+                        }`}
                         value={form.estado_conciencia}
                         onChange={(e) => handleChange("estado_conciencia", e.target.value)}
                       >
                         <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
-                        <option value="conciente" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Consciente</option>
-                        <option value="alteraciones" className="bg-amber-100 text-amber-950 dark:bg-slate-900 dark:text-amber-300 font-bold">Alteraciones</option>
+                        <option value="conciente" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Consciente</option>
+                        <option value="alteraciones" className="bg-rose-600 text-white font-bold">Alteraciones</option>
                       </select>
+                      {form.estado_conciencia === "alteraciones" && (
+                        <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
+                      )}
+                      {form.estado_conciencia === "conciente" && (
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                      )}
                     </label>
 
                     {/* Hemorragia */}
@@ -1189,11 +1229,14 @@ export default function ConsultasPaciente() {
                         <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
                         <option value="sin hemorragia" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Sin hemorragia</option>
                         <option value="visible o abundante" className="bg-rose-600 text-white font-bold">Visible o abundante (Emergencia)</option>
-                        <option value="no visible o moderada" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">No visible o moderada</option>
+                        <option value="no visible o moderada" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">No visible o moderada</option>
                         <option value="no visible o escasa" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">No visible o escasa</option>
                       </select>
                       {form.hemorragia === "visible o abundante" && (
                         <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
+                      )}
+                      {form.hemorragia === "no visible o moderada" && (
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
                       )}
                     </label>
 
@@ -1204,17 +1247,22 @@ export default function ConsultasPaciente() {
                         className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
                           form.respiracion === "alterada"
                             ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                            : form.respiracion === "normal"
+                            ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
                             : "bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
                         }`}
                         value={form.respiracion}
                         onChange={(e) => handleChange("respiracion", e.target.value)}
                       >
                         <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
-                        <option value="normal" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Normal</option>
+                        <option value="normal" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Normal</option>
                         <option value="alterada" className="bg-rose-600 text-white font-bold">Alterada</option>
                       </select>
                       {form.respiracion === "alterada" && (
                         <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
+                      )}
+                      {form.respiracion === "normal" && (
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
                       )}
                     </label>
 
@@ -1239,6 +1287,9 @@ export default function ConsultasPaciente() {
                       </select>
                       {form.color_piel === "cianotica" && (
                         <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Cianótica! (+4 pts - Emergencia)</p>
+                      )}
+                      {form.color_piel === "palida" && (
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
                       )}
                     </label>
                   </div>
@@ -2215,6 +2266,41 @@ export default function ConsultasPaciente() {
                     </div>
                   )}
                 </div>
+
+                {/* NOTIFICACIÓN PROTOCOLO: EMERGENCIA OBSTÉTRICA O URGENCIA CALIFICADA */}
+                {tieneEmergenciaObstetrica ? (
+                  <div className="rounded-2xl border-2 border-rose-500 bg-rose-50 dark:bg-rose-950/60 p-4 space-y-2 shadow-xl ring-2 ring-rose-500/20 animate-in fade-in duration-300">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2.5 rounded-xl bg-rose-600 text-white shrink-0 shadow-md">
+                        <i className="fa-solid fa-triangle-exclamation text-base animate-pulse"></i>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black tracking-wider uppercase text-rose-700 dark:text-rose-400 block">
+                          Protocolo de Actuación Inmediata
+                        </span>
+                        <p className="text-xs font-black text-rose-950 dark:text-rose-100 leading-snug">
+                          EMERGENCIA OBSTÉTRICA: Alerta de manejo inicial, notificación inmediata a enlace zonal y referencia segura
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : tieneUrgenciaCalificada ? (
+                  <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/60 p-4 space-y-2 shadow-xl ring-2 ring-amber-500/20 animate-in fade-in duration-300">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2.5 rounded-xl bg-amber-500 text-slate-950 shrink-0 shadow-md">
+                        <i className="fa-solid fa-bell text-base animate-pulse"></i>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black tracking-wider uppercase text-amber-800 dark:text-amber-400 block">
+                          Protocolo de Actuación Inmediata
+                        </span>
+                        <p className="text-xs font-black text-amber-950 dark:text-amber-100 leading-snug">
+                          URGENCIA CALIFICADA: iniciar manejo, notificación inmediata a enlace zonal y referencia segura
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* ALERTA DE IVU O CERVICOVAGINITIS DE REPETICIÓN */}
                 {form.ivu_repeticion && (

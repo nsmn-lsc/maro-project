@@ -252,7 +252,7 @@ export default function NuevoPaciente() {
   const factoresSegundoNivelActivos = useMemo(() => {
     const list: string[] = [];
     if (form.factor_diabetes) list.push("Diabetes");
-    if (form.factor_hipertension) list.push("Hipertensión");
+    if (form.factor_hipertension) list.push("Hipertensión Arterial Sistemica");
     if (form.factor_obesidad) list.push("Obesidad");
     if (form.factor_cardiopatia) list.push("Cardiopatía");
     if (form.factor_hepatopatia) list.push("Hepatopatía");
@@ -1250,7 +1250,7 @@ export default function NuevoPaciente() {
               </label>
 
               <label className="space-y-1 text-sm">
-                <span className="text-slate-700 dark:text-slate-100 font-medium">IMC inicial</span>
+                <span className="text-slate-700 dark:text-slate-100 font-medium">IMC inicial (En 1er trimestre/Pregestacional)</span>
                 <input
                   type="number"
                   step="0.1"
@@ -1356,7 +1356,7 @@ export default function NuevoPaciente() {
                       { key: "factor_hepatopatia", label: "Hepatopatía", puntos: 12, nivel: "critico" },
                       { key: "factor_enf_autoinmune", label: "Enf. autoinmune", puntos: 12, nivel: "critico" },
                       { key: "factor_diabetes", label: "Diabetes", puntos: 4, nivel: "moderado" },
-                      { key: "factor_hipertension", label: "Hipertensión", puntos: 4, nivel: "moderado" },
+                      { key: "factor_hipertension", label: "Hipertensión Arterial Sistemica", puntos: 4, nivel: "moderado" },
                       { key: "factor_neuropatia", label: "Neuropatía", puntos: 4, nivel: "moderado" },
                       { key: "factor_enf_psiquiatrica", label: "Enf. psiquiátrica", puntos: 4, nivel: "moderado" },
                       { key: "factor_obesidad", label: "Obesidad", puntos: 4, nivel: "moderado" },
@@ -1414,7 +1414,7 @@ export default function NuevoPaciente() {
                                       }`}
                                     />
                                   </div>
-                                  <span className="truncate font-medium">{item.label}</span>
+                                  <span className="truncate font-medium" title={item.label}>{item.label}</span>
                                 </div>
                                 <span
                                   className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
@@ -1525,7 +1525,7 @@ export default function NuevoPaciente() {
                                           }`}
                                         />
                                       </div>
-                                      <span className="truncate font-medium">{item.label}</span>
+                                      <span className="truncate font-medium" title={item.label}>{item.label}</span>
                                     </div>
                                     <span
                                       className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold transition-colors ${
@@ -1658,17 +1658,44 @@ export default function NuevoPaciente() {
                     <i className="fa-solid fa-virus text-base text-rose-500 dark:text-rose-400"></i>
                     <span>Factores epidemiológicos</span>
                   </div>
-                  <span className="text-xs text-slate-600 dark:text-slate-300">
-                    {mostrarFactoresEpid ? 'Ocultar' : 'Mostrar'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {form.factores_riesgo_epid !== "ninguno" && (
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                        form.factores_riesgo_epid === "es_portadora"
+                          ? "bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border-rose-400/60"
+                          : "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-200 border-amber-400/60"
+                      }`}>
+                        {form.factores_riesgo_epid === "es_portadora" ? "Portadora activa" : "Contacto activo"}
+                      </span>
+                    )}
+                    <span className="text-xs text-slate-600 dark:text-slate-300">
+                      {mostrarFactoresEpid ? 'Ocultar' : 'Mostrar'}
+                    </span>
+                  </div>
                 </button>
               </div>
               
               {mostrarFactoresEpid && (
                 <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
-                  <p className="text-xs text-slate-600 dark:text-slate-300 px-1 font-normal">
-                    Portadora o contacto de enfermedad sujeta a vigilancia epidemiológica (Tuberculosis, VIH, Sífilis, Chagas, etc.)
-                  </p>
+                  <div className="rounded-xl border border-rose-300/80 dark:border-rose-500/40 bg-rose-50/90 dark:bg-rose-950/30 p-3.5 sm:p-4 flex items-start gap-3 shadow-sm">
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-300 flex items-center justify-center shrink-0 text-base mt-0.5">
+                      <i className="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div className="space-y-1 min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 block">
+                        Vigilancia Epidemiológica Obligatoria
+                      </span>
+                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                        Portadora o contacto de enfermedad sujeta a vigilancia epidemiológica{" "}
+                        <span className="font-semibold text-rose-800 dark:text-rose-300">
+                          (Tuberculosis, VIH, Sífilis, Chagas, etc.)
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                        Indique si la paciente se encuentra en condición de contacto o portadora para activar el protocolo de seguimiento epidemiológico:
+                      </p>
+                    </div>
+                  </div>
                   
                   {/* FILA HORIZONTAL DE 3 COLUMNAS COMPACTAS CON MICRO-SWITCH */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">

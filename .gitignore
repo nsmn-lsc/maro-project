@@ -58,3 +58,4 @@ credenciales-bootstrap*
 *.tar.gz
 
 context_proyecto.txt
+.aider*
