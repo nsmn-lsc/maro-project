@@ -554,7 +554,7 @@ export default function DetalleColegiadoPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-teal-700 dark:text-teal-300">
-                      Jurisdicción
+                      Región Sanitaria
                     </span>
                     <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
                       Región / Unidad
@@ -1059,7 +1059,7 @@ export default function DetalleColegiadoPage() {
                                   <span>Observaciones Regionales</span>
                                 </label>
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700/50">
-                                  🔒 Jurisdicción / Región
+                                  🔒 Equipo Regional
                                 </span>
                               </div>
                               <textarea

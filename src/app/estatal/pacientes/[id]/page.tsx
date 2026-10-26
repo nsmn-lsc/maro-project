@@ -7,6 +7,7 @@ import { evaluarCampoIndividual } from "@/lib/riesgoFactores";
 import { evaluarTamizajes } from "@/lib/riesgoTamizajes";
 import { clasificarNivelRiesgo } from "@/lib/estatal-riesgo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { validarCriterioColegiacion } from "@/lib/colegiados";
 
 type SessionInfo = {
   nivel?: number;
@@ -282,8 +283,12 @@ export default function DetallePacienteEstatalPage() {
   );
   const yaColegiado = Boolean(consultaColegiada);
 
+  const evaluacionColegiacion = useMemo(() => {
+    return validarCriterioColegiacion(paciente, ultimaConsulta);
+  }, [paciente, ultimaConsulta]);
+
   const handleColegiarCaso = async () => {
-    if (!ultimaConsulta || colegiando || yaColegiado) return;
+    if (!ultimaConsulta || colegiando || yaColegiado || !evaluacionColegiacion.califica) return;
 
     setColegiando(true);
     setColegiadoError(null);
@@ -792,17 +797,18 @@ export default function DetallePacienteEstatalPage() {
                         <span>Formato Oficial</span>
                       </Link>
                     </>
-                  ) : (
+                  ) : evaluacionColegiacion.califica ? (
                     <button
                       type="button"
                       onClick={handleColegiarCaso}
                       disabled={!ultimaConsulta || colegiando}
                       className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/50 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-4 py-2 text-xs font-bold text-white shadow-md transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={evaluacionColegiacion.motivo || "Caso califica para colegiación"}
                     >
                       <i className={`fa-solid ${colegiando ? "fa-spinner fa-spin" : "fa-users-viewfinder"}`} />
                       <span>{colegiando ? "Dictaminando..." : "Colegiar Caso"}</span>
                     </button>
-                  )}
+                  ) : null}
 
                   <Link
                     href="/estatal"

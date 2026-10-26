@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   normalizarAccionesColegiadas,
   fusionarObservacionesConRBAC,
+  validarCriterioColegiacion,
   type NivelObservaciones,
 } from "../colegiados";
 
@@ -182,5 +183,81 @@ describe("Auditoría de Control de Acceso (RBAC): fusionarObservacionesConRBAC",
     // Deben actualizarse los estatales:
     expect(fusionado.obs_estatal_salud_mujeres).toBe("Estatal SM actualizado por estatal");
     expect(fusionado.obs_atencion_medica).toBe("Atención Médica actualizada por estatal");
+  });
+});
+
+describe("Auditoría de Criterios de Colegiación: validarCriterioColegiacion", () => {
+  it("califica cuando el puntaje total es >= 25", () => {
+    const paciente = { edad: 25, imc_inicial: 22 };
+    const consulta = { puntaje_total_consulta: 28 };
+
+    const res = validarCriterioColegiacion(paciente, consulta);
+    expect(res.califica).toBe(true);
+    expect(res.esPuntaje25Plus).toBe(true);
+    expect(res.motivo).toContain("28 pts (≥ 25)");
+  });
+
+  it("califica cuando riesgo_25_plus es 1 aunque puntaje_total_consulta no esté seteado", () => {
+    const paciente = { factor_riesgo_antecedentes: 15, factor_riesgo_tamizajes: 10 };
+    const consulta = { riesgo_25_plus: 1 };
+
+    const res = validarCriterioColegiacion(paciente, consulta);
+    expect(res.califica).toBe(true);
+    expect(res.esPuntaje25Plus).toBe(true);
+  });
+
+  it("califica con puntaje bajo (< 25) cuando la paciente tiene entre 10 y 14 años", () => {
+    const paciente = { edad: 13, imc_inicial: 21 };
+    const consulta = { puntaje_total_consulta: 8 };
+
+    const res = validarCriterioColegiacion(paciente, consulta);
+    expect(res.califica).toBe(true);
+    expect(res.esPuntaje25Plus).toBe(false);
+    expect(res.esCriterioClinicoGrave).toBe(true);
+    expect(res.motivo).toContain("13 años (10-14 años)");
+  });
+
+  it("califica con puntaje bajo (< 25) cuando el IMC inicial es >= 31 (obesidad severa)", () => {
+    const paciente = { edad: 28, imc_inicial: 34.5 };
+    const consulta = { puntaje_total_consulta: 12 };
+
+    const res = validarCriterioColegiacion(paciente, consulta);
+    expect(res.califica).toBe(true);
+    expect(res.esCriterioClinicoGrave).toBe(true);
+    expect(res.motivo).toContain("IMC 34.5 (≥ 31)");
+  });
+
+  it("califica con puntaje bajo (< 25) si tiene cardiopatía, hepatopatía, coagulopatía o nefropatía", () => {
+    const casos = [
+      { factor_cardiopatia: 1, esperado: "Cardiopatía" },
+      { factor_hepatopatia: 1, esperado: "Hepatopatía" },
+      { factor_coagulopatias: 1, esperado: "Coagulopatía" },
+      { factor_nefropatia: 1, esperado: "Nefropatía" },
+    ];
+
+    for (const c of casos) {
+      const res = validarCriterioColegiacion({ edad: 24, imc_inicial: 23, ...c }, { puntaje_total_consulta: 5 });
+      expect(res.califica).toBe(true);
+      expect(res.esCriterioClinicoGrave).toBe(true);
+      expect(res.motivo).toContain(c.esperado);
+    }
+  });
+
+  it("NO califica si el puntaje es < 25 y no tiene ningún criterio clínico grave", () => {
+    const paciente = {
+      edad: 26,
+      imc_inicial: 24,
+      factor_cardiopatia: 0,
+      factor_hepatopatia: 0,
+      factor_coagulopatias: 0,
+      factor_nefropatia: 0,
+    };
+    const consulta = { puntaje_total_consulta: 16, riesgo_25_plus: 0 };
+
+    const res = validarCriterioColegiacion(paciente, consulta);
+    expect(res.califica).toBe(false);
+    expect(res.esPuntaje25Plus).toBe(false);
+    expect(res.esCriterioClinicoGrave).toBe(false);
+    expect(res.motivo).toBeNull();
   });
 });

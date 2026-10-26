@@ -532,7 +532,7 @@ export default function RegionDetalleColegiadoPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-teal-700 dark:text-teal-300">
-                      Jurisdicción
+                      Región Sanitaria
                     </span>
                     <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
                       Región / Unidad

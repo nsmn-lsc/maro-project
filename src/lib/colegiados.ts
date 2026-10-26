@@ -195,3 +195,86 @@ export function fusionarObservacionesConRBAC(params: {
     obs_atencion_medica: existing?.obs_atencion_medica ?? null,
   };
 }
+
+export type CriterioColegiacionResultado = {
+  califica: boolean;
+  motivo: string | null;
+  esPuntaje25Plus: boolean;
+  esCriterioClinicoGrave: boolean;
+  detallesCriterios: string[];
+};
+
+/**
+ * Evalúa si una paciente/consulta califica para ser colegiada según los lineamientos:
+ * - Puntuación de riesgo obstétrico >= 25 puntos (riesgo muy alto).
+ * - O Criterios Clínicos Graves de alarma materna (edad 10-14, IMC >= 31, cardiopatía, hepatopatía, coagulopatía, nefropatía).
+ */
+export function validarCriterioColegiacion(
+  paciente?: {
+    edad?: number | null;
+    imc_inicial?: number | null;
+    factor_cardiopatia?: number | boolean | null;
+    factor_hepatopatia?: number | boolean | null;
+    factor_coagulopatias?: number | boolean | null;
+    factor_nefropatia?: number | boolean | null;
+    factor_riesgo_antecedentes?: number | null;
+    factor_riesgo_tamizajes?: number | null;
+  } | null,
+  consulta?: {
+    puntaje_total_consulta?: number | null;
+    puntaje_consulta_parametros?: number | null;
+    riesgo_25_plus?: number | boolean | null;
+  } | null
+): CriterioColegiacionResultado {
+  const detalles: string[] = [];
+
+  const puntajeTotal =
+    consulta?.puntaje_total_consulta !== null && consulta?.puntaje_total_consulta !== undefined
+      ? Number(consulta.puntaje_total_consulta) || 0
+      : (Number(paciente?.factor_riesgo_antecedentes) || 0) +
+        (Number(paciente?.factor_riesgo_tamizajes) || 0) +
+        (Number(consulta?.puntaje_consulta_parametros) || 0);
+
+  const esPuntaje25Plus = puntajeTotal >= 25 || Number(consulta?.riesgo_25_plus) === 1;
+  if (esPuntaje25Plus) {
+    detalles.push(`Puntaje de riesgo obstétrico: ${puntajeTotal} pts (≥ 25)`);
+  }
+
+  // Criterios clínicos graves
+  const edad = Number(paciente?.edad) || 0;
+  if (edad >= 10 && edad <= 14) {
+    detalles.push(`Edad de muy alto riesgo: ${edad} años (10-14 años)`);
+  }
+
+  const imc = Number(paciente?.imc_inicial) || 0;
+  if (imc >= 31) {
+    detalles.push(`Obesidad mórbida/severa: IMC ${imc.toFixed(1)} (≥ 31)`);
+  }
+
+  if (Number(paciente?.factor_cardiopatia) === 1) {
+    detalles.push("Cardiopatía preexistente o diagnosticada");
+  }
+
+  if (Number(paciente?.factor_hepatopatia) === 1) {
+    detalles.push("Hepatopatía materna activa o crónica");
+  }
+
+  if (Number(paciente?.factor_coagulopatias) === 1) {
+    detalles.push("Coagulopatía materna");
+  }
+
+  if (Number(paciente?.factor_nefropatia) === 1) {
+    detalles.push("Nefropatía materna");
+  }
+
+  const esCriterioClinicoGrave = detalles.some((d) => !d.startsWith("Puntaje de riesgo obstétrico"));
+  const califica = esPuntaje25Plus || esCriterioClinicoGrave;
+
+  return {
+    califica,
+    motivo: califica ? detalles.join(" | ") : null,
+    esPuntaje25Plus,
+    esCriterioClinicoGrave,
+    detallesCriterios: detalles,
+  };
+}

@@ -515,7 +515,7 @@ export default function RegionPage() {
                       Expedientes Activos
                     </span>
                     <span className="text-xs text-slate-600 dark:text-slate-400">
-                      Población obstétrica en jurisdicción
+                      Población obstétrica en la región
                     </span>
                   </div>
                 </div>

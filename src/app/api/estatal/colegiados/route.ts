@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { requireApiAuth } from "@/lib/apiAuth";
+import { validarCriterioColegiacion } from "@/lib/colegiados";
 
 const columnCache = new Map<string, boolean>();
 
@@ -157,6 +158,40 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { message: "No se pudo determinar el paciente para colegiar" },
         { status: 400 }
+      );
+    }
+
+    // 1. Obtener datos del paciente
+    const pacienteRows: any = await query(
+      `SELECT id, region, edad, imc_inicial, factor_cardiopatia, factor_hepatopatia,
+              factor_coagulopatias, factor_nefropatia, factor_riesgo_antecedentes, factor_riesgo_tamizajes
+       FROM cat_pacientes
+       WHERE id = ?
+       LIMIT 1`,
+      [targetPacienteId]
+    );
+    const paciente = pacienteRows?.[0] || null;
+
+    // 2. Obtener datos de la consulta para evaluar criterios
+    const consultaRows: any = await query(
+      `SELECT id, puntaje_total_consulta, puntaje_consulta_parametros, riesgo_25_plus
+       FROM consultas_prenatales
+       WHERE id = ?
+       LIMIT 1`,
+      [targetConsultaId]
+    );
+    const consulta = consultaRows?.[0] || null;
+
+    // 3. Validar criterio clínico estricto: Puntaje >= 25 o Criterio Clínico Grave
+    const evaluacion = validarCriterioColegiacion(paciente, consulta);
+    if (!evaluacion.califica) {
+      return NextResponse.json(
+        {
+          message:
+            "Este caso no califica para ser colegiado. Requiere un puntaje de riesgo >= 25 o la presencia de criterios clínicos graves.",
+          califica: false,
+        },
+        { status: 422 }
       );
     }
 
