@@ -192,6 +192,12 @@ export default function AccionesPreventivasPage() {
           onChange={(e) => handleChange(key, e.target.value)}
         />
       </label>
+      {key === "estomatologia" && Boolean(form.estomatologia) && (
+        <div className="mt-2 flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-600/50 px-3 py-2 text-xs font-semibold text-amber-900 dark:text-amber-200 shadow-sm animate-in fade-in">
+          <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400 shrink-0 text-sm" />
+          <span>Atención estrecha y continua en 1er Nivel de Atención</span>
+        </div>
+      )}
     </div>
   );
 
@@ -330,13 +336,13 @@ export default function AccionesPreventivasPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[
-                { label: "Vacuna TD", value: acciones.td, icon: "fa-solid fa-shield-halved" },
-                { label: "Vacuna TDPA", value: acciones.tdpa, icon: "fa-solid fa-shield-halved" },
-                { label: "Vacuna INFLUENZA", value: acciones.influenza, icon: "fa-solid fa-virus-slash" },
-                { label: "Vacuna COVID", value: acciones.covid, icon: "fa-solid fa-virus-covid" },
-                { label: "Otras Vacunas", value: acciones.otras, icon: "fa-solid fa-syringe" },
-                { label: "Consulta Estomatología", value: acciones.estomatologia, icon: "fa-solid fa-tooth" },
-                { label: "Consulta Nutrición", value: acciones.nutricion, icon: "fa-solid fa-apple-whole" },
+                { label: "Vacuna TD", value: acciones.td, icon: "fa-solid fa-shield-halved", isEstomatologia: false },
+                { label: "Vacuna TDPA", value: acciones.tdpa, icon: "fa-solid fa-shield-halved", isEstomatologia: false },
+                { label: "Vacuna INFLUENZA", value: acciones.influenza, icon: "fa-solid fa-virus-slash", isEstomatologia: false },
+                { label: "Vacuna COVID", value: acciones.covid, icon: "fa-solid fa-virus-covid", isEstomatologia: false },
+                { label: "Otras Vacunas", value: acciones.otras, icon: "fa-solid fa-syringe", isEstomatologia: false },
+                { label: "Consulta Estomatología", value: acciones.estomatologia, icon: "fa-solid fa-tooth", isEstomatologia: true },
+                { label: "Consulta Nutrición", value: acciones.nutricion, icon: "fa-solid fa-apple-whole", isEstomatologia: false },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -352,6 +358,12 @@ export default function AccionesPreventivasPage() {
                       {formatFechaMostrar(item.value)}
                     </span>
                   </div>
+                  {item.isEstomatologia && Boolean(item.value) && (
+                    <div className="mt-2 flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-600/50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-900 dark:text-amber-200">
+                      <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>Atención estrecha y continua en 1er Nivel de Atención</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
