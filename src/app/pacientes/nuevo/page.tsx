@@ -109,6 +109,8 @@ export default function NuevoPaciente() {
   const [edadAlertaConfirmada, setEdadAlertaConfirmada] = useState(false);
   const [showEdadMayor35Modal, setShowEdadMayor35Modal] = useState(false);
   const [edadMayor35Confirmada, setEdadMayor35Confirmada] = useState(false);
+  const [showCesareasAlertaModal, setShowCesareasAlertaModal] = useState(false);
+  const [cesareasAlertaConfirmada, setCesareasAlertaConfirmada] = useState(false);
 
   const hospitalesDisponibles = useMemo(() => {
     if (!session.clues) return HOSPITALES_REFERENCIA;
@@ -404,12 +406,23 @@ export default function NuevoPaciente() {
     return Number.isNaN(num) ? null : num;
   };
 
-  const edadNumero = Number(form.edad);
-  const edadEnRangoAlerta = Number.isFinite(edadNumero) && edadNumero >= 10 && edadNumero <= 14;
+  const edadTexto = form.edad.trim();
+  const edadNumero = edadTexto !== "" ? Number(edadTexto) : NaN;
+  const edadEnRangoAlerta = Number.isFinite(edadNumero) && edadNumero > 0 && edadNumero < 15;
   const edadMayor35Alerta = Number.isFinite(edadNumero) && edadNumero > 35;
+
+  const cesareasTexto = form.cesareas.trim();
+  const cesareasNumero = cesareasTexto !== "" ? Number(cesareasTexto) : NaN;
+  const cesareasMayor2Alerta = Number.isFinite(cesareasNumero) && cesareasNumero > 2;
 
   useEffect(() => {
     if (edadEnRangoAlerta && !edadAlertaConfirmada) {
+      if (edadNumero < 10) {
+        const timer = setTimeout(() => {
+          setShowEdadAlertaModal(true);
+        }, 600);
+        return () => clearTimeout(timer);
+      }
       setShowEdadAlertaModal(true);
       return;
     }
@@ -418,7 +431,7 @@ export default function NuevoPaciente() {
       setShowEdadAlertaModal(false);
       setEdadAlertaConfirmada(false);
     }
-  }, [edadEnRangoAlerta, edadAlertaConfirmada]);
+  }, [edadEnRangoAlerta, edadAlertaConfirmada, edadNumero]);
 
   useEffect(() => {
     if (edadMayor35Alerta && !edadMayor35Confirmada) {
@@ -431,6 +444,18 @@ export default function NuevoPaciente() {
       setEdadMayor35Confirmada(false);
     }
   }, [edadMayor35Alerta, edadMayor35Confirmada]);
+
+  useEffect(() => {
+    if (cesareasMayor2Alerta && !cesareasAlertaConfirmada) {
+      setShowCesareasAlertaModal(true);
+      return;
+    }
+
+    if (!cesareasMayor2Alerta) {
+      setShowCesareasAlertaModal(false);
+      setCesareasAlertaConfirmada(false);
+    }
+  }, [cesareasMayor2Alerta, cesareasAlertaConfirmada]);
 
   // Validar y abrir modal de confirmación
   const handleSubmit = (e: React.FormEvent) => {
@@ -543,6 +568,10 @@ export default function NuevoPaciente() {
     
     const errCesareas = checkInt(form.cesareas, "Cesáreas");
     if (errCesareas) { setError(errCesareas); return; }
+    if (cesareasMayor2Alerta && !cesareasAlertaConfirmada) {
+      setShowCesareasAlertaModal(true);
+      return;
+    }
     
     const errAbortos = checkInt(form.abortos, "Abortos");
     if (errAbortos) { setError(errAbortos); return; }
@@ -768,6 +797,24 @@ export default function NuevoPaciente() {
               </div>
             )}
 
+            {/* ALERTA DE ANTECEDENTES POR CESÁREAS > 2 */}
+            {cesareasMayor2Alerta && (
+              <div className="rounded-xl border border-rose-500/40 dark:border-rose-400/60 bg-rose-50 dark:bg-rose-500/20 p-3.5 space-y-2 shadow-sm animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-xs uppercase tracking-wider">
+                  <i className="fa-solid fa-triangle-exclamation text-sm text-rose-600 dark:text-rose-400"></i>
+                  <span>Alerta de Antecedentes</span>
+                </div>
+                <p className="text-xs font-semibold text-rose-950 dark:text-rose-100 leading-snug">
+                  Fecha de programacion de cesarea a mas tardar a las 35 SDG, vigilar de manera intencionada alteraciones en la implantacion de la placenta
+                </p>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  <span className="text-[10px] bg-rose-100 dark:bg-rose-400/20 border border-rose-300 dark:border-rose-300/40 text-rose-900 dark:text-rose-200 font-medium px-2 py-0.5 rounded-full">
+                    Cesáreas &gt; 2 ({form.cesareas})
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* ALERTA DE REFERENCIA POR ANTECEDENTE DE PREECLAMPSIA */}
             {form.ant_preeclampsia && (
               <div className="rounded-xl border border-amber-500/40 dark:border-amber-400/50 bg-amber-50 dark:bg-amber-500/20 p-3.5 space-y-2 shadow-sm animate-in fade-in duration-200">
@@ -842,6 +889,7 @@ export default function NuevoPaciente() {
 
             {getRecomendaciones().length === 0 ? (
               !tieneAlertaSegundoNivel &&
+              !cesareasMayor2Alerta &&
               !form.ant_preeclampsia &&
               !tieneAlertaNotificacion &&
               form.violencia !== "Positiva" &&
@@ -966,7 +1014,7 @@ export default function NuevoPaciente() {
                 </div>
                 <input
                   type="number"
-                  min={10}
+                  min={1}
                   className={`w-full rounded-lg bg-slate-50 dark:bg-white/5 border px-3 py-2 text-slate-900 dark:text-white transition-all ${
                     attemptedSubmit && !form.edad.trim()
                       ? "border-rose-500 focus:ring-rose-500 bg-rose-500/5"
@@ -2301,7 +2349,7 @@ export default function NuevoPaciente() {
         </div>
       )}
 
-      {/* MODAL DE ALERTA POR EDAD 10-14 */}
+      {/* MODAL DE ALERTA POR EDAD < 15 */}
       {showEdadAlertaModal && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
@@ -2313,7 +2361,7 @@ export default function NuevoPaciente() {
             <div className="border-b border-white/15 px-6 py-4">
               <p className="text-xs uppercase tracking-[0.2em] text-rose-100/90">Alerta prioritaria</p>
               <h2 id="edad-alerta-modal-title" className="mt-1 text-xl font-semibold text-white">
-                Paciente de 10 a 14 años
+                Paciente menor de 15 años (&lt; 15 años)
               </h2>
             </div>
 
@@ -2325,7 +2373,7 @@ export default function NuevoPaciente() {
               <ul className="space-y-2 text-sm">
                 <li className="rounded-lg border border-rose-300/35 bg-rose-950/35 px-3 py-2">Aviso al MP</li>
                 <li className="rounded-lg border border-rose-300/35 bg-rose-950/35 px-3 py-2">Ofrecer Aborto Seguro</li>
-                <li className="rounded-lg border border-rose-300/35 bg-rose-950/35 px-3 py-2">Enviar a Segundo nivel</li>
+                <li className="rounded-lg border border-rose-300/35 bg-rose-950/35 px-3 py-2">Enviar a Manejo conjunto a segundo nivel</li>
               </ul>
 
               <p className="rounded-lg border border-amber-400/50 bg-amber-900/40 px-3 py-2 text-xs text-amber-200 font-medium">
@@ -2392,6 +2440,54 @@ export default function NuevoPaciente() {
                   setShowEdadMayor35Modal(false);
                 }}
                 className="w-full rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-300 transition-colors cursor-pointer"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ALERTA POR CESÁREAS > 2 */}
+      {showCesareasAlertaModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="cesareas-alerta-modal-title"
+        >
+          <div className="w-full max-w-lg rounded-2xl border-2 border-rose-400/60 bg-gradient-to-br from-rose-900/95 to-rose-800/95 shadow-2xl">
+            <div className="border-b border-white/15 px-6 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-rose-100/90 font-bold">Alerta de Antecedentes</p>
+                <h2 id="cesareas-alerta-modal-title" className="mt-1 text-xl font-bold text-white flex items-center gap-2">
+                  <i className="fa-solid fa-triangle-exclamation text-rose-300"></i>
+                  <span>Cesáreas previas &gt; 2 ({form.cesareas || "—"})</span>
+                </h2>
+              </div>
+              <span className="text-xs font-mono font-bold bg-rose-400/20 text-rose-100 border border-rose-300/40 px-2.5 py-1 rounded-full">
+                +6 pts riesgo
+              </span>
+            </div>
+
+            <div className="px-6 py-5 space-y-3 text-rose-50">
+              <p className="text-sm text-rose-100/90">
+                Se detectaron <strong>{form.cesareas || "—"} cesáreas previas</strong>:
+              </p>
+
+              <div className="rounded-lg border border-rose-300/35 bg-rose-950/35 px-3.5 py-3 text-sm font-medium leading-relaxed">
+                Fecha de programacion de cesarea a mas tardar a las 35 SDG, vigilar de manera intencionada alteraciones en la implantacion de la placenta
+              </div>
+            </div>
+
+            <div className="border-t border-white/15 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setCesareasAlertaConfirmada(true);
+                  setShowCesareasAlertaModal(false);
+                }}
+                className="w-full rounded-lg bg-rose-300 px-4 py-2.5 text-sm font-semibold text-rose-950 hover:bg-rose-200 transition-colors cursor-pointer"
               >
                 Entendido
               </button>
