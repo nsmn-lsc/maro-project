@@ -4,6 +4,7 @@ import { getPool, query } from "@/lib/db";
 import { assertPacienteScope, requireApiAuth } from "@/lib/apiAuth";
 import { dispatchPendingTelegramAlerts } from "@/lib/telegramDispatch";
 import { isTelegramAlertsEnabled } from "@/lib/telegramAlerts";
+import { normalizarProteinuria } from "@/lib/proteinuria";
 
 const TELEGRAM_RIESGO_TIPO = "RIESGO_25_PLUS";
 
@@ -123,18 +124,34 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [hasColegiado, hasFechaColegiado] = await Promise.all([
+    const interrogatorioColumns = [
+      "interrogatorio_sangrado_transvaginal",
+      "interrogatorio_crisis_convulsivas",
+      "interrogatorio_cefalea",
+      "interrogatorio_acufenos_fosfenos",
+      "interrogatorio_epigastralgia_amaurosis",
+      "interrogatorio_sindrome_febril",
+      "interrogatorio_liquido_amniotico",
+      "interrogatorio_movilidad_fetal",
+    ] as const;
+
+    const [hasColegiado, hasFechaColegiado, ...hasInterrogatorioCols] = await Promise.all([
       hasColumn("colegiado"),
       hasColumn("fecha_colegiado"),
+      ...interrogatorioColumns.map((col) => hasColumn(col)),
     ]);
 
     const colegiadoExpr = hasColegiado ? "COALESCE(colegiado, 0)" : "0";
     const fechaColegiadoExpr = hasFechaColegiado ? "fecha_colegiado" : "NULL";
+    const interrogatorioSelectExpr = interrogatorioColumns
+      .map((col, idx) => (hasInterrogatorioCols[idx] ? col : `NULL AS ${col}`))
+      .join(", ");
 
     const rows = await query(
             `SELECT id, paciente_id, fecha_consulta, sdg,
               ta_sistolica, ta_diastolica, frecuencia_cardiaca, indice_choque, frecuencia_respiratoria, temperatura,
               fondo_uterino_acorde_sdg, ivu_repeticion, estado_conciencia, hemorragia, respiracion, color_piel,
+              ${interrogatorioSelectExpr},
               puntaje_consulta_parametros, puntaje_total_consulta, riesgo_25_plus,
               ${colegiadoExpr} AS colegiado, ${fechaColegiadoExpr} AS fecha_colegiado,
               diagnostico, plan, fecha_referencia, area_referencia,
@@ -294,6 +311,24 @@ export async function POST(request: Request) {
       updated_by: auth.userId,
     };
 
+    // Campos de Interrogatorio (Sección 2: Triage Obstétrico)
+    const interrogatorioColumns = [
+      "interrogatorio_sangrado_transvaginal",
+      "interrogatorio_crisis_convulsivas",
+      "interrogatorio_cefalea",
+      "interrogatorio_acufenos_fosfenos",
+      "interrogatorio_epigastralgia_amaurosis",
+      "interrogatorio_sindrome_febril",
+      "interrogatorio_liquido_amniotico",
+      "interrogatorio_movilidad_fetal",
+    ] as const;
+
+    for (const col of interrogatorioColumns) {
+      if (await hasColumn(col)) {
+        (payload as any)[col] = body[col] || null;
+      }
+    }
+
     // Campos de la Sección 3: Consulta
     if (await hasColumn("longitud_cervical")) {
       (payload as any).longitud_cervical = toNumberOrNull(body.longitud_cervical);
@@ -308,7 +343,7 @@ export async function POST(request: Request) {
       (payload as any).movimientos_fetales = body.movimientos_fetales || null;
     }
     if (await hasColumn("proteinuria")) {
-      (payload as any).proteinuria = body.proteinuria || null;
+      (payload as any).proteinuria = normalizarProteinuria(body.proteinuria);
     }
     if (await hasColumn("edema")) {
       (payload as any).edema = body.edema || null;

@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { requireApiAuth } from "@/lib/apiAuth";
 import { query } from "@/lib/db";
+import { esProteinuriaPositiva, normalizarProteinuria } from "@/lib/proteinuria";
 
 // Colores de la marca MARO
 const TEAL_DARK = "0F4737" as const;
@@ -248,8 +249,9 @@ function getFocosDeAlerta(row: ConsultaFocosRow): string {
     focos.push("• IVU de repetición");
   }
 
-  if (row.proteinuria && row.proteinuria !== "Neg" && row.proteinuria !== "Tr") {
-    focos.push(`• Proteinuria positiva (${row.proteinuria})`);
+  if (esProteinuriaPositiva(row.proteinuria)) {
+    const protNorm = normalizarProteinuria(row.proteinuria) ?? row.proteinuria;
+    focos.push(`• Proteinuria positiva (${protNorm})`);
   }
 
   if (row.edema && row.edema !== "No") {

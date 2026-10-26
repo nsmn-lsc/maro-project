@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { determinarProtocoloTriage } from "@/lib/triage-protocolo";
+import { determinarProtocoloTriage, evaluarInterrogatorioTriage } from "@/lib/triage-protocolo";
+import { OPCIONES_PROTEINURIA, normalizarProteinuria } from "@/lib/proteinuria";
 
 interface Consulta {
   id: number;
@@ -23,6 +24,14 @@ interface Consulta {
   hemorragia: "visible o abundante" | "no visible o moderada" | "no visible o escasa" | "sin hemorragia" | null;
   respiracion: "alterada" | "normal" | null;
   color_piel: "cianotica" | "palida" | "normal" | null;
+  interrogatorio_sangrado_transvaginal?: "abundante" | "escaso_moderado" | "ausente" | null;
+  interrogatorio_crisis_convulsivas?: "presente" | "negadas" | null;
+  interrogatorio_cefalea?: "presente" | "no_pulsatil" | "ausente" | null;
+  interrogatorio_acufenos_fosfenos?: "presente" | "ausentes" | null;
+  interrogatorio_epigastralgia_amaurosis?: "presente" | "ausente" | null;
+  interrogatorio_sindrome_febril?: "presente" | "ausente" | null;
+  interrogatorio_liquido_amniotico?: "claro_verdoso" | "ausente" | null;
+  interrogatorio_movilidad_fetal?: "ausente" | "presente" | null;
   puntaje_consulta_parametros: number | null;
   puntaje_total_consulta: number | null;
   riesgo_25_plus: 0 | 1;
@@ -52,6 +61,15 @@ const initialForm = {
   hemorragia: "",
   respiracion: "",
   color_piel: "",
+  // Interrogatorio (Triage Obstétrico)
+  interrogatorio_sangrado_transvaginal: "",
+  interrogatorio_crisis_convulsivas: "",
+  interrogatorio_cefalea: "",
+  interrogatorio_acufenos_fosfenos: "",
+  interrogatorio_epigastralgia_amaurosis: "",
+  interrogatorio_sindrome_febril: "",
+  interrogatorio_liquido_amniotico: "",
+  interrogatorio_movilidad_fetal: "",
   // Sección 3: Consulta
   longitud_cervical: "",
   peso: "",
@@ -531,6 +549,9 @@ export default function ConsultasPaciente() {
       });
     }
 
+    // Interrogatorio (Triage Obstétrico)
+    list.push(...evaluarInterrogatorioTriage(form));
+
     return list;
   }, [
     taSistolicaAlerta, taSistolicaAdvertencia, form.ta_sistolica,
@@ -542,6 +563,14 @@ export default function ConsultasPaciente() {
     form.hemorragia, form.color_piel, form.estado_conciencia, form.respiracion,
     fcFetalAlerta, form.fc_fetal,
     form.fondo_uterino_acorde_sdg, form.ivu_repeticion,
+    form.interrogatorio_sangrado_transvaginal,
+    form.interrogatorio_crisis_convulsivas,
+    form.interrogatorio_cefalea,
+    form.interrogatorio_acufenos_fosfenos,
+    form.interrogatorio_epigastralgia_amaurosis,
+    form.interrogatorio_sindrome_febril,
+    form.interrogatorio_liquido_amniotico,
+    form.interrogatorio_movilidad_fetal,
   ]);
 
   const protocoloTriage = useMemo(
@@ -721,6 +750,21 @@ export default function ConsultasPaciente() {
         hemorragia: form.hemorragia || null,
         respiracion: form.respiracion || null,
         color_piel: form.color_piel || null,
+        interrogatorio_sangrado_transvaginal: form.interrogatorio_sangrado_transvaginal || null,
+        interrogatorio_crisis_convulsivas: form.interrogatorio_crisis_convulsivas || null,
+        interrogatorio_cefalea: form.interrogatorio_cefalea || null,
+        interrogatorio_acufenos_fosfenos: form.interrogatorio_acufenos_fosfenos || null,
+        interrogatorio_epigastralgia_amaurosis: form.interrogatorio_epigastralgia_amaurosis || null,
+        interrogatorio_sindrome_febril: form.interrogatorio_sindrome_febril || null,
+        interrogatorio_liquido_amniotico: form.interrogatorio_liquido_amniotico || null,
+        interrogatorio_movilidad_fetal: form.interrogatorio_movilidad_fetal || null,
+        longitud_cervical: numOrNull(form.longitud_cervical),
+        peso: numOrNull(form.peso),
+        fc_fetal: form.fc_fetal || null,
+        movimientos_fetales: form.movimientos_fetales || null,
+        proteinuria: form.proteinuria || null,
+        edema: form.edema || null,
+        hemoglobina: form.hemoglobina || form.bh || null,
         tipo_evento: form.tipo_evento || "embarazo",
         fecha_evento: form.fecha_evento || (form.tipo_evento !== "embarazo" ? form.fecha_consulta : null),
         complicacion_resolucion: form.complicacion_resolucion || null,
@@ -1293,6 +1337,211 @@ export default function ConsultasPaciente() {
                       )}
                     </label>
                   </div>
+
+                  {/* SUBSECCIÓN: INTERROGATORIO (TRIAGE OBSTÉTRICO) */}
+                  <div className="p-4 rounded-xl border border-amber-500/25 bg-amber-500/5 dark:bg-slate-900/60 space-y-3 mt-3">
+                    <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider flex items-center gap-2">
+                      <i className="fa-solid fa-clipboard-question text-amber-600 dark:text-amber-400"></i>
+                      <span>Interrogatorio</span>
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {/* 1. Sangrado transvaginal */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Sangrado transvaginal</span>
+                        <select
+                          className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
+                            form.interrogatorio_sangrado_transvaginal === "abundante"
+                              ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                              : form.interrogatorio_sangrado_transvaginal === "escaso_moderado"
+                              ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                              : "bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+                          }`}
+                          value={form.interrogatorio_sangrado_transvaginal}
+                          onChange={(e) => handleChange("interrogatorio_sangrado_transvaginal", e.target.value)}
+                        >
+                          <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                          <option value="abundante" className="bg-rose-600 text-white font-bold">Abundante</option>
+                          <option value="escaso_moderado" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Escaso/Moderado</option>
+                          <option value="ausente" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Ausente</option>
+                        </select>
+                        {form.interrogatorio_sangrado_transvaginal === "abundante" && (
+                          <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
+                        )}
+                        {form.interrogatorio_sangrado_transvaginal === "escaso_moderado" && (
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                        )}
+                      </label>
+
+                      {/* 2. Crisis convulsivas */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Crisis convulsivas</span>
+                        <select
+                          className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
+                            form.interrogatorio_crisis_convulsivas === "presente"
+                              ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                              : form.interrogatorio_crisis_convulsivas === "negadas"
+                              ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                              : "bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+                          }`}
+                          value={form.interrogatorio_crisis_convulsivas}
+                          onChange={(e) => handleChange("interrogatorio_crisis_convulsivas", e.target.value)}
+                        >
+                          <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                          <option value="presente" className="bg-rose-600 text-white font-bold">Presente</option>
+                          <option value="negadas" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Negadas</option>
+                        </select>
+                        {form.interrogatorio_crisis_convulsivas === "presente" && (
+                          <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
+                        )}
+                        {form.interrogatorio_crisis_convulsivas === "negadas" && (
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                        )}
+                      </label>
+
+                      {/* 3. Cefalea */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Cefalea</span>
+                        <select
+                          className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
+                            form.interrogatorio_cefalea === "presente"
+                              ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                              : form.interrogatorio_cefalea === "no_pulsatil"
+                              ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                              : "bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+                          }`}
+                          value={form.interrogatorio_cefalea}
+                          onChange={(e) => handleChange("interrogatorio_cefalea", e.target.value)}
+                        >
+                          <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                          <option value="presente" className="bg-rose-600 text-white font-bold">Presente</option>
+                          <option value="no_pulsatil" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Ausente/Presente No pulsátil</option>
+                          <option value="ausente" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Ausente</option>
+                        </select>
+                        {form.interrogatorio_cefalea === "presente" && (
+                          <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
+                        )}
+                        {form.interrogatorio_cefalea === "no_pulsatil" && (
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                        )}
+                      </label>
+
+                      {/* 4. Acúfenos/Fosfenos */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Acúfenos/Fosfenos</span>
+                        <select
+                          className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
+                            form.interrogatorio_acufenos_fosfenos === "presente"
+                              ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                              : form.interrogatorio_acufenos_fosfenos === "ausentes"
+                              ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                              : "bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+                          }`}
+                          value={form.interrogatorio_acufenos_fosfenos}
+                          onChange={(e) => handleChange("interrogatorio_acufenos_fosfenos", e.target.value)}
+                        >
+                          <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                          <option value="presente" className="bg-rose-600 text-white font-bold">Presente</option>
+                          <option value="ausentes" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Ausentes</option>
+                        </select>
+                        {form.interrogatorio_acufenos_fosfenos === "presente" && (
+                          <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
+                        )}
+                        {form.interrogatorio_acufenos_fosfenos === "ausentes" && (
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                        )}
+                      </label>
+
+                      {/* 5. Epigastralgia/Amaurosis */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Epigastralgia/Amaurosis</span>
+                        <select
+                          className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
+                            form.interrogatorio_epigastralgia_amaurosis === "presente"
+                              ? "!bg-rose-600 !border-rose-500 text-white font-bold ring-2 ring-rose-500/50 shadow-md"
+                              : form.interrogatorio_epigastralgia_amaurosis === "ausente"
+                              ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                              : "bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+                          }`}
+                          value={form.interrogatorio_epigastralgia_amaurosis}
+                          onChange={(e) => handleChange("interrogatorio_epigastralgia_amaurosis", e.target.value)}
+                        >
+                          <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                          <option value="presente" className="bg-rose-600 text-white font-bold">Presente</option>
+                          <option value="ausente" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Ausente</option>
+                        </select>
+                        {form.interrogatorio_epigastralgia_amaurosis === "presente" && (
+                          <p className="text-[10px] text-rose-700 dark:text-red-400 font-bold">🚨 ¡Emergencia Obstétrica Activa!</p>
+                        )}
+                        {form.interrogatorio_epigastralgia_amaurosis === "ausente" && (
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                        )}
+                      </label>
+
+                      {/* 6. Síndrome febril */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Síndrome febril</span>
+                        <select
+                          className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
+                            form.interrogatorio_sindrome_febril === "presente"
+                              ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                              : "bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+                          }`}
+                          value={form.interrogatorio_sindrome_febril}
+                          onChange={(e) => handleChange("interrogatorio_sindrome_febril", e.target.value)}
+                        >
+                          <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                          <option value="presente" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Presente</option>
+                          <option value="ausente" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Ausente</option>
+                        </select>
+                        {form.interrogatorio_sindrome_febril === "presente" && (
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                        )}
+                      </label>
+
+                      {/* 7. Salida de líquido amniótico */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Salida de líquido amniótico</span>
+                        <select
+                          className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
+                            form.interrogatorio_liquido_amniotico === "claro_verdoso"
+                              ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                              : "bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+                          }`}
+                          value={form.interrogatorio_liquido_amniotico}
+                          onChange={(e) => handleChange("interrogatorio_liquido_amniotico", e.target.value)}
+                        >
+                          <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                          <option value="claro_verdoso" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Claro/verdoso</option>
+                          <option value="ausente" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Ausente</option>
+                        </select>
+                        {form.interrogatorio_liquido_amniotico === "claro_verdoso" && (
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                        )}
+                      </label>
+
+                      {/* 8. Movilidad fetal */}
+                      <label className="space-y-1 text-xs">
+                        <span className="text-slate-700 dark:text-slate-200 font-bold">Movilidad fetal</span>
+                        <select
+                          className={`w-full rounded-lg px-3 py-2 text-xs transition-all ${
+                            form.interrogatorio_movilidad_fetal === "ausente"
+                              ? "border-2 border-amber-500 bg-amber-50 dark:bg-amber-500/25 text-amber-950 dark:text-amber-100 font-bold ring-2 ring-amber-500/30"
+                              : "bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+                          }`}
+                          value={form.interrogatorio_movilidad_fetal}
+                          onChange={(e) => handleChange("interrogatorio_movilidad_fetal", e.target.value)}
+                        >
+                          <option value="" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Seleccione</option>
+                          <option value="ausente" className="bg-amber-50 text-amber-950 dark:bg-slate-900 dark:text-amber-200 font-bold">Ausente</option>
+                          <option value="presente" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Presente</option>
+                        </select>
+                        {form.interrogatorio_movilidad_fetal === "ausente" && (
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⚠️ Urgencia calificada</p>
+                        )}
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 {/* BLOQUE 3: CONSULTA */}
@@ -1420,18 +1669,6 @@ export default function ConsultasPaciente() {
                         )}
                       </div>
 
-                      {/* Proteinuria */}
-                      <label className="space-y-1 text-xs">
-                        <span className="text-slate-700 dark:text-slate-200 font-bold">Proteinuria</span>
-                        <input
-                          type="text"
-                          className="w-full rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 px-3 py-2 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/50"
-                          placeholder="ej. Negativa / Tira reactiva (+)"
-                          value={form.proteinuria}
-                          onChange={(e) => handleChange("proteinuria", e.target.value)}
-                        />
-                      </label>
-
                       {/* Edema (Switch segmentado de 3 opciones) */}
                       <div className="space-y-1 text-xs">
                         <div className="flex items-center justify-between">
@@ -1489,7 +1726,7 @@ export default function ConsultasPaciente() {
                       </div>
 
                       {/* Hemoglobina */}
-                      <label className="space-y-1 text-xs sm:col-span-2 lg:col-span-3">
+                      <label className="space-y-1 text-xs">
                         <span className="text-slate-700 dark:text-slate-200 font-bold">Hemoglobina (g/dL)</span>
                         <input
                           type="text"
@@ -1502,6 +1739,78 @@ export default function ConsultasPaciente() {
                           }}
                         />
                       </label>
+
+                      {/* Proteinuria (Selector estandarizado de tira reactiva y mg/dL) */}
+                      <div className="space-y-1 text-xs sm:col-span-2 lg:col-span-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-700 dark:text-slate-200 font-bold block">
+                            Proteinuria (Tira reactiva / equivalencia en mg/dL)
+                          </span>
+                          {form.proteinuria === "" && (
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 italic">
+                              Sin evaluar
+                            </span>
+                          )}
+                        </div>
+
+                        {(() => {
+                          const valorActual = normalizarProteinuria(form.proteinuria) ?? "";
+                          return (
+                            <>
+                              <div className="p-1 rounded-xl bg-slate-200/70 dark:bg-white/5 border border-slate-300 dark:border-white/10 grid grid-cols-2 sm:grid-cols-5 gap-1">
+                                {OPCIONES_PROTEINURIA.map((opt) => {
+                                  const isSelected = valorActual === opt.value;
+                                  const isNegativa = opt.value === "Negativa";
+                                  const isUnaCruz = opt.value === "(+) 30 mg/dL";
+                                  const isDosCruces = opt.value === "(++) 100 mg/dL";
+                                  const isTresCruces = opt.value === "(+++) >300 mg/dL";
+
+                                  return (
+                                    <button
+                                      key={opt.value || "vacio"}
+                                      type="button"
+                                      onClick={() => handleChange("proteinuria", opt.value)}
+                                      className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+                                        isSelected
+                                          ? isNegativa
+                                            ? "bg-emerald-600 text-white shadow-md"
+                                            : isUnaCruz
+                                              ? "bg-amber-500 text-slate-950 shadow-md ring-1 ring-amber-400"
+                                              : isDosCruces
+                                                ? "bg-orange-600 text-white shadow-md ring-1 ring-orange-400"
+                                                : isTresCruces
+                                                  ? "!bg-rose-600 text-white ring-2 ring-rose-500/50 shadow-md"
+                                                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm border border-slate-300 dark:border-white/10"
+                                          : "text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10"
+                                      }`}
+                                    >
+                                      {isNegativa && isSelected && <i className="fa-solid fa-check text-[10px]"></i>}
+                                      {(isUnaCruz || isDosCruces || isTresCruces) && isSelected && (
+                                        <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                                      )}
+                                      <span>{opt.label}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {valorActual !== "" && valorActual !== "Negativa" && (
+                                <p
+                                  className={`text-[10px] font-bold animate-in fade-in ${
+                                    valorActual === "(+++) >300 mg/dL"
+                                      ? "text-rose-700 dark:text-red-400"
+                                      : "text-amber-700 dark:text-amber-300"
+                                  }`}
+                                >
+                                  {valorActual === "(+++) >300 mg/dL"
+                                    ? "🚨 ¡Alerta Obstétrica! Proteinuria severa (>300 mg/dL) — Evaluar Preeclampsia con datos de severidad"
+                                    : `⚠️ Proteinuria detectada: ${valorActual} — Vigilar estado hipertensivo / Preeclampsia`}
+                                </p>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
 
                     </div>
                   </div>

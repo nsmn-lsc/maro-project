@@ -147,3 +147,167 @@ export function evaluarColorPiel(valor: string): AlertaSignoVital | null {
   }
   return null;
 }
+
+/**
+ * Funciones de evaluación para la subsección Interrogatorio del Triage Obstétrico
+ */
+export function evaluarSangradoTransvaginal(valor: string): AlertaSignoVital | null {
+  if (valor === "abundante") {
+    return {
+      campo: "Sangrado transvaginal",
+      valor: "Abundante",
+      nivel: "ROJO",
+      descripcion: "Emergencia Obstétrica Activa",
+    };
+  }
+  if (valor === "escaso_moderado") {
+    return {
+      campo: "Sangrado transvaginal",
+      valor: "Escaso/Moderado",
+      nivel: "AMARILLO",
+      descripcion: "Urgencia calificada",
+    };
+  }
+  return null;
+}
+
+export function evaluarCrisisConvulsivas(valor: string): AlertaSignoVital | null {
+  if (valor === "presente") {
+    return {
+      campo: "Crisis convulsivas",
+      valor: "Presente",
+      nivel: "ROJO",
+      descripcion: "Emergencia Obstétrica Activa",
+    };
+  }
+  if (valor === "negadas") {
+    return {
+      campo: "Crisis convulsivas",
+      valor: "Negadas",
+      nivel: "AMARILLO",
+      descripcion: "Urgencia calificada",
+    };
+  }
+  return null;
+}
+
+export function evaluarCefalea(valor: string): AlertaSignoVital | null {
+  if (valor === "presente") {
+    return {
+      campo: "Cefalea",
+      valor: "Presente",
+      nivel: "ROJO",
+      descripcion: "Emergencia Obstétrica Activa",
+    };
+  }
+  if (valor === "no_pulsatil") {
+    return {
+      campo: "Cefalea",
+      valor: "Ausente/Presente No pulsátil",
+      nivel: "AMARILLO",
+      descripcion: "Urgencia calificada",
+    };
+  }
+  return null;
+}
+
+export function evaluarAcufenosFosfenos(valor: string): AlertaSignoVital | null {
+  if (valor === "presente") {
+    return {
+      campo: "Acúfenos/Fosfenos",
+      valor: "Presente",
+      nivel: "ROJO",
+      descripcion: "Emergencia Obstétrica Activa",
+    };
+  }
+  if (valor === "ausentes") {
+    return {
+      campo: "Acúfenos/Fosfenos",
+      valor: "Ausentes",
+      nivel: "AMARILLO",
+      descripcion: "Urgencia calificada",
+    };
+  }
+  return null;
+}
+
+export function evaluarEpigastralgiaAmaurosis(valor: string): AlertaSignoVital | null {
+  if (valor === "presente") {
+    return {
+      campo: "Epigastralgia/Amaurosis",
+      valor: "Presente",
+      nivel: "ROJO",
+      descripcion: "Emergencia Obstétrica Activa",
+    };
+  }
+  if (valor === "ausente") {
+    return {
+      campo: "Epigastralgia/Amaurosis",
+      valor: "Ausente",
+      nivel: "AMARILLO",
+      descripcion: "Urgencia calificada",
+    };
+  }
+  return null;
+}
+
+export function evaluarSindromeFebril(valor: string): AlertaSignoVital | null {
+  if (valor === "presente") {
+    return {
+      campo: "Síndrome febril",
+      valor: "Presente",
+      nivel: "AMARILLO",
+      descripcion: "Urgencia calificada",
+    };
+  }
+  return null;
+}
+
+export function evaluarLiquidoAmniotico(valor: string): AlertaSignoVital | null {
+  if (valor === "claro_verdoso") {
+    return {
+      campo: "Salida de líquido amniótico",
+      valor: "Claro/verdoso",
+      nivel: "AMARILLO",
+      descripcion: "Urgencia calificada",
+    };
+  }
+  return null;
+}
+
+export function evaluarMovilidadFetal(valor: string): AlertaSignoVital | null {
+  if (valor === "ausente") {
+    return {
+      campo: "Movilidad fetal",
+      valor: "Ausente",
+      nivel: "AMARILLO",
+      descripcion: "Urgencia calificada",
+    };
+  }
+  return null;
+}
+
+export interface InterrogatorioTriageInput {
+  interrogatorio_sangrado_transvaginal?: string | null;
+  interrogatorio_crisis_convulsivas?: string | null;
+  interrogatorio_cefalea?: string | null;
+  interrogatorio_acufenos_fosfenos?: string | null;
+  interrogatorio_epigastralgia_amaurosis?: string | null;
+  interrogatorio_sindrome_febril?: string | null;
+  interrogatorio_liquido_amniotico?: string | null;
+  interrogatorio_movilidad_fetal?: string | null;
+}
+
+export function evaluarInterrogatorioTriage(input: InterrogatorioTriageInput): AlertaSignoVital[] {
+  const alertas = [
+    evaluarSangradoTransvaginal(input.interrogatorio_sangrado_transvaginal || ""),
+    evaluarCrisisConvulsivas(input.interrogatorio_crisis_convulsivas || ""),
+    evaluarCefalea(input.interrogatorio_cefalea || ""),
+    evaluarAcufenosFosfenos(input.interrogatorio_acufenos_fosfenos || ""),
+    evaluarEpigastralgiaAmaurosis(input.interrogatorio_epigastralgia_amaurosis || ""),
+    evaluarSindromeFebril(input.interrogatorio_sindrome_febril || ""),
+    evaluarLiquidoAmniotico(input.interrogatorio_liquido_amniotico || ""),
+    evaluarMovilidadFetal(input.interrogatorio_movilidad_fetal || ""),
+  ];
+  return alertas.filter((a): a is AlertaSignoVital => a !== null);
+}
