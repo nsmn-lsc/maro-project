@@ -5,6 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
+import {
+  NivelAtencion,
+  EstatusAccion,
+  NivelObservaciones,
+  ESTATUS_ACCION,
+  NIVELES_ATENCION,
+} from "@/lib/colegiados";
+
 type SessionInfo = {
   nivel?: number;
   region?: string;
@@ -47,12 +55,14 @@ type AccionColegiada = {
   id?: number;
   nivel_atencion: NivelAtencion;
   orden: number;
+  fecha_accion: string;
   descripcion: string;
+  fecha_respuesta: string;
+  respuesta_accion: string;
+  estatus: EstatusAccion;
   cumplido: boolean;
   fecha_cumplimiento?: string | null;
 };
-
-type NivelAtencion = "primer_nivel" | "segundo_nivel" | "tercer_nivel";
 
 type ApiResponse = {
   consulta: ConsultaColegiada;
@@ -61,10 +71,15 @@ type ApiResponse = {
     id: number;
     nivel_atencion: NivelAtencion;
     orden: number;
+    fecha_accion?: string | null;
     descripcion: string;
+    fecha_respuesta?: string | null;
+    respuesta_accion?: string | null;
+    estatus?: EstatusAccion;
     cumplido: 0 | 1;
     fecha_cumplimiento: string | null;
   }>;
+  observacionesNivel?: Record<NivelAtencion, NivelObservaciones>;
 };
 
 const NIVELES_CONFIG: Array<{
@@ -118,10 +133,15 @@ function formatDate(value: string | null, includeTime = false) {
 }
 
 function emptyAction(nivel: NivelAtencion, orden: number): AccionColegiada {
+  const today = new Date().toISOString().split("T")[0];
   return {
     nivel_atencion: nivel,
     orden,
+    fecha_accion: today,
     descripcion: "",
+    fecha_respuesta: "",
+    respuesta_accion: "",
+    estatus: "pendiente",
     cumplido: false,
     fecha_cumplimiento: null,
   };
@@ -144,6 +164,11 @@ export default function RegionDetalleColegiadoPage() {
     primer_nivel: [],
     segundo_nivel: [],
     tercer_nivel: [],
+  });
+  const [observacionesNivel, setObservacionesNivel] = useState<Record<NivelAtencion, NivelObservaciones>>({
+    primer_nivel: { nivel_atencion: "primer_nivel", obs_zonales: null, obs_regionales: null, obs_estatal_salud_mujeres: null, obs_atencion_medica: null },
+    segundo_nivel: { nivel_atencion: "segundo_nivel", obs_zonales: null, obs_regionales: null, obs_estatal_salud_mujeres: null, obs_atencion_medica: null },
+    tercer_nivel: { nivel_atencion: "tercer_nivel", obs_zonales: null, obs_regionales: null, obs_estatal_salud_mujeres: null, obs_atencion_medica: null },
   });
   const [collapsed, setCollapsed] = useState<Record<NivelAtencion, boolean>>({
     primer_nivel: false,
@@ -181,7 +206,7 @@ export default function RegionDetalleColegiadoPage() {
     const loadData = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/colegiados/${consultaId}`, { cache: "no-store" });
+        const res = await fetch(`/api/region/colegiados/${consultaId}`, { cache: "no-store" });
         const data = (await res.json()) as ApiResponse | { message?: string; details?: string };
 
         if (!res.ok) {
@@ -195,6 +220,10 @@ export default function RegionDetalleColegiadoPage() {
         setPlan(payload.plan);
         setObservaciones(payload.plan.observaciones || "");
 
+        if (payload.observacionesNivel) {
+          setObservacionesNivel(payload.observacionesNivel);
+        }
+
         const grouped: Record<NivelAtencion, AccionColegiada[]> = {
           primer_nivel: [],
           segundo_nivel: [],
@@ -202,12 +231,17 @@ export default function RegionDetalleColegiadoPage() {
         };
 
         for (const action of payload.acciones || []) {
+          const estatus = action.estatus || (Number(action.cumplido) === 1 ? "completada" : "pendiente");
           grouped[action.nivel_atencion].push({
             id: action.id,
             nivel_atencion: action.nivel_atencion,
             orden: action.orden,
+            fecha_accion: action.fecha_accion ? String(action.fecha_accion).slice(0, 10) : "",
             descripcion: action.descripcion || "",
-            cumplido: Number(action.cumplido) === 1,
+            fecha_respuesta: action.fecha_respuesta ? String(action.fecha_respuesta).slice(0, 10) : "",
+            respuesta_accion: action.respuesta_accion || "",
+            estatus,
+            cumplido: estatus === "completada" || Number(action.cumplido) === 1,
             fecha_cumplimiento: action.fecha_cumplimiento,
           });
         }
@@ -235,7 +269,7 @@ export default function RegionDetalleColegiadoPage() {
   const accionesCompletadas = useMemo(() => {
     return Object.values(acciones)
       .flat()
-      .filter((item) => item.cumplido).length;
+      .filter((item) => item.estatus === "completada" || item.cumplido).length;
   }, [acciones]);
 
   const porcentajeAvance = useMemo(() => {
@@ -255,14 +289,29 @@ export default function RegionDetalleColegiadoPage() {
       [nivel]: prev[nivel].map((item, currentIndex) => {
         if (currentIndex !== index) return item;
         const next = { ...item, ...patch };
-        if (patch.cumplido === false) {
-          next.fecha_cumplimiento = null;
+
+        if (patch.estatus !== undefined) {
+          next.cumplido = patch.estatus === "completada";
+          if (patch.estatus === "completada" && !next.fecha_cumplimiento) {
+            next.fecha_cumplimiento = next.fecha_respuesta || next.fecha_accion || new Date().toISOString().slice(0, 19).replace("T", " ");
+          } else if (patch.estatus !== "completada") {
+            next.fecha_cumplimiento = null;
+          }
         }
-        if (patch.cumplido === true && !next.fecha_cumplimiento) {
-          next.fecha_cumplimiento = new Date().toISOString();
-        }
+
         return next;
       }),
+    }));
+  };
+
+  const updateObservacionNivel = (nivel: NivelAtencion, field: keyof NivelObservaciones, value: string) => {
+    setSaveMessage(null);
+    setObservacionesNivel((prev) => ({
+      ...prev,
+      [nivel]: {
+        ...prev[nivel],
+        [field]: value,
+      },
     }));
   };
 
@@ -290,14 +339,22 @@ export default function RegionDetalleColegiadoPage() {
   const handleSave = async () => {
     if (!consulta) return;
 
-    const payload = Object.values(acciones)
+    const payloadAcciones = Object.values(acciones)
       .flat()
       .filter((item) => item.descripcion.trim().length > 0)
       .map((item) => ({
+        id: item.id,
         nivel_atencion: item.nivel_atencion,
+        orden: item.orden,
+        fecha_accion: item.fecha_accion || null,
         descripcion: item.descripcion.trim(),
-        cumplido: item.cumplido,
-        fecha_cumplimiento: item.cumplido ? item.fecha_cumplimiento || new Date().toISOString() : null,
+        fecha_respuesta: item.fecha_respuesta || null,
+        respuesta_accion: item.respuesta_accion ? item.respuesta_accion.trim() : null,
+        estatus: item.estatus || "pendiente",
+        cumplido: item.estatus === "completada" ? 1 : 0,
+        fecha_cumplimiento: item.estatus === "completada"
+          ? (item.fecha_cumplimiento || item.fecha_respuesta || item.fecha_accion || new Date().toISOString())
+          : null,
       }));
 
     setSaving(true);
@@ -305,15 +362,16 @@ export default function RegionDetalleColegiadoPage() {
     setError(null);
 
     try {
-      const res = await fetch(`/api/colegiados/${consulta.consulta_id}`, {
+      const res = await fetch(`/api/region/colegiados/${consulta.consulta_id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           observaciones: observaciones.trim() || null,
-          acciones: payload,
-          estatus: payload.length > 0 ? "completo" : "borrador",
+          acciones: payloadAcciones,
+          observaciones_nivel: observacionesNivel,
+          estatus: payloadAcciones.length > 0 ? "completo" : "borrador",
         }),
       });
 
@@ -326,6 +384,10 @@ export default function RegionDetalleColegiadoPage() {
       setPlan(response.plan);
       setObservaciones(response.plan.observaciones || "");
 
+      if (response.observacionesNivel) {
+        setObservacionesNivel(response.observacionesNivel);
+      }
+
       const grouped: Record<NivelAtencion, AccionColegiada[]> = {
         primer_nivel: [],
         segundo_nivel: [],
@@ -333,12 +395,17 @@ export default function RegionDetalleColegiadoPage() {
       };
 
       for (const action of response.acciones || []) {
+        const estatus = action.estatus || (Number(action.cumplido) === 1 ? "completada" : "pendiente");
         grouped[action.nivel_atencion].push({
           id: action.id,
           nivel_atencion: action.nivel_atencion,
           orden: action.orden,
+          fecha_accion: action.fecha_accion ? String(action.fecha_accion).slice(0, 10) : "",
           descripcion: action.descripcion || "",
-          cumplido: Number(action.cumplido) === 1,
+          fecha_respuesta: action.fecha_respuesta ? String(action.fecha_respuesta).slice(0, 10) : "",
+          respuesta_accion: action.respuesta_accion || "",
+          estatus,
+          cumplido: estatus === "completada" || Number(action.cumplido) === 1,
           fecha_cumplimiento: action.fecha_cumplimiento,
         });
       }
@@ -759,19 +826,45 @@ export default function RegionDetalleColegiadoPage() {
                           items.map((item, index) => (
                             <div
                               key={`${nivel.key}-${index}-${item.id || "nuevo"}`}
-                              className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/90 p-4 sm:p-5 shadow-md space-y-3 transition-colors"
+                              className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/90 p-4 sm:p-5 shadow-md space-y-4 transition-colors"
                             >
+                              {/* Cabecera de la acción */}
                               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-white/10 pb-3">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/15 px-3 py-0.5 text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
                                     Acción {index + 1}
                                   </span>
-                                  {item.cumplido && (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-200">
-                                      <i className="fa-solid fa-check text-[10px]"></i>
-                                      Cumplida
-                                    </span>
-                                  )}
+                                  {/* Badge de Estatus */}
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${
+                                      item.estatus === "completada"
+                                        ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-500/40"
+                                        : item.estatus === "incompleta"
+                                        ? "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-500/40"
+                                        : item.estatus === "no_realizada"
+                                        ? "bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-500/40"
+                                        : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`h-2 w-2 rounded-full ${
+                                        item.estatus === "completada"
+                                          ? "bg-emerald-500"
+                                          : item.estatus === "incompleta"
+                                          ? "bg-amber-500"
+                                          : item.estatus === "no_realizada"
+                                          ? "bg-rose-500"
+                                          : "bg-slate-400"
+                                      }`}
+                                    />
+                                    {item.estatus === "completada"
+                                      ? "Completada"
+                                      : item.estatus === "incompleta"
+                                      ? "Incompleta"
+                                      : item.estatus === "no_realizada"
+                                      ? "No realizada"
+                                      : "Pendiente"}
+                                  </span>
                                 </div>
                                 <button
                                   type="button"
@@ -783,50 +876,217 @@ export default function RegionDetalleColegiadoPage() {
                                 </button>
                               </div>
 
-                              <textarea
-                                value={item.descripcion}
-                                onChange={(event) =>
-                                  updateAction(nivel.key, index, { descripcion: event.target.value })
-                                }
-                                rows={3}
-                                maxLength={500}
-                                className="w-full rounded-2xl border border-slate-300 dark:border-white/15 bg-slate-50/70 dark:bg-slate-950/70 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 placeholder:text-slate-400"
-                                placeholder="Describe puntualmente la acción técnica, médica o de gestión..."
-                              />
-
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-                                <label className="inline-flex items-center gap-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer select-none">
+                              {/* Bloque 1: Datos de Emisión de la Acción */}
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start">
+                                <div className="md:col-span-1 space-y-1">
+                                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                    <i className="fa-solid fa-calendar-day text-amber-600 dark:text-amber-400"></i>
+                                    <span>Fecha de Acción</span>
+                                  </label>
                                   <input
-                                    type="checkbox"
-                                    checked={item.cumplido}
-                                    onChange={(event) =>
-                                      updateAction(nivel.key, index, { cumplido: event.target.checked })
-                                    }
-                                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                    type="date"
+                                    value={item.fecha_accion || ""}
+                                    onChange={(e) => updateAction(nivel.key, index, { fecha_accion: e.target.value })}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50/70 dark:bg-slate-950/70 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400 dark:[color-scheme:dark]"
                                   />
-                                  <span>Cumplimiento realizado</span>
-                                </label>
-
-                                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                                  <span>
-                                    {item.cumplido
-                                      ? `Fecha: ${formatDate(item.fecha_cumplimiento || null, true)}`
-                                      : "Pendiente"}
-                                  </span>
-                                  <span
-                                    className={
-                                      item.descripcion.length >= 480
-                                        ? "text-rose-600 dark:text-rose-400 font-bold"
-                                        : "text-slate-400"
-                                    }
-                                  >
-                                    {item.descripcion.length} / 500
-                                  </span>
                                 </div>
+                                <div className="md:col-span-3 space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                      <i className="fa-solid fa-file-pen text-amber-600 dark:text-amber-400"></i>
+                                      <span>Descripción de la Acción</span>
+                                    </label>
+                                    <span
+                                      className={`text-[11px] ${
+                                        item.descripcion.length >= 480
+                                          ? "text-rose-600 dark:text-rose-400 font-bold"
+                                          : "text-slate-400"
+                                      }`}
+                                    >
+                                      {item.descripcion.length} / 500
+                                    </span>
+                                  </div>
+                                  <textarea
+                                    value={item.descripcion}
+                                    onChange={(e) => updateAction(nivel.key, index, { descripcion: e.target.value })}
+                                    rows={2}
+                                    maxLength={500}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400 placeholder:text-slate-400"
+                                    placeholder="Describe puntualmente la acción técnica, médica o administrativa a realizar..."
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Bloque 2: Datos de Respuesta / Evidencia de la Acción */}
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start pt-2 border-t border-dashed border-slate-200 dark:border-white/10">
+                                <div className="md:col-span-1 space-y-1">
+                                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                    <i className="fa-solid fa-calendar-check text-teal-600 dark:text-teal-400"></i>
+                                    <span>Fecha de Respuesta</span>
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={item.fecha_respuesta || ""}
+                                    onChange={(e) => updateAction(nivel.key, index, { fecha_respuesta: e.target.value })}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50/70 dark:bg-slate-950/70 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400 dark:[color-scheme:dark]"
+                                  />
+                                  <span className="text-[10px] text-slate-400 block">Opcional al guardar</span>
+                                </div>
+                                <div className="md:col-span-3 space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                      <i className="fa-solid fa-comment-dots text-teal-600 dark:text-teal-400"></i>
+                                      <span>Respuesta de la Acción</span>
+                                    </label>
+                                    <span
+                                      className={`text-[11px] ${
+                                        item.respuesta_accion.length >= 480
+                                          ? "text-rose-600 dark:text-rose-400 font-bold"
+                                          : "text-slate-400"
+                                      }`}
+                                    >
+                                      {item.respuesta_accion.length} / 500
+                                    </span>
+                                  </div>
+                                  <textarea
+                                    value={item.respuesta_accion}
+                                    onChange={(e) => updateAction(nivel.key, index, { respuesta_accion: e.target.value })}
+                                    rows={2}
+                                    maxLength={500}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none transition focus:border-teal-500 dark:focus:border-teal-400 placeholder:text-slate-400"
+                                    placeholder="Describe la respuesta, seguimiento o evidencia clínica reportada por la unidad..."
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Bloque 3: Selector de Status */}
+                              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-white/10">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 mr-1">Status:</span>
+                                  {(
+                                    [
+                                      { key: "pendiente", label: "Pendiente", icon: "fa-regular fa-clock", color: "hover:border-slate-400 active:border-slate-500", active: "bg-slate-700 text-white border-slate-700 shadow-sm" },
+                                      { key: "completada", label: "Completada", icon: "fa-solid fa-circle-check", color: "hover:border-emerald-400", active: "bg-emerald-600 text-white border-emerald-600 shadow-sm" },
+                                      { key: "incompleta", label: "Incompleta", icon: "fa-solid fa-triangle-exclamation", color: "hover:border-amber-400", active: "bg-amber-600 text-white border-amber-600 shadow-sm" },
+                                      { key: "no_realizada", label: "No realizada", icon: "fa-solid fa-circle-xmark", color: "hover:border-rose-400", active: "bg-rose-600 text-white border-rose-600 shadow-sm" },
+                                    ] as const
+                                  ).map((opt) => (
+                                    <button
+                                      key={opt.key}
+                                      type="button"
+                                      onClick={() => updateAction(nivel.key, index, { estatus: opt.key })}
+                                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                                        item.estatus === opt.key
+                                          ? opt.active
+                                          : "bg-slate-50 dark:bg-white/5 border-slate-300 dark:border-white/15 text-slate-700 dark:text-slate-300 " + opt.color
+                                      }`}
+                                    >
+                                      <i className={`${opt.icon} text-[11px]`}></i>
+                                      <span>{opt.label}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                                {item.estatus === "completada" && item.fecha_cumplimiento && (
+                                  <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300">
+                                    Cumplimiento: {formatDate(item.fecha_cumplimiento, true)}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           ))
                         )}
+
+                        {/* Subsección: 4 Observaciones por Nivel (RBAC Regional) */}
+                        <div className="mt-5 pt-4 border-t border-slate-200 dark:border-white/15 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <i className="fa-solid fa-comments text-amber-600 dark:text-amber-400"></i>
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                              Observaciones y Acuerdos para {nivel.title.replace("Acciones a realizar por ", "")}
+                            </h3>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                            {/* 1. Observaciones Zonales (Regional - Editable) */}
+                            <div className="rounded-xl border border-sky-200 dark:border-sky-900/40 bg-sky-50/40 dark:bg-sky-950/20 p-3 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-sky-950 dark:text-sky-200 flex items-center gap-1.5">
+                                  <i className="fa-solid fa-location-crosshairs text-sky-600 dark:text-sky-400"></i>
+                                  <span>Observaciones Zonales</span>
+                                </label>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/50 text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700/50">
+                                  ✏️ Editable (Región / Zonal)
+                                </span>
+                              </div>
+                              <textarea
+                                value={observacionesNivel[nivel.key]?.obs_zonales || ""}
+                                onChange={(e) => updateObservacionNivel(nivel.key, "obs_zonales", e.target.value)}
+                                rows={3}
+                                className="w-full rounded-xl border border-sky-300 dark:border-sky-500/30 bg-white/90 dark:bg-slate-950/70 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 placeholder:text-slate-400"
+                                placeholder="Escribe aquí las observaciones del enlace zonal..."
+                              />
+                            </div>
+
+                            {/* 2. Observaciones Regionales (Regional - Editable) */}
+                            <div className="rounded-xl border border-indigo-200 dark:border-indigo-900/40 bg-indigo-50/40 dark:bg-indigo-950/20 p-3 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                                  <i className="fa-solid fa-map-location-dot text-indigo-600 dark:text-indigo-400"></i>
+                                  <span>Observaciones Regionales</span>
+                                </label>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700/50">
+                                  ✏️ Editable (Región)
+                                </span>
+                              </div>
+                              <textarea
+                                value={observacionesNivel[nivel.key]?.obs_regionales || ""}
+                                onChange={(e) => updateObservacionNivel(nivel.key, "obs_regionales", e.target.value)}
+                                rows={3}
+                                className="w-full rounded-xl border border-indigo-300 dark:border-indigo-500/30 bg-white/90 dark:bg-slate-950/70 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 placeholder:text-slate-400"
+                                placeholder="Escribe aquí las observaciones o retroalimentación del equipo regional..."
+                              />
+                            </div>
+
+                            {/* 3. Observaciones del Equipo Estatal Salud de las Mujeres (Estatal - Solo Lectura) */}
+                            <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-slate-950/60 p-3 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                  <i className="fa-solid fa-venus text-rose-600 dark:text-rose-400"></i>
+                                  <span>Observaciones del Equipo Estatal Salud de las Mujeres</span>
+                                </label>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                                  🔒 Reservado para Equipo Estatal
+                                </span>
+                              </div>
+                              <textarea
+                                value={observacionesNivel[nivel.key]?.obs_estatal_salud_mujeres || ""}
+                                disabled
+                                rows={3}
+                                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-slate-900/40 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 cursor-not-allowed placeholder:text-slate-400 resize-none"
+                                placeholder="Sin observaciones registradas por el Equipo Estatal Salud de las Mujeres..."
+                              />
+                            </div>
+
+                            {/* 4. Observaciones del Equipo Atención Médica (Estatal - Solo Lectura) */}
+                            <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-slate-950/60 p-3 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                  <i className="fa-solid fa-user-doctor text-emerald-600 dark:text-emerald-400"></i>
+                                  <span>Observaciones del Equipo Atención Médica</span>
+                                </label>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                                  🔒 Reservado para Equipo Estatal
+                                </span>
+                              </div>
+                              <textarea
+                                value={observacionesNivel[nivel.key]?.obs_atencion_medica || ""}
+                                disabled
+                                rows={3}
+                                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-slate-900/40 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 cursor-not-allowed placeholder:text-slate-400 resize-none"
+                                placeholder="Sin observaciones registradas por el Equipo de Atención Médica..."
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

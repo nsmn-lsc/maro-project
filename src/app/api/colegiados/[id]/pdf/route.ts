@@ -126,15 +126,39 @@ export async function GET(request: Request, context: RouteContext) {
 
     const plan = planRows?.[0] || null;
     let acciones: any[] = [];
+    const observacionesNivel: Record<string, { obs_zonales: string; obs_regionales: string; obs_estatal_salud_mujeres: string; obs_atencion_medica: string }> = {
+      primer_nivel: { obs_zonales: "", obs_regionales: "", obs_estatal_salud_mujeres: "", obs_atencion_medica: "" },
+      segundo_nivel: { obs_zonales: "", obs_regionales: "", obs_estatal_salud_mujeres: "", obs_atencion_medica: "" },
+      tercer_nivel: { obs_zonales: "", obs_regionales: "", obs_estatal_salud_mujeres: "", obs_atencion_medica: "" },
+    };
 
     if (plan?.id) {
       acciones = await query<any[]>(
-        `SELECT id, nivel_atencion, orden, descripcion, cumplido, fecha_cumplimiento
+        `SELECT id, nivel_atencion, orden, descripcion, cumplido, fecha_cumplimiento,
+                fecha_accion, fecha_respuesta, respuesta_accion, estatus
          FROM colegiados_acciones
          WHERE plan_id = ?
          ORDER BY FIELD(nivel_atencion, 'primer_nivel', 'segundo_nivel', 'tercer_nivel'), orden ASC`,
         [plan.id]
       );
+
+      const obsRows = await query<any[]>(
+        `SELECT nivel_atencion, obs_zonales, obs_regionales, obs_estatal_salud_mujeres, obs_atencion_medica
+         FROM colegiados_nivel_observaciones
+         WHERE plan_id = ?`,
+        [plan.id]
+      );
+
+      for (const row of obsRows || []) {
+        if (row.nivel_atencion && observacionesNivel[row.nivel_atencion]) {
+          observacionesNivel[row.nivel_atencion] = {
+            obs_zonales: row.obs_zonales || "",
+            obs_regionales: row.obs_regionales || "",
+            obs_estatal_salud_mujeres: row.obs_estatal_salud_mujeres || "",
+            obs_atencion_medica: row.obs_atencion_medica || "",
+          };
+        }
+      }
     }
 
     // 3. Crear documento PDF con pdf-lib
@@ -149,6 +173,13 @@ export async function GET(request: Request, context: RouteContext) {
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let y = pageHeight - margin;
+
+    const ensureSpace = (needed: number) => {
+      if (y - needed < margin + 15) {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        y = pageHeight - margin;
+      }
+    };
 
     // Paleta cromática médica
     const primaryDark = rgb(0.04, 0.22, 0.18); // Verde quirúrgico oscuro
@@ -420,6 +451,7 @@ export async function GET(request: Request, context: RouteContext) {
     // ═══════════════════════════════════════════════════════════════════════════
     // SECCIÓN 3: PLAN ESCALONADO DE ACCIONES COLEGIADAS
     // ═══════════════════════════════════════════════════════════════════════════
+    ensureSpace(30);
     page.drawRectangle({
       x: margin,
       y: y - 18,
@@ -448,18 +480,21 @@ export async function GET(request: Request, context: RouteContext) {
 
     for (const nivel of nivelesInfo) {
       const itemsNivel = acciones.filter((a) => a.nivel_atencion === nivel.key);
+      const obsNivel = observacionesNivel[nivel.key];
 
+      ensureSpace(24);
       page.drawText(sanitizePdfText(nivel.title), {
         x: margin + 4,
         y: y,
-        size: 8,
+        size: 8.5,
         font: fontBold,
         color: nivel.color,
       });
-      y -= 10;
+      y -= 11;
 
       if (itemsNivel.length === 0) {
-        page.drawText(sanitizePdfText("* Sin acciones adicionales prescritas para este nivel."), {
+        ensureSpace(14);
+        page.drawText(sanitizePdfText("• Sin acciones adicionales prescritas para este nivel."), {
           x: margin + 12,
           y,
           size: 7.5,
@@ -469,29 +504,113 @@ export async function GET(request: Request, context: RouteContext) {
         y -= 12;
       } else {
         for (const item of itemsNivel) {
-          const statusText = Number(item.cumplido) === 1 ? `[CUMPLIDA - ${formatDate(item.fecha_cumplimiento)}]` : "[PENDIENTE]";
-          const lines = wrapText(`${item.orden}. ${item.descripcion} ${statusText}`, contentWidth - 20, 7.5, fontRegular);
+          const estatusNormalized = String(item.estatus || (item.cumplido ? "completada" : "pendiente")).toUpperCase();
+          const fechaAccionStr = item.fecha_accion ? ` | Fecha Acción: ${formatDate(item.fecha_accion)}` : "";
+          const fechaCumplStr = item.fecha_cumplimiento ? ` | Fecha Cumplimiento: ${formatDate(item.fecha_cumplimiento, true)}` : "";
+          const headerLine = `${item.orden}. [${estatusNormalized}${fechaAccionStr}${fechaCumplStr}]`;
 
-          for (const line of lines) {
+          ensureSpace(20);
+          page.drawText(sanitizePdfText(headerLine), {
+            x: margin + 12,
+            y,
+            size: 7.5,
+            font: fontBold,
+            color: estatusNormalized === "COMPLETADA" ? rgb(0.06, 0.45, 0.35) : estatusNormalized === "NO_REALIZADA" ? accentRed : textDark,
+          });
+          y -= 9.5;
+
+          const descLines = wrapText(item.descripcion || "-", contentWidth - 28, 7.5, fontRegular);
+          for (const line of descLines) {
+            ensureSpace(12);
             page.drawText(sanitizePdfText(line), {
-              x: margin + 12,
+              x: margin + 16,
               y,
               size: 7.5,
               font: fontRegular,
               color: textDark,
             });
-            y -= 9.5;
+            y -= 9;
+          }
+
+          if (item.respuesta_accion || item.fecha_respuesta) {
+            const respHeader = `↳ Respuesta${item.fecha_respuesta ? ` (${formatDate(item.fecha_respuesta)})` : ""}: ${item.respuesta_accion || "-"}`;
+            const respLines = wrapText(respHeader, contentWidth - 32, 7.5, fontRegular);
+            for (const rLine of respLines) {
+              ensureSpace(12);
+              page.drawText(sanitizePdfText(rLine), {
+                x: margin + 20,
+                y,
+                size: 7.5,
+                font: fontRegular,
+                color: rgb(0.08, 0.35, 0.45),
+              });
+              y -= 9;
+            }
+          }
+          y -= 3;
+        }
+      }
+
+      // 4 Observaciones específicas del nivel
+      const tieneObs =
+        Boolean(obsNivel?.obs_zonales?.trim()) ||
+        Boolean(obsNivel?.obs_regionales?.trim()) ||
+        Boolean(obsNivel?.obs_estatal_salud_mujeres?.trim()) ||
+        Boolean(obsNivel?.obs_atencion_medica?.trim());
+
+      if (tieneObs) {
+        ensureSpace(18);
+        page.drawText(sanitizePdfText(`Observaciones y retroalimentación registradas para ${nivel.title}:`), {
+          x: margin + 12,
+          y,
+          size: 7.5,
+          font: fontBold,
+          color: textDark,
+        });
+        y -= 9.5;
+
+        const obsFields: { label: string; text?: string; color: any }[] = [
+          { label: "Obs. Zonales (Región)", text: obsNivel?.obs_zonales, color: rgb(0.08, 0.40, 0.65) },
+          { label: "Obs. Regionales", text: obsNivel?.obs_regionales, color: rgb(0.25, 0.20, 0.60) },
+          { label: "Obs. Equipo Estatal Salud de las Mujeres", text: obsNivel?.obs_estatal_salud_mujeres, color: rgb(0.65, 0.15, 0.30) },
+          { label: "Obs. Equipo Atención Médica", text: obsNivel?.obs_atencion_medica, color: rgb(0.06, 0.45, 0.35) },
+        ];
+
+        for (const obs of obsFields) {
+          if (!obs.text?.trim()) continue;
+          ensureSpace(14);
+          page.drawText(sanitizePdfText(`• ${obs.label}:`), {
+            x: margin + 16,
+            y,
+            size: 7,
+            font: fontBold,
+            color: obs.color,
+          });
+          y -= 8.5;
+
+          const lines = wrapText(obs.text, contentWidth - 36, 7, fontRegular);
+          for (const l of lines) {
+            ensureSpace(10);
+            page.drawText(sanitizePdfText(l), {
+              x: margin + 22,
+              y,
+              size: 7,
+              font: fontRegular,
+              color: textDark,
+            });
+            y -= 8.5;
           }
         }
-        y -= 3;
+        y -= 4;
       }
+
+      y -= 4;
     }
 
-    y -= 4;
-
     // ═══════════════════════════════════════════════════════════════════════════
-    // SECCIÓN 4: OBSERVACIONES Y ACUERDOS
+    // SECCIÓN 4: OBSERVACIONES GENERALES Y ACUERDOS
     // ═══════════════════════════════════════════════════════════════════════════
+    ensureSpace(40);
     page.drawRectangle({
       x: margin,
       y: y - 16,
@@ -502,7 +621,7 @@ export async function GET(request: Request, context: RouteContext) {
       borderWidth: 0.5,
     });
 
-    page.drawText(sanitizePdfText("4. OBSERVACIONES GENERALES Y ACUERDOS DEL COLEGIADO"), {
+    page.drawText(sanitizePdfText("4. OBSERVACIONES GENERALES Y ACUERDOS GLOBALES DEL COLEGIADO"), {
       x: margin + 8,
       y: y - 12,
       size: 8,
@@ -512,20 +631,23 @@ export async function GET(request: Request, context: RouteContext) {
 
     y -= 20;
 
-    const obsText = plan?.observaciones || data.plan_consulta || data.notas || "Sin observaciones registradas.";
-    const obsLines = wrapText(obsText, contentWidth - 16, 7.5, fontRegular).slice(0, 4);
+    const obsText = plan?.observaciones || data.plan_consulta || data.notas || "Sin observaciones generales adicionales.";
+    const obsLines = wrapText(obsText, contentWidth - 16, 7.5, fontRegular).slice(0, 5);
+
+    const obsBoxHeight = Math.max(26, obsLines.length * 9.5 + 8);
+    ensureSpace(obsBoxHeight + 8);
 
     page.drawRectangle({
       x: margin,
-      y: y - 36,
+      y: y - obsBoxHeight,
       width: contentWidth,
-      height: 36,
+      height: obsBoxHeight,
       color: bgGray,
       borderColor: borderGray,
       borderWidth: 0.5,
     });
 
-    let obsY = y - 10;
+    let obsY = y - 9;
     for (const l of obsLines) {
       page.drawText(sanitizePdfText(l), {
         x: margin + 8,
@@ -534,47 +656,46 @@ export async function GET(request: Request, context: RouteContext) {
         font: fontRegular,
         color: textDark,
       });
-      obsY -= 9;
+      obsY -= 9.5;
     }
 
-    y -= 46;
+    y -= (obsBoxHeight + 14);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // SECCIÓN 5: FIRMAS DE RESPONSABILIDAD Y SELLO
     // ═══════════════════════════════════════════════════════════════════════════
-    y = Math.min(y, 110); // Asegurar posición fija al pie de página
-
+    ensureSpace(70);
     const colWidth = (contentWidth - 24) / 3;
 
     // Firma 1: Médico Tratante
     page.drawLine({
-      start: { x: margin, y: y + 25 },
-      end: { x: margin + colWidth, y: y + 25 },
+      start: { x: margin, y: y - 10 },
+      end: { x: margin + colWidth, y: y - 10 },
       thickness: 0.7,
       color: textMuted,
     });
-    page.drawText(sanitizePdfText("Médico Tratante / Unidad"), { x: margin + 8, y: y + 14, size: 7, font: fontBold, color: textDark });
-    page.drawText(sanitizePdfText("Nombre y Cédula Profesional"), { x: margin + 8, y: y + 4, size: 6.5, font: fontRegular, color: textMuted });
+    page.drawText(sanitizePdfText("Médico Tratante / Unidad"), { x: margin + 8, y: y - 21, size: 7, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText("Nombre y Cédula Profesional"), { x: margin + 8, y: y - 31, size: 6.5, font: fontRegular, color: textMuted });
 
     // Firma 2: Colegiador / Coordinador
     page.drawLine({
-      start: { x: margin + colWidth + 12, y: y + 25 },
-      end: { x: margin + colWidth * 2 + 12, y: y + 25 },
+      start: { x: margin + colWidth + 12, y: y - 10 },
+      end: { x: margin + colWidth * 2 + 12, y: y - 10 },
       thickness: 0.7,
       color: textMuted,
     });
-    page.drawText(sanitizePdfText("Especialista Colegiador"), { x: margin + colWidth + 20, y: y + 14, size: 7, font: fontBold, color: textDark });
-    page.drawText(sanitizePdfText("Coordinación Estatal MARO"), { x: margin + colWidth + 20, y: y + 4, size: 6.5, font: fontRegular, color: textMuted });
+    page.drawText(sanitizePdfText("Especialista Colegiador"), { x: margin + colWidth + 20, y: y - 21, size: 7, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText("Coordinación Estatal MARO"), { x: margin + colWidth + 20, y: y - 31, size: 6.5, font: fontRegular, color: textMuted });
 
     // Firma 3: Sello
     page.drawLine({
-      start: { x: margin + colWidth * 2 + 24, y: y + 25 },
-      end: { x: margin + contentWidth, y: y + 25 },
+      start: { x: margin + colWidth * 2 + 24, y: y - 10 },
+      end: { x: margin + contentWidth, y: y - 10 },
       thickness: 0.7,
       color: textMuted,
     });
-    page.drawText(sanitizePdfText("Sello de la Unidad / Hospital"), { x: margin + colWidth * 2 + 30, y: y + 14, size: 7, font: fontBold, color: textDark });
-    page.drawText(sanitizePdfText("Fecha y Firma de Recepción"), { x: margin + colWidth * 2 + 30, y: y + 4, size: 6.5, font: fontRegular, color: textMuted });
+    page.drawText(sanitizePdfText("Sello de la Unidad / Hospital"), { x: margin + colWidth * 2 + 30, y: y - 21, size: 7, font: fontBold, color: textDark });
+    page.drawText(sanitizePdfText("Fecha y Firma de Recepción"), { x: margin + colWidth * 2 + 30, y: y - 31, size: 6.5, font: fontRegular, color: textMuted });
 
     // Generar Buffer del PDF
     const pdfBytes = await pdfDoc.save();

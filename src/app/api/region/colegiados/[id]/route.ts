@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import type mysql from "mysql2/promise";
 import { getPool, query } from "@/lib/db";
 import { requireApiAuth, assertPacienteScope } from "@/lib/apiAuth";
+import {
+  NIVELES_ATENCION,
+  type NivelAtencion,
+  type NivelObservaciones,
+  normalizarAccionesColegiadas,
+  fusionarObservacionesConRBAC,
+} from "@/lib/colegiados";
 
 type RouteContext = {
   params: Promise<{
@@ -9,75 +16,39 @@ type RouteContext = {
   }>;
 };
 
-type AccionPayload = {
-  nivel_atencion?: string;
-  orden?: number;
-  descripcion?: string;
-  cumplido?: boolean | number;
-  fecha_cumplimiento?: string | null;
-};
-
-const NIVELES_VALIDOS = ["primer_nivel", "segundo_nivel", "tercer_nivel"] as const;
 const ESTATUS_VALIDOS = ["borrador", "completo"] as const;
+
+const tableCache = new Map<string, boolean>();
+const columnCache = new Map<string, boolean>();
+
+async function hasTable(tableName: string) {
+  if (tableCache.has(tableName)) return tableCache.get(tableName)!;
+  try {
+    const rows = await query<any[]>(`SHOW TABLES LIKE '${tableName}'`);
+    const exists = Array.isArray(rows) && rows.length > 0;
+    tableCache.set(tableName, exists);
+    return exists;
+  } catch {
+    return false;
+  }
+}
+
+async function hasColumn(tableName: string, columnName: string) {
+  const cacheKey = `${tableName}.${columnName}`;
+  if (columnCache.has(cacheKey)) return columnCache.get(cacheKey)!;
+  try {
+    const rows = await query<any[]>(`SHOW COLUMNS FROM ${tableName} LIKE '${columnName}'`);
+    const exists = Array.isArray(rows) && rows.length > 0;
+    columnCache.set(cacheKey, exists);
+    return exists;
+  } catch {
+    return false;
+  }
+}
 
 function parseId(value: string) {
   const id = Number(value);
   return Number.isFinite(id) && id > 0 ? id : null;
-}
-
-function isNivelValido(value: string): value is (typeof NIVELES_VALIDOS)[number] {
-  return NIVELES_VALIDOS.includes(value as (typeof NIVELES_VALIDOS)[number]);
-}
-
-function normalizarAcciones(input: unknown[]) {
-  const acciones = input.map((raw, index) => {
-    const accion = (raw || {}) as AccionPayload;
-    const nivel = String(accion.nivel_atencion || "").trim();
-    const descripcion = String(accion.descripcion || "").trim();
-
-    if (!isNivelValido(nivel)) {
-      throw new Error(`Nivel de atención inválido en la acción ${index + 1}`);
-    }
-
-    if (!descripcion) {
-      throw new Error(`La descripción es requerida en la acción ${index + 1}`);
-    }
-
-    if (descripcion.length > 500) {
-      throw new Error(`La descripción excede 500 caracteres en la acción ${index + 1}`);
-    }
-
-    return {
-      nivel_atencion: nivel,
-      orden: Number(accion.orden) || 0,
-      descripcion,
-      cumplido: accion.cumplido ? 1 : 0,
-      fecha_cumplimiento: accion.cumplido
-        ? (accion.fecha_cumplimiento ? String(accion.fecha_cumplimiento) : new Date().toISOString().slice(0, 19).replace("T", " "))
-        : null,
-    };
-  });
-
-  const grouped = new Map<string, number>();
-  for (const accion of acciones) {
-    grouped.set(accion.nivel_atencion, (grouped.get(accion.nivel_atencion) || 0) + 1);
-  }
-
-  for (const nivel of NIVELES_VALIDOS) {
-    if ((grouped.get(nivel) || 0) > 5) {
-      throw new Error(`Solo se permiten 5 acciones en ${nivel.replace("_", " ")}`);
-    }
-  }
-
-  const counters = new Map<string, number>();
-  return acciones.map((accion) => {
-    const nextOrder = (counters.get(accion.nivel_atencion) || 0) + 1;
-    counters.set(accion.nivel_atencion, nextOrder);
-    return {
-      ...accion,
-      orden: nextOrder,
-    };
-  });
 }
 
 async function getConsultaColegiada(consultaId: number) {
@@ -123,24 +94,67 @@ async function getPlanYAcciones(consultaId: number) {
   );
 
   const plan = planRows?.[0] || null;
+  const observacionesNivel: Record<NivelAtencion, NivelObservaciones> = {
+    primer_nivel: { nivel_atencion: "primer_nivel", obs_zonales: null, obs_regionales: null, obs_estatal_salud_mujeres: null, obs_atencion_medica: null },
+    segundo_nivel: { nivel_atencion: "segundo_nivel", obs_zonales: null, obs_regionales: null, obs_estatal_salud_mujeres: null, obs_atencion_medica: null },
+    tercer_nivel: { nivel_atencion: "tercer_nivel", obs_zonales: null, obs_regionales: null, obs_estatal_salud_mujeres: null, obs_atencion_medica: null },
+  };
+
   if (!plan) {
     return {
       plan: null,
       acciones: [],
+      observacionesNivel,
     };
   }
 
-  const acciones = await query<any[]>(
-    `SELECT id, plan_id, nivel_atencion, orden, descripcion, cumplido, fecha_cumplimiento, created_at, updated_at
-     FROM colegiados_acciones
-     WHERE plan_id = ?
-     ORDER BY FIELD(nivel_atencion, 'primer_nivel', 'segundo_nivel', 'tercer_nivel'), orden ASC, id ASC`,
-    [plan.id]
-  );
+  const [hasFechaAccion, hasObsTable] = await Promise.all([
+    hasColumn("colegiados_acciones", "fecha_accion"),
+    hasTable("colegiados_nivel_observaciones"),
+  ]);
+
+  const selectAccionesSql = hasFechaAccion
+    ? `SELECT id, plan_id, nivel_atencion, orden, fecha_accion, descripcion, fecha_respuesta, respuesta_accion, estatus, cumplido, fecha_cumplimiento, created_at, updated_at
+       FROM colegiados_acciones
+       WHERE plan_id = ?
+       ORDER BY FIELD(nivel_atencion, 'primer_nivel', 'segundo_nivel', 'tercer_nivel'), orden ASC, id ASC`
+    : `SELECT id, plan_id, nivel_atencion, orden, NULL AS fecha_accion, descripcion, NULL AS fecha_respuesta, NULL AS respuesta_accion,
+              CASE WHEN cumplido = 1 THEN 'completada' ELSE 'pendiente' END AS estatus,
+              cumplido, fecha_cumplimiento, created_at, updated_at
+       FROM colegiados_acciones
+       WHERE plan_id = ?
+       ORDER BY FIELD(nivel_atencion, 'primer_nivel', 'segundo_nivel', 'tercer_nivel'), orden ASC, id ASC`;
+
+  const acciones = await query<any[]>(selectAccionesSql, [plan.id]);
+
+  if (hasObsTable) {
+    const obsRows = await query<any[]>(
+      `SELECT nivel_atencion, obs_zonales, obs_regionales, obs_estatal_salud_mujeres, obs_atencion_medica
+       FROM colegiados_nivel_observaciones
+       WHERE plan_id = ?`,
+      [plan.id]
+    );
+
+    if (Array.isArray(obsRows)) {
+      for (const row of obsRows) {
+        const nivel = row.nivel_atencion as NivelAtencion;
+        if (nivel && observacionesNivel[nivel]) {
+          observacionesNivel[nivel] = {
+            nivel_atencion: nivel,
+            obs_zonales: row.obs_zonales ?? null,
+            obs_regionales: row.obs_regionales ?? null,
+            obs_estatal_salud_mujeres: row.obs_estatal_salud_mujeres ?? null,
+            obs_atencion_medica: row.obs_atencion_medica ?? null,
+          };
+        }
+      }
+    }
+  }
 
   return {
     plan,
     acciones,
+    observacionesNivel,
   };
 }
 
@@ -179,7 +193,7 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
-    const { plan, acciones } = await getPlanYAcciones(consultaId);
+    const { plan, acciones, observacionesNivel } = await getPlanYAcciones(consultaId);
 
     return NextResponse.json({
       consulta,
@@ -193,6 +207,7 @@ export async function GET(_request: Request, context: RouteContext) {
         updated_at: null,
       },
       acciones,
+      observacionesNivel,
     });
   } catch (error: any) {
     console.error("Error obteniendo plan colegiado regional", error);
@@ -241,7 +256,7 @@ export async function PUT(request: Request, context: RouteContext) {
     }
 
     const body = await request.json();
-    const acciones = normalizarAcciones(Array.isArray(body?.acciones) ? body.acciones : []);
+    const acciones = normalizarAccionesColegiadas(Array.isArray(body?.acciones) ? body.acciones : []);
     const observaciones = body?.observaciones ? String(body.observaciones).trim() : null;
     const estatusInput = String(body?.estatus || "").trim();
     const estatus = ESTATUS_VALIDOS.includes(estatusInput as (typeof ESTATUS_VALIDOS)[number])
@@ -279,36 +294,115 @@ export async function PUT(request: Request, context: RouteContext) {
       );
     }
 
+    // 1. Guardar acciones
     await connection.execute(
       `DELETE FROM colegiados_acciones WHERE plan_id = ?`,
       [planId]
     );
 
+    const hasFechaAccion = await hasColumn("colegiados_acciones", "fecha_accion");
+
     for (const accion of acciones) {
-      await connection.execute(
-        `INSERT INTO colegiados_acciones (
-          plan_id, nivel_atencion, orden, descripcion, cumplido, fecha_cumplimiento
-        ) VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          planId,
-          accion.nivel_atencion,
-          accion.orden,
-          accion.descripcion,
-          accion.cumplido,
-          accion.fecha_cumplimiento,
-        ]
+      if (hasFechaAccion) {
+        await connection.execute(
+          `INSERT INTO colegiados_acciones (
+            plan_id, nivel_atencion, orden, fecha_accion, descripcion, fecha_respuesta, respuesta_accion, estatus, cumplido, fecha_cumplimiento
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            planId,
+            accion.nivel_atencion,
+            accion.orden,
+            accion.fecha_accion,
+            accion.descripcion,
+            accion.fecha_respuesta,
+            accion.respuesta_accion,
+            accion.estatus,
+            accion.cumplido,
+            accion.fecha_cumplimiento,
+          ]
+        );
+      } else {
+        await connection.execute(
+          `INSERT INTO colegiados_acciones (
+            plan_id, nivel_atencion, orden, descripcion, cumplido, fecha_cumplimiento
+          ) VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            planId,
+            accion.nivel_atencion,
+            accion.orden,
+            accion.descripcion,
+            accion.cumplido,
+            accion.fecha_cumplimiento,
+          ]
+        );
+      }
+    }
+
+    // 2. Guardar observaciones por nivel aplicando RBAC regional
+    const hasObsTable = await hasTable("colegiados_nivel_observaciones");
+    if (hasObsTable && planId) {
+      const incomingObsMap = (body?.observaciones_nivel || body?.observacionesNivel || {}) as Record<string, any>;
+
+      const [existingRows]: any = await connection.execute(
+        `SELECT nivel_atencion, obs_zonales, obs_regionales, obs_estatal_salud_mujeres, obs_atencion_medica
+         FROM colegiados_nivel_observaciones
+         WHERE plan_id = ?`,
+        [planId]
       );
+
+      const existingMap = new Map<NivelAtencion, NivelObservaciones>();
+      if (Array.isArray(existingRows)) {
+        for (const row of existingRows) {
+          existingMap.set(row.nivel_atencion as NivelAtencion, {
+            nivel_atencion: row.nivel_atencion,
+            obs_zonales: row.obs_zonales ?? null,
+            obs_regionales: row.obs_regionales ?? null,
+            obs_estatal_salud_mujeres: row.obs_estatal_salud_mujeres ?? null,
+            obs_atencion_medica: row.obs_atencion_medica ?? null,
+          });
+        }
+      }
+
+      for (const nivel of NIVELES_ATENCION) {
+        const merged = fusionarObservacionesConRBAC({
+          nivelUsuario: authResult.auth.nivel,
+          nivelAtencion: nivel,
+          incoming: incomingObsMap[nivel],
+          existing: existingMap.get(nivel) || null,
+        });
+
+        await connection.execute(
+          `INSERT INTO colegiados_nivel_observaciones (
+            plan_id, nivel_atencion, obs_zonales, obs_regionales, obs_estatal_salud_mujeres, obs_atencion_medica
+          ) VALUES (?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            obs_zonales = VALUES(obs_zonales),
+            obs_regionales = VALUES(obs_regionales),
+            obs_estatal_salud_mujeres = VALUES(obs_estatal_salud_mujeres),
+            obs_atencion_medica = VALUES(obs_atencion_medica),
+            updated_at = CURRENT_TIMESTAMP`,
+          [
+            planId,
+            merged.nivel_atencion,
+            merged.obs_zonales,
+            merged.obs_regionales,
+            merged.obs_estatal_salud_mujeres,
+            merged.obs_atencion_medica,
+          ]
+        );
+      }
     }
 
     await connection.commit();
 
-    const { plan, acciones: accionesGuardadas } = await getPlanYAcciones(consultaId);
+    const { plan, acciones: accionesGuardadas, observacionesNivel: obsGuardadas } = await getPlanYAcciones(consultaId);
 
     return NextResponse.json({
       ok: true,
       consulta,
       plan,
       acciones: accionesGuardadas,
+      observacionesNivel: obsGuardadas,
     });
   } catch (error: any) {
     if (connection) {
