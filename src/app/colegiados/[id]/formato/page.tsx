@@ -15,6 +15,8 @@ type ApiResponse = {
   consulta: {
     consulta_id: number;
     paciente_id: number;
+    folio?: string | null;
+    nombre_completo?: string | null;
     region: string | null;
     municipio: string | null;
     unidad: string | null;
@@ -260,6 +262,8 @@ export default function FormatoColegiadoPage() {
       const rightColX = margin + leftColW + colGap;
 
       const datoRows: [string, string][] = [
+        ["Paciente",         String(consulta.nombre_completo  ?? "—")],
+        ["Folio",            String(consulta.folio            ?? "—")],
         ["Region",           String(consulta.region           ?? "—")],
         ["Unidad",           String(consulta.unidad           ?? "—")],
         ["Municipio",        String(consulta.municipio        ?? "—")],
@@ -649,6 +653,8 @@ export default function FormatoColegiadoPage() {
           </header>
 
           <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Info label="Paciente" value={consulta.nombre_completo} />
+            <Info label="Folio" value={consulta.folio} />
             <Info label="Región" value={consulta.region} />
             <Info label="Municipio" value={consulta.municipio} />
             <Info label="Unidad" value={consulta.unidad} />

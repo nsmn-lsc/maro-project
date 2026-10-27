@@ -56,6 +56,8 @@ async function getConsultaColegiada(consultaId: number) {
     `SELECT
         c.id AS consulta_id,
         c.paciente_id,
+        cp.folio,
+        cp.nombre_completo,
         cp.region,
         cp.municipio,
         cp.unidad,

@@ -20,6 +20,8 @@ type SessionInfo = {
 type ConsultaColegiada = {
   consulta_id: number;
   paciente_id: number;
+  folio?: string | null;
+  nombre_completo?: string | null;
   region: string | null;
   municipio: string | null;
   unidad: string | null;
@@ -485,7 +487,29 @@ export default function DetalleColegiadoPage() {
               <i className="fa-solid fa-list-check text-emerald-600 dark:text-emerald-400"></i>
               <span>Plan de Acciones Colegiadas</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+
+            {/* Identificación de la Paciente */}
+            <div className="flex items-center gap-2.5 pt-1 flex-wrap">
+              <div className="inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-white/10 px-3 py-1 border border-slate-200 dark:border-white/15">
+                <i className="fa-solid fa-user-nurse text-emerald-600 dark:text-emerald-400 text-sm"></i>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  {consulta?.nombre_completo || (loading ? "Cargando paciente..." : "Sin nombre registrado")}
+                </span>
+              </div>
+              {consulta?.folio && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/15">
+                  <span className="text-slate-400 font-sans text-[10px] uppercase">Folio:</span>
+                  {consulta.folio}
+                </span>
+              )}
+              {consulta?.paciente_id && (
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                  ID: #{consulta.paciente_id}
+                </span>
+              )}
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 pt-0.5">
               Definición y seguimiento normativo de intervenciones clínicas por nivel de atención
             </p>
           </div>
