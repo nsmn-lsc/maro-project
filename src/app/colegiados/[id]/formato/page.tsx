@@ -88,6 +88,7 @@ export default function FormatoColegiadoPage() {
   const params = useParams();
   const consultaId = String(params?.id || "");
 
+  const [session, setSession] = useState<SessionInfo | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,11 +103,12 @@ export default function FormatoColegiadoPage() {
     }
 
     try {
-      const session = JSON.parse(stored) as SessionInfo;
-      if ((session.nivel ?? 0) < 3) {
-        router.replace((session.nivel ?? 0) >= 2 ? "/region" : "/dashboard");
+      const parsed = JSON.parse(stored) as SessionInfo;
+      if ((parsed.nivel ?? 0) < 2) {
+        router.replace("/dashboard");
         return;
       }
+      setSession(parsed);
       setAuthChecked(true);
     } catch {
       router.replace("/inicial");
@@ -597,7 +599,7 @@ export default function FormatoColegiadoPage() {
   };
 
   if (!authChecked) {
-    return <main className="min-h-screen flex items-center justify-center bg-white text-slate-900">Validando acceso estatal...</main>;
+    return <main className="min-h-screen flex items-center justify-center bg-white text-slate-900">Validando acceso al formato...</main>;
   }
 
   if (loading) {
@@ -609,17 +611,24 @@ export default function FormatoColegiadoPage() {
   }
 
   const consulta = data.consulta;
+  const isRegional = (session?.nivel ?? 0) === 2;
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-900 print:bg-white">
       <div className="mx-auto max-w-5xl p-4 print:p-0">
         <div className="mb-4 flex flex-wrap justify-between gap-2 print:hidden">
           <div className="flex gap-2">
-            <Link href={`/colegiados/${consulta.consulta_id}`} className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:border-slate-400">
+            <Link
+              href={isRegional ? `/region/colegiados/${consulta.consulta_id}` : `/colegiados/${consulta.consulta_id}`}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:border-slate-400 font-medium"
+            >
               Volver al plan
             </Link>
-            <Link href="/colegiados/planes" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:border-slate-400">
-              Casos con acciones
+            <Link
+              href={isRegional ? "/region/colegiados" : "/colegiados/planes"}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:border-slate-400 font-medium"
+            >
+              Casos colegiados
             </Link>
           </div>
           <div className="flex gap-2">

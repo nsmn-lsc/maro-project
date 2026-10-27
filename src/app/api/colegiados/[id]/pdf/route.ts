@@ -115,6 +115,17 @@ export async function GET(request: Request, context: RouteContext) {
 
     const data = consultaRows[0];
 
+    if (authResult.auth.nivel === 2 && authResult.auth.region) {
+      const userRegion = authResult.auth.region.trim().toUpperCase();
+      const pacienteRegion = String(data.region || "").trim().toUpperCase();
+      if (userRegion !== pacienteRegion) {
+        return NextResponse.json(
+          { message: "No tienes autorización para generar la cédula de un paciente fuera de tu región asignada" },
+          { status: 403 }
+        );
+      }
+    }
+
     // 2. Obtener plan colegiado y acciones
     const planRows = await query<any[]>(
       `SELECT id, estatus, observaciones, updated_at

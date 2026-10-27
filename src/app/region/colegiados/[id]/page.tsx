@@ -517,6 +517,22 @@ export default function RegionDetalleColegiadoPage() {
 
           <div className="flex items-center gap-2 flex-wrap">
             <ThemeToggle />
+            <a
+              href={`/api/colegiados/${consultaId}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 text-xs shadow-sm transition-colors cursor-pointer"
+            >
+              <i className="fa-solid fa-file-pdf text-sm"></i>
+              <span>Cédula PDF</span>
+            </a>
+            <Link
+              href={`/colegiados/${consultaId}/formato`}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 dark:border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-3.5 py-2 text-xs font-bold text-emerald-900 dark:text-emerald-200 transition-colors cursor-pointer"
+            >
+              <i className="fa-solid fa-table-list"></i>
+              <span>Vista Formato</span>
+            </Link>
             <Link
               href="/region/colegiados"
               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white/90 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-white transition-colors cursor-pointer"

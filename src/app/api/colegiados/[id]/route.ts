@@ -162,7 +162,7 @@ async function getPlanYAcciones(consultaId: number) {
 
 export async function GET(_request: Request, context: RouteContext) {
   try {
-    const authResult = await requireApiAuth(_request, 3);
+    const authResult = await requireApiAuth(_request, 2);
     if (!authResult.ok) return authResult.response;
 
     const params = await context.params;
@@ -176,6 +176,17 @@ export async function GET(_request: Request, context: RouteContext) {
 
     if (!consulta) {
       return NextResponse.json({ message: "Consulta no encontrada" }, { status: 404 });
+    }
+
+    if (authResult.auth.nivel === 2 && authResult.auth.region) {
+      const userRegion = authResult.auth.region.trim().toUpperCase();
+      const consultaRegion = String(consulta.region || "").trim().toUpperCase();
+      if (userRegion !== consultaRegion) {
+        return NextResponse.json(
+          { message: "No tienes autorización para consultar casos fuera de tu región asignada" },
+          { status: 403 }
+        );
+      }
     }
 
     if (Number(consulta.colegiado) !== 1) {
