@@ -457,22 +457,23 @@ export default function RegionColegiadosPage() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px] font-bold">
-                    <th className="px-3 py-3 text-left w-10">#</th>
-                    <th className="px-3 py-3 text-left">Folio</th>
-                    <th className="px-3 py-3 text-left">Paciente</th>
-                    <th className="px-3 py-3 text-left">Unidad Médica / Municipio</th>
-                    <th className="px-3 py-3 text-left">Puntaje</th>
-                    <th className="px-3 py-3 text-left">Fecha Colegiado</th>
-                    <th className="px-3 py-3 text-left">Estatus Plan</th>
-                    <th className="px-3 py-3 text-left">Acciones</th>
-                    <th className="px-3 py-3 text-right">Acceso Rápido</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200/80 dark:border-white/5 bg-white/50 dark:bg-transparent">
+            <>
+              <div className="overflow-x-auto overflow-y-auto max-h-[620px] divide-y divide-slate-200/80 dark:divide-white/10">
+                <table className="min-w-full text-xs">
+                  <thead className="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-950/95 backdrop-blur-md shadow-sm">
+                    <tr className="border-b border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px] font-bold">
+                      <th className="px-3 py-3 text-left w-10">#</th>
+                      <th className="px-3 py-3 text-left">Folio</th>
+                      <th className="px-3 py-3 text-left">Paciente</th>
+                      <th className="px-3 py-3 text-left">Unidad Médica / Municipio</th>
+                      <th className="px-3 py-3 text-left">Puntaje</th>
+                      <th className="px-3 py-3 text-left">Fecha Colegiado</th>
+                      <th className="px-3 py-3 text-left">Estatus Plan</th>
+                      <th className="px-3 py-3 text-left">Acciones</th>
+                      <th className="px-3 py-3 text-right">Acceso Rápido</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/80 dark:border-white/5 bg-white/50 dark:bg-transparent">
                   {filtered.map((c, idx) => {
                     const puntaje = Number(c.puntaje_total_consulta) || 0;
                     const esMuyAltoRiesgo = puntaje >= 25 || c.riesgo_25_plus === 1;
@@ -617,7 +618,22 @@ export default function RegionColegiadosPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+
+              {/* Pie de tabla con conteo y aviso de scroll */}
+              <div className="p-3 sm:px-5 border-t border-slate-200/80 dark:border-white/10 bg-slate-50/70 dark:bg-slate-950/50 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span>
+                  Mostrando <strong className="text-slate-800 dark:text-slate-200">{filtered.length}</strong> de{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">{casos.length}</strong> casos registrados
+                </span>
+                {filtered.length > 8 && (
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1 font-medium">
+                    <i className="fa-solid fa-arrows-up-down text-[10px]" />
+                    <span>Contenedor con desplazamiento vertical</span>
+                  </span>
+                )}
+              </div>
+            </>
           )}
         </section>
       </div>
