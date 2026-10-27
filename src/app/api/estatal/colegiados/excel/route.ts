@@ -82,14 +82,17 @@ function parseFocosDeAlerta(row: any): string {
 
 const columnCache = new Map<string, boolean>();
 
-async function hasColumn(columnName: string) {
-  if (columnCache.has(columnName)) {
-    return columnCache.get(columnName)!;
+async function hasColumn(columnOrTable: string, columnIfTable?: string) {
+  const table = columnIfTable ? columnOrTable : "consultas_prenatales";
+  const col = columnIfTable ? columnIfTable : columnOrTable;
+  const cacheKey = `${table}.${col}`;
+  if (columnCache.has(cacheKey)) {
+    return columnCache.get(cacheKey)!;
   }
   try {
-    const rows = await query<any[]>(`SHOW COLUMNS FROM consultas_prenatales LIKE '${columnName}'`);
+    const rows = await query<any[]>(`SHOW COLUMNS FROM ${table} LIKE '${col}'`);
     const exists = Array.isArray(rows) && rows.length > 0;
-    columnCache.set(columnName, exists);
+    columnCache.set(cacheKey, exists);
     return exists;
   } catch {
     return false;
@@ -150,16 +153,28 @@ export async function GET(request: Request) {
     let accionesMap = new Map<number, string>();
 
     if (planIds.length > 0) {
-      const accionesQuery = `
-        SELECT plan_id, descripcion, cumplido, nivel_atencion
-        FROM colegiados_acciones
-        WHERE plan_id IN (${planIds.join(",")})
-        ORDER BY plan_id, FIELD(nivel_atencion, 'primer_nivel', 'segundo_nivel', 'tercer_nivel'), orden ASC
-      `;
+      const hasFechaAccion = await hasColumn("colegiados_acciones", "fecha_accion").catch(() => false);
+      const accionesQuery = hasFechaAccion
+        ? `
+          SELECT plan_id, descripcion, cumplido, nivel_atencion, fecha_accion, fecha_respuesta, respuesta_accion, estatus
+          FROM colegiados_acciones
+          WHERE plan_id IN (${planIds.join(",")})
+          ORDER BY plan_id, FIELD(nivel_atencion, 'primer_nivel', 'segundo_nivel', 'tercer_nivel'), orden ASC
+        `
+        : `
+          SELECT plan_id, descripcion, cumplido, nivel_atencion, NULL AS fecha_accion, NULL AS fecha_respuesta, NULL AS respuesta_accion,
+                 CASE WHEN cumplido = 1 THEN 'completada' ELSE 'pendiente' END AS estatus
+          FROM colegiados_acciones
+          WHERE plan_id IN (${planIds.join(",")})
+          ORDER BY plan_id, FIELD(nivel_atencion, 'primer_nivel', 'segundo_nivel', 'tercer_nivel'), orden ASC
+        `;
       const acciones = await query<any[]>(accionesQuery);
       
       acciones.forEach((a) => {
-        const text = `[${a.nivel_atencion.replace('_', ' ')}] ${a.descripcion} (${a.cumplido ? 'Cumplida' : 'Pendiente'})`;
+        const fechaAccionStr = a.fecha_accion ? ` [Emisión: ${formatDate(a.fecha_accion)}]` : "";
+        const estatusLabel = a.estatus ? (a.estatus.charAt(0).toUpperCase() + a.estatus.slice(1).replace('_', ' ')) : (a.cumplido ? "Cumplida" : "Pendiente");
+        const respDetalle = a.respuesta_accion ? ` | Resp: ${a.respuesta_accion}${a.fecha_respuesta ? ` (${formatDate(a.fecha_respuesta)})` : ""}` : "";
+        const text = `[${a.nivel_atencion.replace('_', ' ')}] ${a.descripcion}${fechaAccionStr}${respDetalle} [Status: ${estatusLabel}]`;
         if (accionesMap.has(a.plan_id)) {
           accionesMap.set(a.plan_id, accionesMap.get(a.plan_id) + "\n" + text);
         } else {

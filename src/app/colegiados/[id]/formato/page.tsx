@@ -15,6 +15,8 @@ type ApiResponse = {
   consulta: {
     consulta_id: number;
     paciente_id: number;
+    folio?: string | null;
+    nombre_completo?: string | null;
     region: string | null;
     municipio: string | null;
     unidad: string | null;
@@ -46,7 +48,20 @@ type ApiResponse = {
     descripcion: string;
     cumplido: 0 | 1;
     fecha_cumplimiento: string | null;
+    fecha_accion?: string | null;
+    fecha_respuesta?: string | null;
+    respuesta_accion?: string | null;
+    estatus?: "pendiente" | "completada" | "incompleta" | "no_realizada";
   }>;
+  observaciones_nivel?: Record<
+    NivelAtencion,
+    {
+      obs_zonales: string;
+      obs_regionales: string;
+      obs_estatal_salud_mujeres: string;
+      obs_atencion_medica: string;
+    }
+  >;
 };
 
 const NIVELES: Array<{ key: NivelAtencion; title: string }> = [
@@ -73,6 +88,7 @@ export default function FormatoColegiadoPage() {
   const params = useParams();
   const consultaId = String(params?.id || "");
 
+  const [session, setSession] = useState<SessionInfo | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,11 +103,12 @@ export default function FormatoColegiadoPage() {
     }
 
     try {
-      const session = JSON.parse(stored) as SessionInfo;
-      if ((session.nivel ?? 0) < 3) {
-        router.replace((session.nivel ?? 0) >= 2 ? "/region" : "/dashboard");
+      const parsed = JSON.parse(stored) as SessionInfo;
+      if ((parsed.nivel ?? 0) < 2) {
+        router.replace("/dashboard");
         return;
       }
+      setSession(parsed);
       setAuthChecked(true);
     } catch {
       router.replace("/inicial");
@@ -247,6 +264,8 @@ export default function FormatoColegiadoPage() {
       const rightColX = margin + leftColW + colGap;
 
       const datoRows: [string, string][] = [
+        ["Paciente",         String(consulta.nombre_completo  ?? "—")],
+        ["Folio",            String(consulta.folio            ?? "—")],
         ["Region",           String(consulta.region           ?? "—")],
         ["Unidad",           String(consulta.unidad           ?? "—")],
         ["Municipio",        String(consulta.municipio        ?? "—")],
@@ -423,17 +442,56 @@ export default function FormatoColegiadoPage() {
 
       for (const { key, title } of nivelesConfig) {
         const items = accionesPorNivel[key];
+        const obs = data.observaciones_nivel?.[key];
 
-        let bodyHeight = bulletLH + 6;
-        if (items.length) {
-          bodyHeight = 0;
+        // Calcular altura dinámica
+        let contentH = 0;
+        if (!items.length) {
+          contentH += bulletLH + 8;
+        } else {
           for (const item of items) {
-            const lines = wrapText(`- ${item.descripcion || "—"}`, cardW - 20, 8);
-            bodyHeight += lines.length * bulletLH + 3;
+            const stStr = (item.estatus || (item.cumplido ? "completada" : "pendiente")).toUpperCase();
+            const fAccStr = item.fecha_accion ? ` [F. Acción: ${formatDate(item.fecha_accion)}]` : "";
+            const hLine = `${item.orden}. [${stStr}]${fAccStr}: ${item.descripcion || "—"}`;
+            const lines = wrapText(hLine, cardW - 20, 8);
+            contentH += lines.length * bulletLH + 2;
+
+            if (item.respuesta_accion || item.fecha_respuesta) {
+              const rHeader = `↳ Respuesta${item.fecha_respuesta ? ` (${formatDate(item.fecha_respuesta)})` : ""}: ${item.respuesta_accion || "—"}`;
+              const rLines = wrapText(rHeader, cardW - 30, 7.5);
+              contentH += rLines.length * bulletLH + 2;
+            }
           }
         }
 
-        const cardH = cardHdrH + cardPad + bodyHeight + cardFtrH;
+        // Si hay observaciones para este nivel, calcular espacio
+        const hasObs =
+          Boolean(obs?.obs_zonales?.trim()) ||
+          Boolean(obs?.obs_regionales?.trim()) ||
+          Boolean(obs?.obs_estatal_salud_mujeres?.trim()) ||
+          Boolean(obs?.obs_atencion_medica?.trim());
+
+        if (hasObs) {
+          contentH += 18; // Cabecera de observaciones
+          if (obs?.obs_zonales?.trim()) {
+            const l = wrapText(`• Obs. Zonales: ${obs.obs_zonales}`, cardW - 24, 7);
+            contentH += l.length * 10 + 2;
+          }
+          if (obs?.obs_regionales?.trim()) {
+            const l = wrapText(`• Obs. Regionales: ${obs.obs_regionales}`, cardW - 24, 7);
+            contentH += l.length * 10 + 2;
+          }
+          if (obs?.obs_estatal_salud_mujeres?.trim()) {
+            const l = wrapText(`• Obs. Estatal Salud Mujeres: ${obs.obs_estatal_salud_mujeres}`, cardW - 24, 7);
+            contentH += l.length * 10 + 2;
+          }
+          if (obs?.obs_atencion_medica?.trim()) {
+            const l = wrapText(`• Obs. Atencion Medica: ${obs.obs_atencion_medica}`, cardW - 24, 7);
+            contentH += l.length * 10 + 2;
+          }
+        }
+
+        const cardH = cardHdrH + cardPad + contentH + cardFtrH;
         ensureSpace(cardH + 10);
         const cardTopY = y;
         const cardX = margin;
@@ -461,20 +519,57 @@ export default function FormatoColegiadoPage() {
         let bY = cardTopY - cardHdrH - cardPad;
         if (!items.length) {
           page.drawText("Sin acciones definidas.", { x: cardX + 10, y: bY - 8, size: 8, font: regularFont, color: textMid });
+          bY -= (bulletLH + 8);
         } else {
           for (const item of items) {
-            const lines = wrapText(`- ${item.descripcion || "—"}`, cardW - 20, 8);
+            const stStr = (item.estatus || (item.cumplido ? "completada" : "pendiente")).toUpperCase();
+            const fAccStr = item.fecha_accion ? ` [F. Acción: ${formatDate(item.fecha_accion)}]` : "";
+            const hLine = `${item.orden}. [${stStr}]${fAccStr}: ${item.descripcion || "—"}`;
+            const lines = wrapText(hLine, cardW - 20, 8);
             for (const line of lines) {
               page.drawText(line, { x: cardX + 10, y: bY - 8, size: 8, font: regularFont, color: textDark });
               bY -= bulletLH;
             }
-            bY -= 3;
+            bY -= 2;
+
+            if (item.respuesta_accion || item.fecha_respuesta) {
+              const rHeader = `↳ Respuesta${item.fecha_respuesta ? ` (${formatDate(item.fecha_respuesta)})` : ""}: ${item.respuesta_accion || "—"}`;
+              const rLines = wrapText(rHeader, cardW - 30, 7.5);
+              for (const rl of rLines) {
+                page.drawText(rl, { x: cardX + 20, y: bY - 7.5, size: 7.5, font: regularFont, color: teal });
+                bY -= bulletLH;
+              }
+              bY -= 2;
+            }
+          }
+        }
+
+        if (hasObs) {
+          bY -= 4;
+          page.drawText("Observaciones y Acuerdos del Nivel:", { x: cardX + 10, y: bY - 7, size: 7.5, font: boldFont, color: textDark });
+          bY -= 12;
+
+          const obsItems = [
+            { label: "Obs. Zonales", val: obs?.obs_zonales },
+            { label: "Obs. Regionales", val: obs?.obs_regionales },
+            { label: "Obs. Estatal Salud Mujeres", val: obs?.obs_estatal_salud_mujeres },
+            { label: "Obs. Atencion Medica", val: obs?.obs_atencion_medica },
+          ];
+
+          for (const o of obsItems) {
+            if (!o.val?.trim()) continue;
+            const lines = wrapText(`• ${o.label}: ${o.val}`, cardW - 24, 7);
+            for (const ol of lines) {
+              page.drawText(ol, { x: cardX + 14, y: bY - 7, size: 7, font: regularFont, color: textDark });
+              bY -= 10;
+            }
+            bY -= 2;
           }
         }
 
         const ftrTopY = cardTopY - cardH + cardFtrH;
         page.drawLine({ start: { x: cardX, y: ftrTopY }, end: { x: cardX + cardW, y: ftrTopY }, thickness: 0.5, color: border });
-        const realizados = items.filter((i) => Number(i.cumplido) === 1).length;
+        const realizados = items.filter((i) => (i.estatus === "completada" || Number(i.cumplido) === 1)).length;
         const ftrTxt = items.length === 0 ? "Estado: Sin acciones" : `Estado: ${realizados}/${items.length} realizadas`;
         page.drawText(ftrTxt, { x: cardX + 8, y: ftrTopY - 13, size: 7.5, font: regularFont, color: textMid });
 
@@ -504,7 +599,7 @@ export default function FormatoColegiadoPage() {
   };
 
   if (!authChecked) {
-    return <main className="min-h-screen flex items-center justify-center bg-white text-slate-900">Validando acceso estatal...</main>;
+    return <main className="min-h-screen flex items-center justify-center bg-white text-slate-900">Validando acceso al formato...</main>;
   }
 
   if (loading) {
@@ -516,17 +611,24 @@ export default function FormatoColegiadoPage() {
   }
 
   const consulta = data.consulta;
+  const isRegional = (session?.nivel ?? 0) === 2;
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-900 print:bg-white">
       <div className="mx-auto max-w-5xl p-4 print:p-0">
         <div className="mb-4 flex flex-wrap justify-between gap-2 print:hidden">
           <div className="flex gap-2">
-            <Link href={`/colegiados/${consulta.consulta_id}`} className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:border-slate-400">
+            <Link
+              href={isRegional ? `/region/colegiados/${consulta.consulta_id}` : `/colegiados/${consulta.consulta_id}`}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:border-slate-400 font-medium"
+            >
               Volver al plan
             </Link>
-            <Link href="/colegiados/planes" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:border-slate-400">
-              Casos con acciones
+            <Link
+              href={isRegional ? "/region/colegiados" : "/colegiados/planes"}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:border-slate-400 font-medium"
+            >
+              Casos colegiados
             </Link>
           </div>
           <div className="flex gap-2">
@@ -560,6 +662,8 @@ export default function FormatoColegiadoPage() {
           </header>
 
           <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Info label="Paciente" value={consulta.nombre_completo} />
+            <Info label="Folio" value={consulta.folio} />
             <Info label="Región" value={consulta.region} />
             <Info label="Municipio" value={consulta.municipio} />
             <Info label="Unidad" value={consulta.unidad} />
@@ -587,38 +691,103 @@ export default function FormatoColegiadoPage() {
             </div>
           </section>
 
-          <section className="mt-8 space-y-5">
+          <section className="mt-8 space-y-6">
             {NIVELES.map((nivel) => {
               const items = accionesPorNivel[nivel.key];
+              const obs = data.observaciones_nivel?.[nivel.key];
+
               return (
-                <div key={nivel.key} className="rounded-2xl border border-slate-200 p-5">
-                  <h2 className="text-lg font-semibold text-slate-900">{nivel.title}</h2>
+                <div key={nivel.key} className="rounded-2xl border border-slate-200 p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <h2 className="text-lg font-bold text-slate-900">{nivel.title}</h2>
+                    <span className="text-xs font-semibold text-slate-500">
+                      {items.length} {items.length === 1 ? "acción" : "acciones"}
+                    </span>
+                  </div>
+
                   {items.length === 0 ? (
-                    <p className="mt-3 text-sm text-slate-500">Sin acciones definidas en este nivel.</p>
+                    <p className="text-sm text-slate-500 italic">Sin acciones definidas en este nivel.</p>
                   ) : (
-                    <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-                      <table className="min-w-full text-sm">
-                        <thead className="bg-slate-100 text-slate-700">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider">
                           <tr>
-                            <th className="px-4 py-3 text-left">#</th>
-                            <th className="px-4 py-3 text-left">Acción</th>
-                            <th className="px-4 py-3 text-left">Cumplimiento</th>
-                            <th className="px-4 py-3 text-left">Fecha</th>
+                            <th className="px-3 py-2.5 text-left w-12">#</th>
+                            <th className="px-3 py-2.5 text-left w-28">Fecha Acción</th>
+                            <th className="px-3 py-2.5 text-left">Descripción de la Acción</th>
+                            <th className="px-3 py-2.5 text-left w-28">Fecha Resp.</th>
+                            <th className="px-3 py-2.5 text-left">Respuesta</th>
+                            <th className="px-3 py-2.5 text-left w-28">Status</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200">
+                        <tbody className="divide-y divide-slate-200 bg-white">
                           {items.map((item) => (
-                            <tr key={item.id}>
-                              <td className="px-4 py-3 align-top">{item.orden}</td>
-                              <td className="px-4 py-3 align-top whitespace-pre-wrap">{item.descripcion}</td>
-                              <td className="px-4 py-3 align-top">{Number(item.cumplido) === 1 ? "Realizado" : "Pendiente"}</td>
-                              <td className="px-4 py-3 align-top">{formatDate(item.fecha_cumplimiento, true)}</td>
+                            <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="px-3 py-2.5 align-top font-bold text-slate-700">{item.orden}</td>
+                              <td className="px-3 py-2.5 align-top text-slate-600 whitespace-nowrap">
+                                {formatDate(item.fecha_accion || null)}
+                              </td>
+                              <td className="px-3 py-2.5 align-top whitespace-pre-wrap text-slate-900 font-medium max-w-xs sm:max-w-md">
+                                {item.descripcion}
+                              </td>
+                              <td className="px-3 py-2.5 align-top text-slate-600 whitespace-nowrap">
+                                {formatDate(item.fecha_respuesta || null)}
+                              </td>
+                              <td className="px-3 py-2.5 align-top whitespace-pre-wrap text-slate-800 max-w-xs sm:max-w-md">
+                                {item.respuesta_accion || "—"}
+                              </td>
+                              <td className="px-3 py-2.5 align-top whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                    item.estatus === "completada"
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : item.estatus === "incompleta"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : item.estatus === "no_realizada"
+                                      ? "bg-rose-100 text-rose-800"
+                                      : "bg-slate-100 text-slate-700"
+                                  }`}
+                                >
+                                  {item.estatus === "completada"
+                                    ? "Completada"
+                                    : item.estatus === "incompleta"
+                                    ? "Incompleta"
+                                    : item.estatus === "no_realizada"
+                                    ? "No realizada"
+                                    : "Pendiente"}
+                                </span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   )}
+
+                  {/* 4 Observaciones del nivel */}
+                  <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Observaciones y Acuerdos por Nivel
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-3 space-y-1">
+                        <span className="font-bold text-sky-900 block">Observaciones Zonales:</span>
+                        <p className="text-slate-700 whitespace-pre-wrap">{obs?.obs_zonales || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 space-y-1">
+                        <span className="font-bold text-indigo-900 block">Observaciones Regionales:</span>
+                        <p className="text-slate-700 whitespace-pre-wrap">{obs?.obs_regionales || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3 space-y-1">
+                        <span className="font-bold text-rose-900 block">Observaciones Equipo Estatal Salud de las Mujeres:</span>
+                        <p className="text-slate-700 whitespace-pre-wrap">{obs?.obs_estatal_salud_mujeres || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-1">
+                        <span className="font-bold text-emerald-900 block">Observaciones Equipo Atención Médica:</span>
+                        <p className="text-slate-700 whitespace-pre-wrap">{obs?.obs_atencion_medica || "—"}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               );
             })}

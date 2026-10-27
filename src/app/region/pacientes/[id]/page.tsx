@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { evaluarCampoIndividual } from "@/lib/riesgoFactores";
 import { evaluarTamizajes } from "@/lib/riesgoTamizajes";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { validarCriterioColegiacion } from "@/lib/colegiados";
 
 type SessionInfo = {
   nivel?: number;
@@ -88,6 +89,8 @@ type Consulta = {
   diagnostico: string | null;
   plan: string | null;
   notas: string | null;
+  colegiado?: number | null;
+  fecha_colegiado?: string | null;
 };
 
 type Acciones = {
@@ -286,6 +289,60 @@ export default function RegionPacienteResumenPage() {
 
   const ultimaConsulta = consultas[0] || null;
 
+  const [colegiando, setColegiando] = useState(false);
+  const [colegiadoError, setColegiadoError] = useState<string | null>(null);
+
+  const consultaColegiada = useMemo(
+    () => consultas.find((c) => Number(c?.colegiado) === 1) || null,
+    [consultas]
+  );
+  const yaColegiado = Boolean(consultaColegiada);
+
+  const evaluacionColegiacion = useMemo(() => {
+    return validarCriterioColegiacion(paciente, ultimaConsulta);
+  }, [paciente, ultimaConsulta]);
+
+  const handleColegiarCaso = async () => {
+    if (!ultimaConsulta || colegiando || yaColegiado || !evaluacionColegiacion.califica) return;
+
+    setColegiando(true);
+    setColegiadoError(null);
+
+    try {
+      const res = await fetch("/api/region/colegiados", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consulta_id: ultimaConsulta.id, paciente_id: paciente?.id }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || "No se pudo colegiar el caso regional");
+      }
+
+      setConsultas((prev) => {
+        if (!prev.length) return prev;
+        const updated = [...prev];
+        updated[0] = {
+          ...updated[0],
+          colegiado: 1,
+          fecha_colegiado: new Date().toISOString(),
+        };
+        return updated;
+      });
+
+      const syncStamp = String(Date.now());
+      localStorage.setItem("maro:colegiado-updated", syncStamp);
+      window.dispatchEvent(new CustomEvent("maro:colegiado-updated", { detail: syncStamp }));
+
+      router.push(`/region/colegiados/${ultimaConsulta.id}`);
+    } catch (err: any) {
+      setColegiadoError(err?.message || "Error al colegiar caso regional");
+    } finally {
+      setColegiando(false);
+    }
+  };
+
   const puntajeTotalActual = useMemo(() => {
     if (ultimaConsulta?.puntaje_total_consulta !== null && ultimaConsulta?.puntaje_total_consulta !== undefined) {
       return Number(ultimaConsulta.puntaje_total_consulta) || 0;
@@ -428,11 +485,41 @@ export default function RegionPacienteResumenPage() {
               <span>{paciente?.nombre_completo || "Expediente de Paciente"}</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-              Supervisión epidemiológica jurisdiccional. El nivel regional consulta el expediente sin modificar registros clínicos.
+              Supervisión epidemiológica regional. Monitoreo clínico, seguimiento obstétrico y dictamen colegiado.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
+            {yaColegiado && consultaColegiada ? (
+              <>
+                <Link
+                  href={`/region/colegiados/${consultaColegiada.id}`}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-md transition"
+                >
+                  <i className="fa-solid fa-list-check" />
+                  <span>Plan Colegiado</span>
+                </Link>
+                <Link
+                  href={`/colegiados/${consultaColegiada.id}/formato`}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 px-3.5 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-200 transition"
+                >
+                  <i className="fa-solid fa-file-pdf" />
+                  <span>Cédula Oficial</span>
+                </Link>
+              </>
+            ) : evaluacionColegiacion.califica ? (
+              <button
+                type="button"
+                onClick={handleColegiarCaso}
+                disabled={!ultimaConsulta || colegiando}
+                className="inline-flex items-center gap-2 rounded-xl border border-amber-500/50 bg-gradient-to-r from-amber-600 to-emerald-600 hover:from-amber-500 hover:to-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-md transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                title={evaluacionColegiacion.motivo || "Caso elegible para colegiar"}
+              >
+                <i className={`fa-solid ${colegiando ? "fa-spinner fa-spin" : "fa-users-viewfinder"}`} />
+                <span>{colegiando ? "Colegiando..." : "Colegiar Caso"}</span>
+              </button>
+            ) : null}
+
             <ThemeToggle />
             <Link
               href="/region"
@@ -443,6 +530,13 @@ export default function RegionPacienteResumenPage() {
             </Link>
           </div>
         </header>
+
+        {colegiadoError && (
+          <section className="rounded-2xl border border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-900/20 p-4 text-xs font-bold text-rose-900 dark:text-rose-200 flex items-center gap-3 shadow-md">
+            <i className="fa-solid fa-triangle-exclamation text-rose-600 text-sm"></i>
+            <span>{colegiadoError}</span>
+          </section>
+        )}
 
         {loading ? (
           <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/80 py-12 text-center text-slate-600 dark:text-slate-300 text-sm flex items-center justify-center gap-2 shadow-xl">
@@ -856,7 +950,7 @@ export default function RegionPacienteResumenPage() {
               )}
             </CollapsibleSection>
 
-            {puntajeTotalActual >= 25 && (
+            {(evaluacionColegiacion.califica || yaColegiado) && (
               <section className="rounded-2xl border border-amber-400/60 dark:border-amber-500/40 bg-amber-50/95 dark:bg-amber-950/35 p-5 sm:p-6 shadow-xl">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
@@ -865,20 +959,46 @@ export default function RegionPacienteResumenPage() {
                     </div>
                     <div>
                       <h2 className="text-base sm:text-lg font-bold text-amber-900 dark:text-amber-200">
-                        Plan Colegiado
+                        {yaColegiado ? "Caso Colegiado en Seguimiento Regional" : "Dictamen para Caso Colegiado"}
                       </h2>
                       <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-100/80">
-                        Esta paciente califica para seguimiento colegiado por alto riesgo obstétrico (≥ 25 pts)
+                        {yaColegiado
+                          ? `Este caso fue colegiado y se encuentra activo con acciones asignadas.`
+                          : `Esta paciente califica para colegiación regional: ${evaluacionColegiacion.motivo}`}
                       </p>
                     </div>
                   </div>
-                  <Link
-                    href="/region/colegiados"
-                    className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-md transition"
-                  >
-                    <i className="fa-solid fa-arrow-up-right-from-square"></i>
-                    <span>Ver Casos Colegiados</span>
-                  </Link>
+
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {yaColegiado && consultaColegiada ? (
+                      <>
+                        <Link
+                          href={`/region/colegiados/${consultaColegiada.id}`}
+                          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-md transition"
+                        >
+                          <i className="fa-solid fa-list-check"></i>
+                          <span>Plan Colegiado</span>
+                        </Link>
+                        <Link
+                          href={`/colegiados/${consultaColegiada.id}/formato`}
+                          className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 px-3.5 py-2.5 text-xs font-bold text-emerald-800 dark:text-emerald-200 transition"
+                        >
+                          <i className="fa-solid fa-file-pdf"></i>
+                          <span>Cédula Oficial</span>
+                        </Link>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleColegiarCaso}
+                        disabled={!ultimaConsulta || colegiando}
+                        className="inline-flex items-center gap-2 rounded-xl border border-amber-500/50 bg-gradient-to-r from-amber-600 to-emerald-600 hover:from-amber-500 hover:to-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-md transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <i className={`fa-solid ${colegiando ? "fa-spinner fa-spin" : "fa-users-viewfinder"}`} />
+                        <span>{colegiando ? "Colegiando Caso..." : "Colegiar Caso Ahora"}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </section>
             )}

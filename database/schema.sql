@@ -194,7 +194,11 @@ CREATE TABLE `colegiados_acciones` (
   `plan_id` bigint unsigned NOT NULL,
   `nivel_atencion` enum('primer_nivel','segundo_nivel','tercer_nivel') COLLATE utf8mb4_unicode_ci NOT NULL,
   `orden` tinyint unsigned NOT NULL,
+  `fecha_accion` date DEFAULT NULL,
   `descripcion` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fecha_respuesta` date DEFAULT NULL,
+  `respuesta_accion` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `estatus` enum('pendiente','completada','incompleta','no_realizada') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pendiente',
   `cumplido` tinyint(1) NOT NULL DEFAULT '0',
   `fecha_cumplimiento` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -203,6 +207,20 @@ CREATE TABLE `colegiados_acciones` (
   UNIQUE KEY `uq_colegiados_acciones_orden` (`plan_id`,`nivel_atencion`,`orden`),
   KEY `idx_colegiados_acciones_plan_nivel` (`plan_id`,`nivel_atencion`),
   CONSTRAINT `fk_colegiados_acciones_plan` FOREIGN KEY (`plan_id`) REFERENCES `colegiados_planes` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `colegiados_nivel_observaciones` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `plan_id` bigint unsigned NOT NULL,
+  `nivel_atencion` enum('primer_nivel','segundo_nivel','tercer_nivel') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `obs_zonales` text COLLATE utf8mb4_unicode_ci,
+  `obs_regionales` text COLLATE utf8mb4_unicode_ci,
+  `obs_estatal_salud_mujeres` text COLLATE utf8mb4_unicode_ci,
+  `obs_atencion_medica` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_plan_nivel_obs` (`plan_id`,`nivel_atencion`),
+  CONSTRAINT `fk_colegiados_nivel_obs_plan` FOREIGN KEY (`plan_id`) REFERENCES `colegiados_planes` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `colegiados_planes` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
