@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { validarCriterioColegiacion } from "@/lib/colegiados";
 import {
   normalizarFechaISO,
+  formatDateSafe,
   type ResultadoEvaluacionSeguimiento,
 } from "@/lib/seguimiento-regional";
 
@@ -510,14 +511,21 @@ export default function RegionPacienteResumenPage() {
   const esMedioRiesgo = puntajeTotalActual > 15 && puntajeTotalActual < 25;
 
   const fechaRegistroBase = useMemo(() => {
-    return paciente?.fecha_ingreso_cpn || (paciente as any)?.created_at?.slice(0, 10) || null;
+    return normalizarFechaISO(paciente?.fecha_ingreso_cpn || (paciente as any)?.created_at);
   }, [paciente]);
 
   const maxFechaConsultaExterna = useMemo(() => {
     if (!fechaRegistroBase) return undefined;
-    const d = new Date(`${fechaRegistroBase}T00:00:00`);
-    d.setDate(d.getDate() + 30);
-    return d.toISOString().slice(0, 10);
+    const parts = fechaRegistroBase.split("-").map(Number);
+    if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) return undefined;
+    const [y, m, d] = parts;
+    const dateObj = new Date(y, m - 1, d);
+    if (isNaN(dateObj.getTime())) return undefined;
+    dateObj.setDate(dateObj.getDate() + 30);
+    const yStr = dateObj.getFullYear();
+    const mStr = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const dStr = String(dateObj.getDate()).padStart(2, "0");
+    return `${yStr}-${mStr}-${dStr}`;
   }, [fechaRegistroBase]);
 
   const aplicaSeguimientoRegional = esAltoRiesgo || Number(ultimaConsulta?.riesgo_25_plus) === 1;
@@ -1099,8 +1107,7 @@ export default function RegionPacienteResumenPage() {
                       </p>
                       {fechaRegistroBase && (
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Fecha de registro base:{" "}
-                          <strong>{new Date(fechaRegistroBase).toLocaleDateString("es-MX")}</strong> · Días
+                          Fecha de registro base: <strong>{formatDateSafe(fechaRegistroBase)}</strong> · Días
                           transcurridos: <strong>{evaluacionSeguimiento?.diasTranscurridos ?? 0} días</strong>
                         </p>
                       )}
@@ -1128,9 +1135,7 @@ export default function RegionPacienteResumenPage() {
                       />
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                         {maxFechaConsultaExterna &&
-                          `Límite máximo permitido: ${new Date(maxFechaConsultaExterna).toLocaleDateString(
-                            "es-MX"
-                          )}`}
+                          `Límite máximo permitido: ${formatDateSafe(maxFechaConsultaExterna)}`}
                       </p>
                     </div>
 
@@ -1151,9 +1156,7 @@ export default function RegionPacienteResumenPage() {
                       />
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                         {formCitaExterna
-                          ? `Debe ser previa o igual a: ${new Date(formCitaExterna).toLocaleDateString(
-                              "es-MX"
-                            )}`
+                          ? `Debe ser previa o igual a: ${formatDateSafe(formCitaExterna)}`
                           : "Seleccione primero la fecha de consulta externa"}
                       </p>
                     </div>

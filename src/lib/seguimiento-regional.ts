@@ -33,11 +33,26 @@ export function normalizarFechaISO(fecha: string | Date | null | undefined): str
     if (isNaN(fecha.getTime())) return null;
     return fecha.toISOString().slice(0, 10);
   }
-  const clean = fecha.trim();
+  const clean = String(fecha).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+  if (/^\d{4}-\d{2}-\d{2}[T\s]/.test(clean)) {
+    return clean.slice(0, 10);
+  }
   const d = new Date(clean);
   if (isNaN(d.getTime())) return null;
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Formatea una fecha de forma segura a DD/MM/YYYY sin desfasamiento ni errores de tiempo
+ */
+export function formatDateSafe(fecha: string | Date | null | undefined): string {
+  if (!fecha) return "—";
+  const iso = normalizarFechaISO(fecha);
+  if (!iso) return "—";
+  const parts = iso.split("-");
+  if (parts.length < 3) return "—";
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
 /**
@@ -50,9 +65,12 @@ export function calcularDiasDesdeRegistro(
   const fRegStr = normalizarFechaISO(fechaRegistro);
   if (!fRegStr) return 0;
 
-  const fReg = new Date(`${fRegStr}T00:00:00`);
-  const fActualStr = fechaActual.toISOString().slice(0, 10);
-  const fAct = new Date(`${fActualStr}T00:00:00`);
+  const [y1, m1, d1] = fRegStr.split("-").map(Number);
+  const fReg = new Date(y1, m1 - 1, d1);
+
+  const fActualStr = normalizarFechaISO(fechaActual) || fechaActual.toISOString().slice(0, 10);
+  const [y2, m2, d2] = fActualStr.split("-").map(Number);
+  const fAct = new Date(y2, m2 - 1, d2);
 
   const diffMs = fAct.getTime() - fReg.getTime();
   const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -140,22 +158,26 @@ export function validarSeguimientoRegional(
   const acciones = (payload.acciones_generales || "").trim();
 
   // 1. Validar Fecha Consulta Externa
+  let fCita: Date | null = null;
+  const [yR, mR, dR] = fRegStr.split("-").map(Number);
+  const fReg = new Date(yR, mR - 1, dR);
+
   if (!fCitaStr) {
     errores.push("La fecha de cita para consulta externa es obligatoria.");
   } else {
-    const fReg = new Date(`${fRegStr}T00:00:00`);
-    const fCita = new Date(`${fCitaStr}T00:00:00`);
+    const [yC, mC, dC] = fCitaStr.split("-").map(Number);
+    fCita = new Date(yC, mC - 1, dC);
 
     if (fCita < fReg) {
       errores.push("La fecha de consulta externa no puede ser anterior a la fecha de registro de la paciente.");
     }
 
-    const maxCita = new Date(fReg.getTime() + PLAZO_MAX_CONSULTA_EXTERNA_DIAS * 24 * 60 * 60 * 1000);
+    const maxCita = new Date(yR, mR - 1, dR + PLAZO_MAX_CONSULTA_EXTERNA_DIAS);
     if (fCita > maxCita) {
       errores.push(
-        `La cita para consulta externa no puede ser mayor a 30 días posteriores al registro (fecha límite: ${maxCita
-          .toISOString()
-          .slice(0, 10)}).`
+        `La cita para consulta externa no puede ser mayor a 30 días posteriores al registro (fecha límite: ${formatDateSafe(
+          maxCita
+        )}).`
       );
     }
   }
@@ -164,18 +186,15 @@ export function validarSeguimientoRegional(
   if (!fLabsStr) {
     errores.push("La fecha de cita a laboratorios y paraclínicos es obligatoria.");
   } else {
-    const fReg = new Date(`${fRegStr}T00:00:00`);
-    const fLabs = new Date(`${fLabsStr}T00:00:00`);
+    const [yL, mL, dL] = fLabsStr.split("-").map(Number);
+    const fLabs = new Date(yL, mL - 1, dL);
 
     if (fLabs < fReg) {
       errores.push("La fecha de laboratorios no puede ser anterior a la fecha de registro de la paciente.");
     }
 
-    if (fCitaStr) {
-      const fCita = new Date(`${fCitaStr}T00:00:00`);
-      if (fLabs > fCita) {
-        errores.push("La fecha de cita a laboratorios debe ser previa o simultánea a la cita de consulta externa.");
-      }
+    if (fCita && fLabs > fCita) {
+      errores.push("La fecha de cita a laboratorios debe ser previa o simultánea a la cita de consulta externa.");
     }
   }
 

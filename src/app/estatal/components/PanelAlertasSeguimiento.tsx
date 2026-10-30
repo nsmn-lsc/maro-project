@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { REGION_CONFIGS } from "@/lib/regiones";
+import { formatDateSafe } from "@/lib/seguimiento-regional";
 
 interface CasoAlerta {
   id: number;
@@ -525,11 +526,7 @@ export function PanelAlertasSeguimiento() {
 
                         {/* Fecha Registro */}
                         <td className="px-3 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300">
-                          {c.fecha_ingreso_cpn
-                            ? new Date(c.fecha_ingreso_cpn).toLocaleDateString("es-MX")
-                            : c.created_at
-                            ? new Date(c.created_at).toLocaleDateString("es-MX")
-                            : "—"}
+                          {formatDateSafe(c.fecha_ingreso_cpn || c.created_at)}
                         </td>
 
                         {/* Estatus del Plazo (7 días) */}
@@ -566,9 +563,7 @@ export function PanelAlertasSeguimiento() {
                         <td className="px-3 py-3 whitespace-nowrap">
                           {c.seguimiento?.fecha_consulta_externa ? (
                             <span className="font-semibold text-slate-800 dark:text-slate-200">
-                              {new Date(c.seguimiento.fecha_consulta_externa).toLocaleDateString(
-                                "es-MX"
-                              )}
+                              {formatDateSafe(c.seguimiento.fecha_consulta_externa)}
                             </span>
                           ) : (
                             <span className="text-slate-400 italic">No programada</span>
@@ -579,7 +574,7 @@ export function PanelAlertasSeguimiento() {
                         <td className="px-3 py-3 whitespace-nowrap">
                           {c.seguimiento?.fecha_laboratorios ? (
                             <span className="font-semibold text-slate-800 dark:text-slate-200">
-                              {new Date(c.seguimiento.fecha_laboratorios).toLocaleDateString("es-MX")}
+                              {formatDateSafe(c.seguimiento.fecha_laboratorios)}
                             </span>
                           ) : (
                             <span className="text-slate-400 italic">No programada</span>

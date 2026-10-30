@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  normalizarFechaISO,
+  formatDateSafe,
   calcularDiasDesdeRegistro,
   calcularEstadoSeguimiento,
   validarSeguimientoRegional,
@@ -10,6 +12,26 @@ import {
 } from "../seguimiento-regional";
 
 describe("Seguimiento Regional de Riesgo > 25 pts", () => {
+  describe("normalizarFechaISO y formatDateSafe", () => {
+    it("normaliza cadenas estándar YYYY-MM-DD", () => {
+      expect(normalizarFechaISO("2026-10-01")).toBe("2026-10-01");
+      expect(formatDateSafe("2026-10-01")).toBe("01/10/2026");
+    });
+
+    it("normaliza cadenas ISO completas con timestamp sin provocar Invalid time value", () => {
+      expect(normalizarFechaISO("2026-10-01T00:00:00.000Z")).toBe("2026-10-01");
+      expect(normalizarFechaISO("2026-10-01 14:30:00")).toBe("2026-10-01");
+      expect(formatDateSafe("2026-10-01T00:00:00.000Z")).toBe("01/10/2026");
+    });
+
+    it("maneja objetos Date y valores nulos/vacíos de manera segura", () => {
+      const d = new Date(2026, 9, 1);
+      expect(normalizarFechaISO(d)).toBe("2026-10-01");
+      expect(formatDateSafe(null)).toBe("—");
+      expect(formatDateSafe(undefined)).toBe("—");
+      expect(formatDateSafe("invalido")).toBe("—");
+    });
+  });
   describe("esPacienteCandidatoSeguimiento", () => {
     it("identifica como candidato a pacientes con puntaje > 25 o >= 25", () => {
       expect(esPacienteCandidatoSeguimiento(26)).toBe(true);
