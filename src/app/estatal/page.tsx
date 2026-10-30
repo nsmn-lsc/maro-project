@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { clasificarNivelRiesgo } from "@/lib/estatal-riesgo";
+import { PanelAlertasSeguimiento } from "./components/PanelAlertasSeguimiento";
 
 type SessionInfo = {
   nivel?: number;
@@ -59,8 +60,12 @@ type NivelRiesgoFiltro = "muy_alto" | "alto" | "bajo" | "todos";
 
 export default function ModuloEstatalRiesgoPage() {
   type EstadoCorte = "todos" | "no_colegiados" | "colegiados";
+  type TabEstatal = "padron_riesgo" | "alertas_seguimiento";
+
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
+  const [tabActiva, setTabActiva] = useState<TabEstatal>("padron_riesgo");
+  const [conteoAlertasVencidas, setConteoAlertasVencidas] = useState<number>(0);
   const [registros, setRegistros] = useState<RegistroRiesgo[]>([]);
   const [filtroRiesgo, setFiltroRiesgo] = useState<NivelRiesgoFiltro>("muy_alto");
   const filtroRiesgoRef = useRef<NivelRiesgoFiltro>("muy_alto");
@@ -161,6 +166,16 @@ export default function ModuloEstatalRiesgoPage() {
   useEffect(() => {
     if (!authChecked) return;
     loadRegistros(false).catch(() => {});
+
+    // Consultar conteo de alertas estatales para el distintivo de la pestaña
+    fetch("/api/estatal/alertas-seguimiento")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.metricas?.alertas_vencidas !== undefined) {
+          setConteoAlertasVencidas(data.metricas.alertas_vencidas);
+        }
+      })
+      .catch(() => {});
   }, [authChecked, loadRegistros]);
 
   useEffect(() => {
@@ -471,8 +486,46 @@ export default function ModuloEstatalRiesgoPage() {
           </div>
         </header>
 
-        {/* RESUMEN EJECUTIVO ESTATAL - KPIS GLOBALES */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* SELECTOR DE PESTAÑAS PRINCIPALES DEL MÓDULO ESTATAL */}
+        <nav className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/85 border border-slate-200/80 dark:border-white/10 shadow-lg">
+          <button
+            type="button"
+            onClick={() => setTabActiva("padron_riesgo")}
+            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              tabActiva === "padron_riesgo"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 font-black"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5"
+            }`}
+          >
+            <i className="fa-solid fa-shield-heart" />
+            <span>Padrón de Riesgo MARO</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTabActiva("alertas_seguimiento")}
+            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              tabActiva === "alertas_seguimiento"
+                ? "bg-rose-600 text-white shadow-md shadow-rose-600/30 font-black"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5"
+            }`}
+          >
+            <i className="fa-solid fa-triangle-exclamation" />
+            <span>Alertas de Seguimiento Regional (&gt; 25 pts)</span>
+            {conteoAlertasVencidas > 0 && (
+              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-black bg-white text-rose-700 shadow-sm animate-pulse">
+                {conteoAlertasVencidas} {conteoAlertasVencidas === 1 ? "vencida" : "vencidas"}
+              </span>
+            )}
+          </button>
+        </nav>
+
+        {tabActiva === "alertas_seguimiento" ? (
+          <PanelAlertasSeguimiento />
+        ) : (
+          <>
+            {/* RESUMEN EJECUTIVO ESTATAL - KPIS GLOBALES */}
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* KPI 1: Pacientes Totales */}
           <div className="relative overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 shadow-xl flex items-center justify-between gap-3.5 transition-all hover:-translate-y-0.5">
             <div className="space-y-1.5 min-w-0">
@@ -1245,6 +1298,8 @@ export default function ModuloEstatalRiesgoPage() {
             </>
           )}
         </section>
+        </>
+        )}
       </div>
     </main>
   );

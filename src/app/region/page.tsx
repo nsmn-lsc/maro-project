@@ -43,6 +43,14 @@ type Metricas = {
   al_corriente: number;
   proximas_vencer: number;
   inasistencias_30d: number;
+  alertas_vencidas_7d?: number;
+};
+
+type SeguimientoInfo = {
+  estado: "COMPLETADO" | "EN_PLAZO" | "VENCIDO";
+  diasTranscurridos: number;
+  diasRestantes: number;
+  alertaEstatalActiva: boolean;
 };
 
 type AlertaFlotante = {
@@ -111,6 +119,7 @@ export default function RegionPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [metricas, setMetricas] = useState<Metricas | null>(null);
+  const [seguimientosMap, setSeguimientosMap] = useState<Record<number, SeguimientoInfo>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
@@ -181,17 +190,33 @@ export default function RegionPage() {
       setError("");
 
       try {
-        const [listData, metData] = await Promise.all([
-          fetch(`/api/pacientes?region=${encodeURIComponent(region)}&limit=50`, {
+        const [listData, metData, segData] = await Promise.all([
+          fetch(`/api/pacientes?region=${encodeURIComponent(region)}&limit=100`, {
             cache: "no-store",
           }).then((r) => r.json()),
           fetch(`/api/pacientes?summary=metrics&region=${encodeURIComponent(region)}`, {
             cache: "no-store",
           }).then((r) => r.json()),
+          fetch(`/api/region/seguimiento-riesgo`, {
+            cache: "no-store",
+          })
+            .then((r) => r.json())
+            .catch(() => null),
         ]);
 
         const nextPacientes = Array.isArray(listData) ? (listData as Paciente[]) : [];
         setPacientes(nextPacientes);
+
+        const mapSeg: Record<number, SeguimientoInfo> = {};
+        if (segData?.pacientes && Array.isArray(segData.pacientes)) {
+          for (const item of segData.pacientes) {
+            if (item.evaluacion) {
+              mapSeg[item.id] = item.evaluacion;
+            }
+          }
+        }
+        setSeguimientosMap(mapSeg);
+
         setMetricas({
           total: metData.total ?? 0,
           alto_riesgo: metData.alto_riesgo ?? 0,
@@ -199,6 +224,7 @@ export default function RegionPage() {
           al_corriente: metData.al_corriente ?? 0,
           proximas_vencer: metData.proximas_vencer ?? 0,
           inasistencias_30d: metData.inasistencias_30d ?? 0,
+          alertas_vencidas_7d: segData?.resumen?.vencidos ?? 0,
         });
 
         const nextHighRisk = new Set(
@@ -801,7 +827,8 @@ export default function RegionPage() {
                     <th className="w-[12%] px-3 py-2.5 hidden md:table-cell">Municipio</th>
                     <th className="w-[92px] px-2.5 py-2.5 hidden lg:table-cell">Ingreso CPN</th>
                     <th className="w-[52px] text-right px-2 py-2.5 hidden sm:table-cell">SDG</th>
-                    <th className="w-[135px] text-right px-2.5 py-2.5">Puntaje</th>
+                    <th className="w-[125px] text-right px-2.5 py-2.5">Puntaje</th>
+                    <th className="w-[130px] text-center px-2 py-2.5">Seguimiento (7d)</th>
                     <th className="w-[76px] text-center pl-2 pr-3.5 py-2.5">Acción</th>
                   </tr>
                 </thead>
@@ -843,6 +870,39 @@ export default function RegionPage() {
                             {riesgoBadge(p.puntaje_total_actual)}
                           </div>
                         )}
+                      </td>
+                      <td className="px-2 py-2.5 text-center whitespace-nowrap">
+                        {(() => {
+                          const seg = seguimientosMap[p.id];
+                          if (!seg) {
+                            return <span className="text-[10px] text-slate-400">—</span>;
+                          }
+                          if (seg.estado === "COMPLETADO") {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700/60">
+                                <i className="fa-solid fa-check text-[9px]" />
+                                <span>Completado</span>
+                              </span>
+                            );
+                          }
+                          if (seg.estado === "VENCIDO") {
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-950/70 text-rose-900 dark:text-rose-200 border border-rose-400 animate-pulse"
+                                title={`Alerta estatal activa: ${seg.diasTranscurridos} días sin plan regional.`}
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                <span>Vencido ({seg.diasTranscurridos}d)</span>
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60">
+                              <i className="fa-solid fa-clock text-[9px]" />
+                              <span>Quedan {seg.diasRestantes}d</span>
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="pl-2 pr-3.5 py-2.5 text-center">
                         <Link
@@ -892,7 +952,8 @@ export default function RegionPage() {
                     <th className="w-[12%] px-3 py-2.5 hidden md:table-cell">Municipio</th>
                     <th className="w-[92px] px-2.5 py-2.5 hidden lg:table-cell">Ingreso CPN</th>
                     <th className="w-[52px] text-right px-2 py-2.5 hidden sm:table-cell">SDG</th>
-                    <th className="w-[135px] text-right px-2.5 py-2.5">Puntaje</th>
+                    <th className="w-[125px] text-right px-2.5 py-2.5">Puntaje</th>
+                    <th className="w-[130px] text-center px-2 py-2.5">Seguimiento (7d)</th>
                     <th className="w-[76px] text-center pl-2 pr-3.5 py-2.5">Acción</th>
                   </tr>
                 </thead>
