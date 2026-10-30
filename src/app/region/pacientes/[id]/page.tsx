@@ -812,6 +812,187 @@ export default function RegionPacienteResumenPage() {
               </div>
             </section>
 
+            {/* SECCIÓN PRIORITARIA: SEGUIMIENTO REGIONAL DE ALTO RIESGO (> 25 PTS) */}
+            {aplicaSeguimientoRegional && (
+              <section
+                className={`rounded-2xl border p-5 sm:p-6 shadow-xl transition-colors space-y-5 ${
+                  evaluacionSeguimiento?.estado === "VENCIDO"
+                    ? "border-rose-400/80 dark:border-rose-500/50 bg-rose-50/90 dark:bg-rose-950/30 ring-2 ring-rose-500/30"
+                    : evaluacionSeguimiento?.estado === "EN_PLAZO"
+                    ? "border-amber-400/80 dark:border-amber-500/50 bg-amber-50/90 dark:bg-amber-950/30 ring-2 ring-amber-500/30"
+                    : "border-emerald-400/80 dark:border-emerald-500/50 bg-emerald-50/80 dark:bg-emerald-950/30"
+                }`}
+              >
+                {/* Encabezado con estado del plazo */}
+                <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-4 border-slate-200/80 dark:border-white/10">
+                  <div className="flex items-start gap-3.5">
+                    <div
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm ${
+                        evaluacionSeguimiento?.estado === "VENCIDO"
+                          ? "bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-400/40"
+                          : evaluacionSeguimiento?.estado === "EN_PLAZO"
+                          ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-400/40"
+                          : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-400/40"
+                      }`}
+                    >
+                      <i
+                        className={`fa-solid ${
+                          evaluacionSeguimiento?.estado === "VENCIDO"
+                            ? "fa-triangle-exclamation animate-pulse"
+                            : evaluacionSeguimiento?.estado === "EN_PLAZO"
+                            ? "fa-clock"
+                            : "fa-calendar-check"
+                        }`}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                          Acciones de Seguimiento Regional (&gt; 25 pts)
+                        </h2>
+                        {evaluacionSeguimiento?.estado === "VENCIDO" && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-600 text-white shadow-sm animate-pulse">
+                            ALERTA ESTATAL ACTIVA (&gt; 7 DÍAS)
+                          </span>
+                        )}
+                        {evaluacionSeguimiento?.estado === "EN_PLAZO" && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-400">
+                            EN PLAZO ({evaluacionSeguimiento.diasRestantes}d restantes)
+                          </span>
+                        )}
+                        {evaluacionSeguimiento?.estado === "COMPLETADO" && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-600 text-white shadow-sm">
+                            PLAN COMPLETADO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+                        {evaluacionSeguimiento?.motivo ||
+                          "Plazo de 7 días naturales posteriores al registro para programar consulta externa, laboratorios y acciones."}
+                      </p>
+                      {fechaRegistroBase && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Fecha de registro base: <strong>{formatDateSafe(fechaRegistroBase)}</strong> · Días
+                          transcurridos: <strong>{evaluacionSeguimiento?.diasTranscurridos ?? 0} días</strong>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Formulario */}
+                <form onSubmit={handleGuardarSeguimiento} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* 1. Fecha de Cita para Consulta Externa */}
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                        <span>Fecha de Cita para Consulta Externa *</span>
+                        <span className="text-[10px] text-slate-500 font-normal">Máx. 30 días post-registro</span>
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        min={fechaRegistroBase || undefined}
+                        max={maxFechaConsultaExterna}
+                        value={formCitaExterna}
+                        onChange={(e) => setFormCitaExterna(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400"
+                      />
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        {maxFechaConsultaExterna &&
+                          `Límite máximo permitido: ${formatDateSafe(maxFechaConsultaExterna)}`}
+                      </p>
+                    </div>
+
+                    {/* 2. Fecha de Cita a Laboratorios y Paraclínicos */}
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                        <span>Fecha de Cita a Laboratorios *</span>
+                        <span className="text-[10px] text-slate-500 font-normal">Previa a consulta externa</span>
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        min={fechaRegistroBase || undefined}
+                        max={formCitaExterna || maxFechaConsultaExterna}
+                        value={formLabs}
+                        onChange={(e) => setFormLabs(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400"
+                      />
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        {formCitaExterna
+                          ? `Debe ser previa o igual a: ${formatDateSafe(formCitaExterna)}`
+                          : "Seleccione primero la fecha de consulta externa"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 3. Acciones Generales (500 caracteres) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Acciones Generales de Seguimiento Regional *
+                      </label>
+                      <span
+                        className={`text-[11px] font-mono font-bold ${
+                          formAcciones.length > 500
+                            ? "text-rose-600"
+                            : formAcciones.length > 450
+                            ? "text-amber-600"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {formAcciones.length} / 500 caracteres
+                      </span>
+                    </div>
+                    <textarea
+                      required
+                      rows={3}
+                      maxLength={500}
+                      value={formAcciones}
+                      onChange={(e) => setFormAcciones(e.target.value)}
+                      placeholder="Describa las acciones generales coordinadas por el equipo regional (interconsultas, traslado, laboratorio, etc.)..."
+                      className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-900 p-3 text-xs sm:text-sm text-slate-900 dark:text-white outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400 placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  {/* Mensajes de error o éxito */}
+                  {seguimientoError && (
+                    <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-xs font-bold text-rose-800 dark:text-rose-200 flex items-center gap-2">
+                      <i className="fa-solid fa-triangle-exclamation text-rose-600" />
+                      <span>{seguimientoError}</span>
+                    </div>
+                  )}
+
+                  {seguimientoExito && (
+                    <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-xs font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                      <i className="fa-solid fa-circle-check text-emerald-600" />
+                      <span>Plan de seguimiento regional registrado con éxito.</span>
+                    </div>
+                  )}
+
+                  {/* Botón de Guardado */}
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={guardandoSeguimiento}
+                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-md transition cursor-pointer disabled:opacity-50"
+                    >
+                      <i
+                        className={`fa-solid ${
+                          guardandoSeguimiento ? "fa-spinner fa-spin" : "fa-floppy-disk"
+                        }`}
+                      />
+                      <span>
+                        {guardandoSeguimiento ? "Guardando Plan..." : "Guardar Plan de Seguimiento Regional"}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              </section>
+            )}
+
             {/* IDENTIFICACIÓN Y UBICACIÓN */}
             <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 space-y-4 shadow-xl transition-colors">
               <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-white/10 pb-3">
@@ -1045,187 +1226,6 @@ export default function RegionPacienteResumenPage() {
                 </div>
               )}
             </CollapsibleSection>
-
-            {/* SECCIÓN: SEGUIMIENTO REGIONAL DE ALTO RIESGO (> 25 PTS) */}
-            {aplicaSeguimientoRegional && (
-              <section
-                className={`rounded-2xl border p-5 sm:p-6 shadow-xl transition-colors space-y-5 ${
-                  evaluacionSeguimiento?.estado === "VENCIDO"
-                    ? "border-rose-400/80 dark:border-rose-500/50 bg-rose-50/90 dark:bg-rose-950/30"
-                    : evaluacionSeguimiento?.estado === "EN_PLAZO"
-                    ? "border-amber-400/80 dark:border-amber-500/50 bg-amber-50/90 dark:bg-amber-950/30"
-                    : "border-emerald-400/80 dark:border-emerald-500/50 bg-emerald-50/80 dark:bg-emerald-950/30"
-                }`}
-              >
-                {/* Encabezado con estado del plazo */}
-                <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-4 border-slate-200/80 dark:border-white/10">
-                  <div className="flex items-start gap-3.5">
-                    <div
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm ${
-                        evaluacionSeguimiento?.estado === "VENCIDO"
-                          ? "bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-400/40"
-                          : evaluacionSeguimiento?.estado === "EN_PLAZO"
-                          ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-400/40"
-                          : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-400/40"
-                      }`}
-                    >
-                      <i
-                        className={`fa-solid ${
-                          evaluacionSeguimiento?.estado === "VENCIDO"
-                            ? "fa-triangle-exclamation animate-pulse"
-                            : evaluacionSeguimiento?.estado === "EN_PLAZO"
-                            ? "fa-clock"
-                            : "fa-calendar-check"
-                        }`}
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                          Seguimiento Regional de Alto Riesgo (&gt; 25 pts)
-                        </h2>
-                        {evaluacionSeguimiento?.estado === "VENCIDO" && (
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-600 text-white shadow-sm animate-pulse">
-                            ALERTA ESTATAL ACTIVA (&gt; 7 DÍAS)
-                          </span>
-                        )}
-                        {evaluacionSeguimiento?.estado === "EN_PLAZO" && (
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-400">
-                            EN PLAZO ({evaluacionSeguimiento.diasRestantes}d restantes)
-                          </span>
-                        )}
-                        {evaluacionSeguimiento?.estado === "COMPLETADO" && (
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-600 text-white shadow-sm">
-                            PLAN COMPLETADO
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                        {evaluacionSeguimiento?.motivo ||
-                          "Plazo de 7 días naturales posteriores al registro para programar consulta externa, laboratorios y acciones."}
-                      </p>
-                      {fechaRegistroBase && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Fecha de registro base: <strong>{formatDateSafe(fechaRegistroBase)}</strong> · Días
-                          transcurridos: <strong>{evaluacionSeguimiento?.diasTranscurridos ?? 0} días</strong>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Formulario */}
-                <form onSubmit={handleGuardarSeguimiento} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* 1. Fecha de Cita para Consulta Externa */}
-                    <div>
-                      <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-                        <span>Fecha de Cita para Consulta Externa *</span>
-                        <span className="text-[10px] text-slate-500 font-normal">Máx. 30 días post-registro</span>
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        min={fechaRegistroBase || undefined}
-                        max={maxFechaConsultaExterna}
-                        value={formCitaExterna}
-                        onChange={(e) => setFormCitaExterna(e.target.value)}
-                        className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400"
-                      />
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                        {maxFechaConsultaExterna &&
-                          `Límite máximo permitido: ${formatDateSafe(maxFechaConsultaExterna)}`}
-                      </p>
-                    </div>
-
-                    {/* 2. Fecha de Cita a Laboratorios y Paraclínicos */}
-                    <div>
-                      <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-                        <span>Fecha de Cita a Laboratorios *</span>
-                        <span className="text-[10px] text-slate-500 font-normal">Previa a consulta externa</span>
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        min={fechaRegistroBase || undefined}
-                        max={formCitaExterna || maxFechaConsultaExterna}
-                        value={formLabs}
-                        onChange={(e) => setFormLabs(e.target.value)}
-                        className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400"
-                      />
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                        {formCitaExterna
-                          ? `Debe ser previa o igual a: ${formatDateSafe(formCitaExterna)}`
-                          : "Seleccione primero la fecha de consulta externa"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* 3. Acciones Generales (500 caracteres) */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                        Acciones Generales de Seguimiento Regional *
-                      </label>
-                      <span
-                        className={`text-[11px] font-mono font-bold ${
-                          formAcciones.length > 500
-                            ? "text-rose-600"
-                            : formAcciones.length > 450
-                            ? "text-amber-600"
-                            : "text-slate-500"
-                        }`}
-                      >
-                        {formAcciones.length} / 500 caracteres
-                      </span>
-                    </div>
-                    <textarea
-                      required
-                      rows={3}
-                      maxLength={500}
-                      value={formAcciones}
-                      onChange={(e) => setFormAcciones(e.target.value)}
-                      placeholder="Describa las acciones generales coordinadas por el equipo regional (interconsultas, traslado, laboratorio, etc.)..."
-                      className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-900 p-3 text-xs sm:text-sm text-slate-900 dark:text-white outline-none transition focus:border-emerald-500 dark:focus:border-emerald-400 placeholder:text-slate-400"
-                    />
-                  </div>
-
-                  {/* Mensajes de error o éxito */}
-                  {seguimientoError && (
-                    <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-xs font-bold text-rose-800 dark:text-rose-200 flex items-center gap-2">
-                      <i className="fa-solid fa-triangle-exclamation text-rose-600" />
-                      <span>{seguimientoError}</span>
-                    </div>
-                  )}
-
-                  {seguimientoExito && (
-                    <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-xs font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-emerald-600" />
-                      <span>Plan de seguimiento regional registrado con éxito.</span>
-                    </div>
-                  )}
-
-                  {/* Botón de Guardado */}
-                  <div className="flex items-center justify-end gap-3 pt-2">
-                    <button
-                      type="submit"
-                      disabled={guardandoSeguimiento}
-                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-md transition cursor-pointer disabled:opacity-50"
-                    >
-                      <i
-                        className={`fa-solid ${
-                          guardandoSeguimiento ? "fa-spinner fa-spin" : "fa-floppy-disk"
-                        }`}
-                      />
-                      <span>
-                        {guardandoSeguimiento ? "Guardando Plan..." : "Guardar Plan de Seguimiento Regional"}
-                      </span>
-                    </button>
-                  </div>
-                </form>
-              </section>
-            )}
 
             {(evaluacionColegiacion.califica || yaColegiado) && (
               <section className="rounded-2xl border border-amber-400/60 dark:border-amber-500/40 bg-amber-50/95 dark:bg-amber-950/35 p-5 sm:p-6 shadow-xl">
