@@ -952,8 +952,7 @@ export default function RegionPage() {
                     <th className="w-[12%] px-3 py-2.5 hidden md:table-cell">Municipio</th>
                     <th className="w-[92px] px-2.5 py-2.5 hidden lg:table-cell">Ingreso CPN</th>
                     <th className="w-[52px] text-right px-2 py-2.5 hidden sm:table-cell">SDG</th>
-                    <th className="w-[125px] text-right px-2.5 py-2.5">Puntaje</th>
-                    <th className="w-[130px] text-center px-2 py-2.5">Seguimiento (7d)</th>
+                    <th className="w-[135px] text-right px-2.5 py-2.5">Puntaje</th>
                     <th className="w-[76px] text-center pl-2 pr-3.5 py-2.5">Acción</th>
                   </tr>
                 </thead>
