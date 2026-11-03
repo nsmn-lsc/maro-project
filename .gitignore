@@ -45,6 +45,8 @@ next-env.d.ts
 
 # markdown docs archive
 /docs-md/
+/*.md
+!AGENTS.md
 
 
 #pdf files
