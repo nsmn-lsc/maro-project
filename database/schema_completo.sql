@@ -478,4 +478,22 @@ CREATE TABLE `pacientes_ultrasonidos` (
   CONSTRAINT `fk_usg_paciente` FOREIGN KEY (`paciente_id`) REFERENCES `cat_pacientes` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `seguimiento_riesgo_regional` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `paciente_id` bigint unsigned NOT NULL,
+  `region` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fecha_consulta_externa` date NOT NULL,
+  `fecha_laboratorios` date NOT NULL,
+  `acciones_generales` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_by` bigint unsigned DEFAULT NULL,
+  `updated_by` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_seguimiento_paciente` (`paciente_id`),
+  KEY `idx_seguimiento_region` (`region`),
+  KEY `idx_seguimiento_fechas` (`fecha_consulta_externa`, `fecha_laboratorios`),
+  CONSTRAINT `fk_seguimiento_paciente` FOREIGN KEY (`paciente_id`) REFERENCES `cat_pacientes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS=1;
