@@ -23,6 +23,7 @@ type Paciente = {
   folio: string | null;
   nombre_completo: string | null;
   edad?: number | null;
+  imc_inicial?: number | null;
   clues_id: string;
   unidad: string | null;
   municipio: string | null;
@@ -320,6 +321,17 @@ export default function RegionPacienteResumenPage() {
   }, [authChecked, pacienteId, session]);
 
   const ultimaConsulta = consultas[0] || null;
+  const [selectedConsultaId, setSelectedConsultaId] = useState<number | null>(null);
+  const [monitorOpen, setMonitorOpen] = useState(true);
+  const [soloPositivos, setSoloPositivos] = useState(true);
+
+  const consultaActiva = useMemo(() => {
+    if (!consultas.length) return null;
+    if (selectedConsultaId !== null) {
+      return consultas.find((c) => c.id === selectedConsultaId) || consultas[0];
+    }
+    return consultas[0];
+  }, [consultas, selectedConsultaId]);
 
   const [colegiando, setColegiando] = useState(false);
   const [colegiadoError, setColegiadoError] = useState<string | null>(null);
@@ -506,6 +518,161 @@ export default function RegionPacienteResumenPage() {
     () => (ultimaConsulta ? getConsultaScores(ultimaConsulta) : null),
     [ultimaConsulta]
   );
+
+  const consultaActivaScores = useMemo(
+    () => (consultaActiva ? getConsultaScores(consultaActiva) : null),
+    [consultaActiva]
+  );
+
+  const hallazgosActivos = useMemo(() => {
+    if (!paciente) return [];
+    const items: Array<{
+      id: string;
+      categoria: "CRITERIO CLÍNICO" | "ANTECEDENTE" | "TAMIZAJE" | "CONSULTA";
+      etiqueta: string;
+      detalle: string;
+      puntos: number;
+      critico: boolean;
+    }> = [];
+
+    const edad = Number(paciente.edad);
+    if (Number.isFinite(edad) && edad >= 10 && edad <= 14) {
+      items.push({
+        id: "crit-edad",
+        categoria: "CRITERIO CLÍNICO",
+        etiqueta: "Edad Materna Extrema (10–14 años)",
+        detalle: `${edad} años`,
+        puntos: 4,
+        critico: true,
+      });
+    }
+
+    const imc = Number(paciente.imc_inicial);
+    if (Number.isFinite(imc) && imc >= 31) {
+      items.push({
+        id: "crit-imc",
+        categoria: "CRITERIO CLÍNICO",
+        etiqueta: "Obesidad por IMC ≥ 31",
+        detalle: `IMC ${imc.toFixed(1)}`,
+        puntos: 4,
+        critico: true,
+      });
+    }
+
+    const etiquetasAntecedentes: Record<string, string> = {
+      gestas: "Multiparidad / Gestas",
+      cesareas: "Antecedente de Cesáreas",
+      abortos: "Antecedente de Abortos",
+      ant_preeclampsia: "Preeclampsia previa",
+      ant_hemorragia: "Hemorragia obstétrica previa",
+      ant_sepsis: "Sepsis materna previa",
+      ant_bajo_peso_macrosomia: "Bajo peso / Macrosomía fetal",
+      ant_muerte_perinatal: "Muerte perinatal previa",
+      ant_embarazo_ectopico: "Embarazo ectópico previo",
+      factor_diabetes: "Diabetes Mellitus",
+      factor_hipertension: "Hipertensión Arterial",
+      factor_obesidad: "Obesidad Clínica",
+      factor_cardiopatia: "Cardiopatía",
+      factor_hepatopatia: "Hepatopatía",
+      factor_enf_autoinmune: "Enfermedad Autoinmune",
+      factor_nefropatia: "Nefropatía",
+      factor_coagulopatias: "Coagulopatías",
+      factor_neuropatia: "Neuropatía / Epilepsia",
+      factor_enf_psiquiatrica: "Enfermedad Psiquiátrica",
+      factor_alcoholismo: "Alcoholismo",
+      factor_tabaquismo: "Tabaquismo",
+      factor_drogas_ilicitas: "Sustancias ilícitas",
+      factor_endocrinopatia: "Endocrinopatía",
+      factor_neumopatia: "Neumopatía",
+      factor_its: "Infección de Transmisión Sexual",
+      factor_cirugias_pelvico_uterinas: "Cirugía pélvico-uterina",
+      factor_discapacidad: "Discapacidad",
+      factores_riesgo_epid: "Riesgo Epidemiológico",
+    };
+
+    Object.entries(antecedentesConPuntos).forEach(([campo, pts]) => {
+      if (pts > 0) {
+        items.push({
+          id: `ant-${campo}`,
+          categoria: "ANTECEDENTE",
+          etiqueta: etiquetasAntecedentes[campo] || campo,
+          detalle:
+            campo === "gestas" || campo === "cesareas" || campo === "abortos"
+              ? `Valor registrado: ${(paciente as any)[campo]}`
+              : "Positivo",
+          puntos: pts,
+          critico: pts >= 4,
+        });
+      }
+    });
+
+    const etiquetasTamizajes: Record<string, { nombre: string; val: string | null | undefined }> = {
+      prueba_vih: { nombre: "Tamizaje VIH", val: paciente.prueba_vih },
+      prueba_vdrl: { nombre: "Tamizaje VDRL / Sífilis", val: paciente.prueba_vdrl },
+      prueba_hepatitis_c: { nombre: "Tamizaje Hepatitis C", val: paciente.prueba_hepatitis_c },
+      diabetes_glicemia: { nombre: "Glicemia / Diabetes", val: paciente.diabetes_glicemia },
+      violencia: { nombre: "Tamizaje de Violencia", val: paciente.violencia },
+    };
+
+    Object.entries(tamizajesConPuntos).forEach(([campo, pts]) => {
+      if (pts > 0) {
+        const meta = etiquetasTamizajes[campo];
+        items.push({
+          id: `tam-${campo}`,
+          categoria: "TAMIZAJE",
+          etiqueta: meta?.nombre || campo,
+          detalle: String(meta?.val || "Reactivo"),
+          puntos: pts,
+          critico: pts >= 4,
+        });
+      }
+    });
+
+    if (ultimaConsulta && ultimaConsultaScores) {
+      if (ultimaConsultaScores.taTotal > 0) {
+        items.push({
+          id: "con-ta",
+          categoria: "CONSULTA",
+          etiqueta: "Tensión Arterial Alterada",
+          detalle: `${ultimaConsulta.ta_sistolica ?? "—"}/${ultimaConsulta.ta_diastolica ?? "—"} mmHg`,
+          puntos: ultimaConsultaScores.taTotal,
+          critico: ultimaConsultaScores.taTotal >= 4,
+        });
+      }
+      if (ultimaConsultaScores.frecuenciaCardiaca > 0) {
+        items.push({
+          id: "con-fc",
+          categoria: "CONSULTA",
+          etiqueta: "Frecuencia Cardíaca Alterada",
+          detalle: `${ultimaConsulta.frecuencia_cardiaca} lpm`,
+          puntos: ultimaConsultaScores.frecuenciaCardiaca,
+          critico: true,
+        });
+      }
+      if (ultimaConsultaScores.indiceChoque > 0) {
+        items.push({
+          id: "con-ic",
+          categoria: "CONSULTA",
+          etiqueta: "Índice de Choque Elevado",
+          detalle: `${ultimaConsulta.indice_choque}`,
+          puntos: ultimaConsultaScores.indiceChoque,
+          critico: ultimaConsultaScores.indiceChoque >= 4,
+        });
+      }
+      if (ultimaConsultaScores.temperatura > 0) {
+        items.push({
+          id: "con-temp",
+          categoria: "CONSULTA",
+          etiqueta: "Temperatura Fuera de Rango",
+          detalle: `${ultimaConsulta.temperatura} °C`,
+          puntos: ultimaConsultaScores.temperatura,
+          critico: ultimaConsultaScores.temperatura >= 4,
+        });
+      }
+    }
+
+    return items.sort((a, b) => b.puntos - a.puntos);
+  }, [paciente, antecedentesConPuntos, tamizajesConPuntos, ultimaConsulta, ultimaConsultaScores]);
 
   const esAltoRiesgo = puntajeTotalActual >= 25;
   const esMedioRiesgo = puntajeTotalActual > 15 && puntajeTotalActual < 25;
@@ -993,151 +1160,859 @@ export default function RegionPacienteResumenPage() {
               </section>
             )}
 
-            {/* IDENTIFICACIÓN Y UBICACIÓN */}
+            {/* FICHA COMPACTA DE IDENTIFICACIÓN Y CONTEXTO OBSTÉTRICO */}
             <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 space-y-4 shadow-xl transition-colors">
-              <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-white/10 pb-3">
-                <i className="fa-solid fa-id-card text-emerald-600 dark:text-emerald-400 text-lg"></i>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                  Identificación y ubicación
-                </h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <i className="fa-solid fa-id-card text-emerald-600 dark:text-emerald-400 text-lg"></i>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                    Identificación y Contexto Obstétrico
+                  </h2>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold border ${
+                      Number(paciente.edad) >= 10 && Number(paciente.edad) <= 14
+                        ? "bg-rose-100 dark:bg-rose-500/25 text-rose-900 dark:text-rose-200 border-rose-400"
+                        : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200"
+                    }`}
+                  >
+                    <i className="fa-solid fa-cake-candles text-[10px] opacity-75" />
+                    <span>
+                      {paciente.edad !== null && paciente.edad !== undefined
+                        ? `${paciente.edad} años`
+                        : "Edad N/D"}
+                    </span>
+                  </span>
+
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-mono font-bold bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-900 dark:text-cyan-200 border border-cyan-500/25">
+                    <span>G:{paciente.gestas ?? 0}</span>
+                    <span>·</span>
+                    <span>P:{paciente.partos ?? 0}</span>
+                    <span>·</span>
+                    <span>C:{paciente.cesareas ?? 0}</span>
+                    <span>·</span>
+                    <span>A:{paciente.abortos ?? 0}</span>
+                  </span>
+
+                  {(ultimaConsulta?.sdg || paciente.semanas_gestacion || paciente.sdg_ingreso) && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold bg-teal-500/10 dark:bg-teal-500/20 text-teal-900 dark:text-teal-200 border border-teal-500/25">
+                      <i className="fa-solid fa-baby text-[10px]" />
+                      <span>
+                        {ultimaConsulta?.sdg ?? paciente.semanas_gestacion ?? paciente.sdg_ingreso} SDG
+                      </span>
+                    </span>
+                  )}
+
+                  {paciente.fpp && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200">
+                      <i className="fa-regular fa-calendar text-[10px]" />
+                      <span>FPP: {formatDate(paciente.fpp)}</span>
+                    </span>
+                  )}
+
+                  {paciente.imc_inicial !== null && paciente.imc_inicial !== undefined && (
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold border ${
+                        Number(paciente.imc_inicial) >= 31
+                          ? "bg-amber-100 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200 border-amber-400"
+                          : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200"
+                      }`}
+                    >
+                      <span>IMC: {Number(paciente.imc_inicial).toFixed(1)}</span>
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                <Info label="Nombre" value={paciente.nombre_completo} />
-                <Info label="Folio" value={paciente.folio} />
-                <Info
-                  label="Edad"
-                  value={paciente.edad !== null && paciente.edad !== undefined ? `${paciente.edad} años` : null}
-                  toneClass={
-                    Number(paciente.edad) >= 10 && Number(paciente.edad) <= 14
-                      ? "border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-900/30 text-rose-900 dark:text-rose-200"
-                      : undefined
-                  }
-                />
-                <Info label="CLUES" value={paciente.clues_id} />
-                <Info label="Unidad" value={paciente.unidad} />
-                <Info label="Región" value={paciente.region} />
-                <Info label="Municipio" value={paciente.municipio} />
-                <Info label="Fecha ingreso CPN" value={formatDate(paciente.fecha_ingreso_cpn)} />
-                <Info label="SDG ingreso" value={paciente.sdg_ingreso} />
-                <Info label="FUM" value={formatDate(paciente.fum, "No confiable / Dudosa")} />
-                <Info label="FPP" value={formatDate(paciente.fpp, "Pendiente USG")} />
-                <Info label="Semanas gestación" value={paciente.semanas_gestacion} />
-                <Info label="Teléfono" value={paciente.telefono} />
-                <Info label="Derechohabiencia" value={paciente.derechohabiencia} />
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-white/5 px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Unidad Médica
+                  </span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100 truncate block" title={paciente.unidad || ""}>
+                    {formatValue(paciente.unidad)}
+                  </span>
+                </div>
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-white/5 px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Clave CLUES
+                  </span>
+                  <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300 block">
+                    {formatValue(paciente.clues_id)}
+                  </span>
+                </div>
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-white/5 px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Región Sanitaria
+                  </span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                    {formatValue(paciente.region)}
+                  </span>
+                </div>
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-white/5 px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Municipio
+                  </span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                    {formatValue(paciente.municipio)}
+                  </span>
+                </div>
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-white/5 px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Ingreso CPN · Derechohab.
+                  </span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                    {formatDate(paciente.fecha_ingreso_cpn)} · {formatValue(paciente.derechohabiencia)}
+                  </span>
+                </div>
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-white/5 px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Contacto / Teléfono
+                  </span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                    {formatValue(paciente.telefono)}
+                  </span>
+                </div>
               </div>
             </section>
 
-            <CollapsibleSection
-              title="Antecedentes y factores de riesgo"
-              subtitle="Campos resaltados aportan al puntaje de antecedentes"
-              icon="fa-solid fa-clipboard-list"
-              defaultOpen={true}
-            >
-              <ScoreLegend />
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                <Info label="Gestas" value={antecedentesConPuntos.gestas ? `${formatValue(paciente.gestas)} · ${antecedentesConPuntos.gestas} pts` : paciente.gestas} toneClass={scoreToneClass(antecedentesConPuntos.gestas || 0)} />
-                <Info label="Partos" value={paciente.partos} />
-                <Info label="Cesáreas" value={antecedentesConPuntos.cesareas ? `${formatValue(paciente.cesareas)} · ${antecedentesConPuntos.cesareas} pts` : paciente.cesareas} toneClass={scoreToneClass(antecedentesConPuntos.cesareas || 0)} />
-                <Info label="Abortos" value={antecedentesConPuntos.abortos ? `${formatValue(paciente.abortos)} · ${antecedentesConPuntos.abortos} pts` : paciente.abortos} toneClass={scoreToneClass(antecedentesConPuntos.abortos || 0)} />
-                <Info label="Antecedente preeclampsia" value={antecedentesConPuntos.ant_preeclampsia ? `${boolLabel(paciente.ant_preeclampsia)} · ${antecedentesConPuntos.ant_preeclampsia} pts` : boolLabel(paciente.ant_preeclampsia)} toneClass={scoreToneClass(antecedentesConPuntos.ant_preeclampsia || 0)} />
-                <Info label="Antecedente hemorragia" value={antecedentesConPuntos.ant_hemorragia ? `${boolLabel(paciente.ant_hemorragia)} · ${antecedentesConPuntos.ant_hemorragia} pts` : boolLabel(paciente.ant_hemorragia)} toneClass={scoreToneClass(antecedentesConPuntos.ant_hemorragia || 0)} />
-                <Info label="Antecedente sepsis" value={antecedentesConPuntos.ant_sepsis ? `${boolLabel(paciente.ant_sepsis)} · ${antecedentesConPuntos.ant_sepsis} pts` : boolLabel(paciente.ant_sepsis)} toneClass={scoreToneClass(antecedentesConPuntos.ant_sepsis || 0)} />
-                <Info label="Bajo peso/macrosomía" value={antecedentesConPuntos.ant_bajo_peso_macrosomia ? `${boolLabel(paciente.ant_bajo_peso_macrosomia)} · ${antecedentesConPuntos.ant_bajo_peso_macrosomia} pts` : boolLabel(paciente.ant_bajo_peso_macrosomia)} toneClass={scoreToneClass(antecedentesConPuntos.ant_bajo_peso_macrosomia || 0)} />
-                <Info label="Muerte perinatal" value={antecedentesConPuntos.ant_muerte_perinatal ? `${boolLabel(paciente.ant_muerte_perinatal)} · ${antecedentesConPuntos.ant_muerte_perinatal} pts` : boolLabel(paciente.ant_muerte_perinatal)} toneClass={scoreToneClass(antecedentesConPuntos.ant_muerte_perinatal || 0)} />
-                <Info label="Embarazo ectópico" value={antecedentesConPuntos.ant_embarazo_ectopico ? `${boolLabel(paciente.ant_embarazo_ectopico)} · ${antecedentesConPuntos.ant_embarazo_ectopico} pts` : boolLabel(paciente.ant_embarazo_ectopico)} toneClass={scoreToneClass(antecedentesConPuntos.ant_embarazo_ectopico || 0)} />
-                <Info label="Diabetes" value={antecedentesConPuntos.factor_diabetes ? `${boolLabel(paciente.factor_diabetes)} · ${antecedentesConPuntos.factor_diabetes} pts` : boolLabel(paciente.factor_diabetes)} toneClass={scoreToneClass(antecedentesConPuntos.factor_diabetes || 0)} />
-                <Info label="Hipertensión" value={antecedentesConPuntos.factor_hipertension ? `${boolLabel(paciente.factor_hipertension)} · ${antecedentesConPuntos.factor_hipertension} pts` : boolLabel(paciente.factor_hipertension)} toneClass={scoreToneClass(antecedentesConPuntos.factor_hipertension || 0)} />
-                <Info label="Obesidad" value={antecedentesConPuntos.factor_obesidad ? `${boolLabel(paciente.factor_obesidad)} · ${antecedentesConPuntos.factor_obesidad} pts` : boolLabel(paciente.factor_obesidad)} toneClass={scoreToneClass(antecedentesConPuntos.factor_obesidad || 0)} />
-                <Info label="Cardiopatía" value={antecedentesConPuntos.factor_cardiopatia ? `${boolLabel(paciente.factor_cardiopatia)} · ${antecedentesConPuntos.factor_cardiopatia} pts` : boolLabel(paciente.factor_cardiopatia)} toneClass={scoreToneClass(antecedentesConPuntos.factor_cardiopatia || 0)} />
-                <Info label="Hepatopatía" value={antecedentesConPuntos.factor_hepatopatia ? `${boolLabel(paciente.factor_hepatopatia)} · ${antecedentesConPuntos.factor_hepatopatia} pts` : boolLabel(paciente.factor_hepatopatia)} toneClass={scoreToneClass(antecedentesConPuntos.factor_hepatopatia || 0)} />
-                <Info label="Enf. autoinmune" value={antecedentesConPuntos.factor_enf_autoinmune ? `${boolLabel(paciente.factor_enf_autoinmune)} · ${antecedentesConPuntos.factor_enf_autoinmune} pts` : boolLabel(paciente.factor_enf_autoinmune)} toneClass={scoreToneClass(antecedentesConPuntos.factor_enf_autoinmune || 0)} />
-                <Info label="Nefropatía" value={antecedentesConPuntos.factor_nefropatia ? `${boolLabel(paciente.factor_nefropatia)} · ${antecedentesConPuntos.factor_nefropatia} pts` : boolLabel(paciente.factor_nefropatia)} toneClass={scoreToneClass(antecedentesConPuntos.factor_nefropatia || 0)} />
-                <Info label="Coagulopatías" value={antecedentesConPuntos.factor_coagulopatias ? `${boolLabel(paciente.factor_coagulopatias)} · ${antecedentesConPuntos.factor_coagulopatias} pts` : boolLabel(paciente.factor_coagulopatias)} toneClass={scoreToneClass(antecedentesConPuntos.factor_coagulopatias || 0)} />
-                <Info label="Neuropatía" value={antecedentesConPuntos.factor_neuropatia ? `${boolLabel(paciente.factor_neuropatia)} · ${antecedentesConPuntos.factor_neuropatia} pts` : boolLabel(paciente.factor_neuropatia)} toneClass={scoreToneClass(antecedentesConPuntos.factor_neuropatia || 0)} />
-                <Info label="Enf. psiquiátrica" value={antecedentesConPuntos.factor_enf_psiquiatrica ? `${boolLabel(paciente.factor_enf_psiquiatrica)} · ${antecedentesConPuntos.factor_enf_psiquiatrica} pts` : boolLabel(paciente.factor_enf_psiquiatrica)} toneClass={scoreToneClass(antecedentesConPuntos.factor_enf_psiquiatrica || 0)} />
-                <Info label="Alcoholismo" value={antecedentesConPuntos.factor_alcoholismo ? `${boolLabel(paciente.factor_alcoholismo)} · ${antecedentesConPuntos.factor_alcoholismo} pts` : boolLabel(paciente.factor_alcoholismo)} toneClass={scoreToneClass(antecedentesConPuntos.factor_alcoholismo || 0)} />
-                <Info label="Tabaquismo" value={antecedentesConPuntos.factor_tabaquismo ? `${boolLabel(paciente.factor_tabaquismo)} · ${antecedentesConPuntos.factor_tabaquismo} pts` : boolLabel(paciente.factor_tabaquismo)} toneClass={scoreToneClass(antecedentesConPuntos.factor_tabaquismo || 0)} />
-                <Info label="Otras drogas" value={antecedentesConPuntos.factor_drogas_ilicitas ? `${boolLabel(paciente.factor_drogas_ilicitas)} · ${antecedentesConPuntos.factor_drogas_ilicitas} pts` : boolLabel(paciente.factor_drogas_ilicitas)} toneClass={scoreToneClass(antecedentesConPuntos.factor_drogas_ilicitas || 0)} />
-                <Info label="Endocrinopatía" value={antecedentesConPuntos.factor_endocrinopatia ? `${boolLabel(paciente.factor_endocrinopatia)} · ${antecedentesConPuntos.factor_endocrinopatia} pts` : boolLabel(paciente.factor_endocrinopatia)} toneClass={scoreToneClass(antecedentesConPuntos.factor_endocrinopatia || 0)} />
-                <Info label="Neumopatía" value={antecedentesConPuntos.factor_neumopatia ? `${boolLabel(paciente.factor_neumopatia)} · ${antecedentesConPuntos.factor_neumopatia} pts` : boolLabel(paciente.factor_neumopatia)} toneClass={scoreToneClass(antecedentesConPuntos.factor_neumopatia || 0)} />
-                <Info label="ITS" value={antecedentesConPuntos.factor_its ? `${boolLabel(paciente.factor_its)} · ${antecedentesConPuntos.factor_its} pts` : boolLabel(paciente.factor_its)} toneClass={scoreToneClass(antecedentesConPuntos.factor_its || 0)} />
-                <Info label="Cirugías pélvico uterinas" value={antecedentesConPuntos.factor_cirugias_pelvico_uterinas ? `${boolLabel(paciente.factor_cirugias_pelvico_uterinas)} · ${antecedentesConPuntos.factor_cirugias_pelvico_uterinas} pts` : boolLabel(paciente.factor_cirugias_pelvico_uterinas)} toneClass={scoreToneClass(antecedentesConPuntos.factor_cirugias_pelvico_uterinas || 0)} />
-                <Info label="Discapacidad" value={antecedentesConPuntos.factor_discapacidad ? `${boolLabel(paciente.factor_discapacidad)} · ${antecedentesConPuntos.factor_discapacidad} pts` : boolLabel(paciente.factor_discapacidad)} toneClass={scoreToneClass(antecedentesConPuntos.factor_discapacidad || 0)} />
-                {paciente.otros_antecedentes && (
-                  <Info label="Otros antecedentes" value={paciente.otros_antecedentes} />
-                )}
-              </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              title="Tamizajes"
-              subtitle="Campos resaltados aportan al puntaje de tamizajes"
-              icon="fa-solid fa-microscope"
-              defaultOpen={true}
-            >
-              <ScoreLegend />
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                <Info label="Prueba VIH" value={tamizajesConPuntos.prueba_vih ? `${formatValue(paciente.prueba_vih)} · ${tamizajesConPuntos.prueba_vih} pts` : paciente.prueba_vih} toneClass={scoreToneClass(tamizajesConPuntos.prueba_vih || 0)} />
-                <Info label="Prueba VDRL" value={tamizajesConPuntos.prueba_vdrl ? `${formatValue(paciente.prueba_vdrl)} · ${tamizajesConPuntos.prueba_vdrl} pts` : paciente.prueba_vdrl} toneClass={scoreToneClass(tamizajesConPuntos.prueba_vdrl || 0)} />
-                <Info label="Prueba Hepatitis C" value={tamizajesConPuntos.prueba_hepatitis_c ? `${formatValue(paciente.prueba_hepatitis_c)} · ${tamizajesConPuntos.prueba_hepatitis_c} pts` : paciente.prueba_hepatitis_c} toneClass={scoreToneClass(tamizajesConPuntos.prueba_hepatitis_c || 0)} />
-                <Info label="Diabetes glicemia" value={tamizajesConPuntos.diabetes_glicemia ? `${formatValue(paciente.diabetes_glicemia)} · ${tamizajesConPuntos.diabetes_glicemia} pts` : paciente.diabetes_glicemia} toneClass={scoreToneClass(tamizajesConPuntos.diabetes_glicemia || 0)} />
-                <Info label="Violencia" value={tamizajesConPuntos.violencia ? `${formatValue(paciente.violencia)} · ${tamizajesConPuntos.violencia} pts` : paciente.violencia} toneClass={scoreToneClass(tamizajesConPuntos.violencia || 0)} />
-                <Info label="VIH 3T" value={detecciones?.prueba_vih_t3} />
-                <Info label="VDRL 3T" value={detecciones?.prueba_vdrl_t3} />
-                <Info label="Hepatitis C 3T" value={detecciones?.prueba_hepatitis_c_t3} />
-              </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              title="Última consulta prenatal"
-              subtitle="Parámetros y severidad de la consulta más reciente"
-              icon="fa-solid fa-stethoscope"
-              defaultOpen={true}
-            >
-              <ScoreLegend />
-              {!ultimaConsulta ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">Sin consultas registradas.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                  <Info label="Fecha consulta" value={formatDate(ultimaConsulta.fecha_consulta)} />
-                  <Info
-                    label="T/A"
-                    value={`${formatValue(ultimaConsulta.ta_sistolica)}/${formatValue(ultimaConsulta.ta_diastolica)} · ${ultimaConsultaScores?.taTotal ?? 0} pts`}
-                    toneClass={scoreToneClass(ultimaConsultaScores?.taTotal ?? 0)}
-                  />
-                  <Info
-                    label="Frecuencia cardiaca"
-                    value={`${formatValue(ultimaConsulta.frecuencia_cardiaca)} · ${ultimaConsultaScores?.frecuenciaCardiaca ?? 0} pts`}
-                    toneClass={scoreToneClass(ultimaConsultaScores?.frecuenciaCardiaca ?? 0)}
-                  />
-                  <Info label="Frecuencia respiratoria" value={ultimaConsulta.frecuencia_respiratoria} />
-                  <Info
-                    label="Temperatura"
-                    value={`${formatValue(ultimaConsulta.temperatura)} · ${ultimaConsultaScores?.temperatura ?? 0} pts`}
-                    toneClass={scoreToneClass(ultimaConsultaScores?.temperatura ?? 0)}
-                  />
-                  <Info
-                    label="Índice de choque"
-                    value={`${formatValue(ultimaConsulta.indice_choque)} · ${ultimaConsultaScores?.indiceChoque ?? 0} pts`}
-                    toneClass={scoreToneClass(ultimaConsultaScores?.indiceChoque ?? 0)}
-                  />
-                  <Info label="Estado de conciencia" value={ultimaConsulta.estado_conciencia} />
-                  <Info label="Hemorragia" value={ultimaConsulta.hemorragia} />
-                  <Info label="Respiración" value={ultimaConsulta.respiracion} />
-                  <Info label="Color de piel" value={ultimaConsulta.color_piel} />
-                  <Info label="Puntaje consulta" value={ultimaConsulta.puntaje_consulta_parametros} />
-                  <Info label="Puntaje total" value={ultimaConsulta.puntaje_total_consulta} />
-                  <Info label="Riesgo ≥ 25" value={ultimaConsulta.riesgo_25_plus === 1 ? "Sí" : "No"} />
-                  <Info label="Diagnóstico" value={ultimaConsulta.diagnostico} />
-                  <Info label="Plan" value={ultimaConsulta.plan} />
-                  <Info label="Notas" value={ultimaConsulta.notas} />
+            {/* RESUMEN DE HALLAZGOS POSITIVOS QUE APORTAN AL RIESGO (EVITA EL MURO GRIS) */}
+            <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-rose-500/10 dark:bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-600 dark:text-rose-400 text-sm">
+                    <i className="fa-solid fa-bolt" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+                      Factores de Riesgo y Hallazgos Positivos Detectados
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Síntesis directa de los factores clínicos, antecedentes, tamizajes y signos que aportan al riesgo
+                    </p>
+                  </div>
                 </div>
+                <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-rose-500/10 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border border-rose-500/30">
+                  {hallazgosActivos.length}{" "}
+                  {hallazgosActivos.length === 1 ? "factor activo" : "factores activos"}
+                </span>
+              </div>
+
+              {hallazgosActivos.length === 0 ? (
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-950/30 px-4 py-3 text-xs font-semibold text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                  <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400" />
+                  <span>
+                    No se detectaron factores de riesgo ni alteraciones en signos vitales con puntaje activo.
+                  </span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                  {hallazgosActivos.map((h) => (
+                    <div
+                      key={h.id}
+                      className={`flex items-stretch justify-between gap-3 rounded-2xl border p-3.5 min-h-[74px] shadow-sm ${
+                        h.critico
+                          ? "border-rose-300 dark:border-rose-500/45 bg-rose-50/90 dark:bg-rose-950/40 text-rose-950 dark:text-rose-100"
+                          : "border-amber-300 dark:border-amber-500/45 bg-amber-50/90 dark:bg-amber-950/40 text-amber-950 dark:text-amber-100"
+                      }`}
+                    >
+                      <div className="min-w-0 flex flex-col justify-between gap-1.5">
+                        <span
+                          className={`self-start text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                            h.critico
+                              ? "bg-rose-500/20 text-rose-800 dark:text-rose-200"
+                              : "bg-amber-500/20 text-amber-800 dark:text-amber-200"
+                          }`}
+                        >
+                          {h.categoria}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold leading-tight truncate" title={h.etiqueta}>
+                            {h.etiqueta}
+                          </p>
+                          <p
+                            className="text-[11px] text-slate-600 dark:text-slate-400 truncate"
+                            title={h.detalle}
+                          >
+                            {h.detalle}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`shrink-0 self-center w-16 text-center font-mono text-xs font-black py-1.5 rounded-xl border ${
+                          h.critico
+                            ? "bg-rose-600 text-white border-rose-500"
+                            : "bg-amber-500 text-slate-950 border-amber-400"
+                        }`}
+                      >
+                        +{h.puntos} pts
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* MONITOR CLÍNICO DE CONSULTA PRENATAL Y SIGNOS VITALES */}
+            <CollapsibleSection
+              title="Monitor de Consulta Prenatal y Signos Vitales"
+              subtitle={
+                consultaActiva
+                  ? `Evaluación: ${formatDate(consultaActiva.fecha_consulta)} · SDG: ${consultaActiva.sdg ?? "—"} · ${
+                      ultimaConsulta && consultaActiva.id === ultimaConsulta.id
+                        ? "Consulta más reciente"
+                        : "Inspeccionando consulta histórica"
+                    }`
+                  : "Sin consultas registradas para esta paciente"
+              }
+              icon="fa-solid fa-stethoscope"
+              open={monitorOpen}
+              onToggle={setMonitorOpen}
+            >
+              {consultaActiva && ultimaConsulta && consultaActiva.id !== ultimaConsulta.id && (
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs">
+                  <span className="font-bold text-amber-900 dark:text-amber-200">
+                    Inspeccionando consulta histórica del {formatDate(consultaActiva.fecha_consulta)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedConsultaId(ultimaConsulta.id)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition cursor-pointer"
+                  >
+                    <i className="fa-solid fa-rotate-left text-[10px]" />
+                    <span>Volver a última consulta</span>
+                  </button>
+                </div>
+              )}
+
+              {!consultaActiva ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">
+                  Sin consultas registradas.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {/* Signo 1: Tensión Arterial */}
+                    <div
+                      className={`rounded-2xl border p-3.5 flex flex-col justify-between ${
+                        scoreToneClass(consultaActivaScores?.taTotal ?? 0) ||
+                        "border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-slate-800/60"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Tensión Arterial
+                        </span>
+                        <span
+                          className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${scoreBadgeClass(
+                            consultaActivaScores?.taTotal ?? 0
+                          )}`}
+                        >
+                          +{consultaActivaScores?.taTotal ?? 0}
+                        </span>
+                      </div>
+                      <div className="my-1.5">
+                        <span className="text-xl font-black font-mono text-slate-900 dark:text-white">
+                          {formatValue(consultaActiva.ta_sistolica)}/{formatValue(consultaActiva.ta_diastolica)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 ml-1">mmHg</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Normal: &lt;140/90
+                      </span>
+                    </div>
+
+                    {/* Signo 2: Frecuencia Cardíaca */}
+                    <div
+                      className={`rounded-2xl border p-3.5 flex flex-col justify-between ${
+                        scoreToneClass(consultaActivaScores?.frecuenciaCardiaca ?? 0) ||
+                        "border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-slate-800/60"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Frec. Cardíaca
+                        </span>
+                        <span
+                          className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${scoreBadgeClass(
+                            consultaActivaScores?.frecuenciaCardiaca ?? 0
+                          )}`}
+                        >
+                          +{consultaActivaScores?.frecuenciaCardiaca ?? 0}
+                        </span>
+                      </div>
+                      <div className="my-1.5">
+                        <span className="text-xl font-black font-mono text-slate-900 dark:text-white">
+                          {formatValue(consultaActiva.frecuencia_cardiaca)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 ml-1">lpm</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Rango: 60–100 lpm
+                      </span>
+                    </div>
+
+                    {/* Signo 3: Índice de Choque */}
+                    <div
+                      className={`rounded-2xl border p-3.5 flex flex-col justify-between ${
+                        scoreToneClass(consultaActivaScores?.indiceChoque ?? 0) ||
+                        "border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-slate-800/60"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Índice Choque
+                        </span>
+                        <span
+                          className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${scoreBadgeClass(
+                            consultaActivaScores?.indiceChoque ?? 0
+                          )}`}
+                        >
+                          +{consultaActivaScores?.indiceChoque ?? 0}
+                        </span>
+                      </div>
+                      <div className="my-1.5">
+                        <span className="text-xl font-black font-mono text-slate-900 dark:text-white">
+                          {formatValue(consultaActiva.indice_choque)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 ml-1">FC/TAS</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Normal: &lt;0.7
+                      </span>
+                    </div>
+
+                    {/* Signo 4: Temperatura */}
+                    <div
+                      className={`rounded-2xl border p-3.5 flex flex-col justify-between ${
+                        scoreToneClass(consultaActivaScores?.temperatura ?? 0) ||
+                        "border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-slate-800/60"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Temperatura
+                        </span>
+                        <span
+                          className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${scoreBadgeClass(
+                            consultaActivaScores?.temperatura ?? 0
+                          )}`}
+                        >
+                          +{consultaActivaScores?.temperatura ?? 0}
+                        </span>
+                      </div>
+                      <div className="my-1.5">
+                        <span className="text-xl font-black font-mono text-slate-900 dark:text-white">
+                          {formatValue(consultaActiva.temperatura)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 ml-1">°C</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Rango: 36.0–37.4 °C
+                      </span>
+                    </div>
+
+                    {/* Signo 5: Frecuencia Respiratoria */}
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-slate-800/60 p-3.5 flex flex-col justify-between">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Frec. Respiratoria
+                      </span>
+                      <div className="my-1.5">
+                        <span className="text-xl font-black font-mono text-slate-900 dark:text-white">
+                          {formatValue(consultaActiva.frecuencia_respiratoria)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 ml-1">rpm</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Respiración: {formatValue(consultaActiva.respiracion)}
+                      </span>
+                    </div>
+
+                    {/* Signo 6: Estado Clínico General */}
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-slate-800/60 p-3.5 flex flex-col justify-between">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Estado Clínico
+                      </span>
+                      <div className="my-1 space-y-0.5 text-xs">
+                        <p className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                          Conciencia: {formatValue(consultaActiva.estado_conciencia)}
+                        </p>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
+                          Piel: {formatValue(consultaActiva.color_piel)}
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        Hemorragia: {formatValue(consultaActiva.hemorragia)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Diagnóstico, Plan de Manejo y Notas Clínicas */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-slate-800/50 p-4 space-y-1.5">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-cyan-700 dark:text-cyan-300 flex items-center gap-1.5">
+                        <i className="fa-solid fa-file-medical" />
+                        <span>Diagnóstico Clínico</span>
+                      </span>
+                      <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 whitespace-pre-line leading-relaxed">
+                        {formatValue(consultaActiva.diagnostico)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-slate-800/50 p-4 space-y-1.5">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                        <i className="fa-solid fa-clipboard-check" />
+                        <span>Plan de Manejo</span>
+                      </span>
+                      <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 whitespace-pre-line leading-relaxed">
+                        {formatValue(consultaActiva.plan)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-slate-800/50 p-4 space-y-1.5">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                        <i className="fa-solid fa-comment-medical" />
+                        <span>Notas y Observaciones</span>
+                      </span>
+                      <p className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-pre-line leading-relaxed">
+                        {formatValue(consultaActiva.notas)}
+                      </p>
+                    </div>
+                  </div>
+                </>
               )}
             </CollapsibleSection>
 
+            {/* ANTECEDENTES Y TAMIZAJES AGRUPADOS CON FILTRO "SOLO POSITIVOS" ACTIVO POR DEFECTO */}
             <CollapsibleSection
-              title="Historial de consultas"
-              subtitle="Evolución de parámetros y puntajes por fecha"
+              title="Desglose de Antecedentes, Comorbilidades y Tamizajes"
+              subtitle="Muestra por defecto únicamente los factores activos para evitar ruido visual; puede expandir los descartados si lo requiere"
+              icon="fa-solid fa-clipboard-list"
+              defaultOpen={true}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/70 dark:border-white/10">
+                <ScoreLegend />
+
+                <button
+                  type="button"
+                  onClick={() => setSoloPositivos((prev) => !prev)}
+                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                    soloPositivos
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-500/20"
+                      : "border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/10"
+                  }`}
+                >
+                  <i className={`fa-solid ${soloPositivos ? "fa-eye" : "fa-eye-slash"}`} />
+                  <span>
+                    {soloPositivos
+                      ? "Mostrar también campos descartados (No)"
+                      : "Ocultar campos descartados (No)"}
+                  </span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 pt-2">
+                {/* DOMINIO 1: HISTORIA GINECO-OBSTÉTRICA */}
+                <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/60 dark:bg-slate-950/40 p-4 flex flex-col justify-between gap-4">
+                  <div className="space-y-3.5">
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 dark:border-white/10 pb-2.5">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-teal-700 dark:text-teal-300 flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-300">
+                          <i className="fa-solid fa-person-pregnant text-[11px]" />
+                        </span>
+                        <span>Historia Gineco-Obstétrica</span>
+                      </h3>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-800 dark:text-teal-200 border border-teal-500/20">
+                        Fórmula GPCA
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { key: "gestas", label: "Gestas", val: paciente.gestas ?? 0 },
+                        { key: "partos", label: "Partos", val: paciente.partos ?? 0 },
+                        { key: "cesareas", label: "Cesáreas", val: paciente.cesareas ?? 0 },
+                        { key: "abortos", label: "Abortos", val: paciente.abortos ?? 0 },
+                      ].map((item) => {
+                        const pts = antecedentesConPuntos[item.key] || 0;
+                        return (
+                          <div
+                            key={item.key}
+                            className={`rounded-xl border p-2.5 text-center transition ${
+                              pts > 0
+                                ? scoreToneClass(pts)
+                                : "border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-900/70"
+                            }`}
+                          >
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                              {item.label}
+                            </span>
+                            <span className="text-xl font-black font-mono text-slate-900 dark:text-white block mt-0.5">
+                              {item.val}
+                            </span>
+                            {pts > 0 && (
+                              <span className="inline-block mt-1 text-[9px] font-mono font-black px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-900 dark:text-amber-200">
+                                +{pts} pts
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {(() => {
+                      const obsItems = [
+                        { key: "ant_preeclampsia", label: "Preeclampsia previa", raw: paciente.ant_preeclampsia },
+                        { key: "ant_hemorragia", label: "Hemorragia obstétrica", raw: paciente.ant_hemorragia },
+                        { key: "ant_sepsis", label: "Sepsis materna", raw: paciente.ant_sepsis },
+                        { key: "ant_bajo_peso_macrosomia", label: "Bajo peso / Macrosomía", raw: paciente.ant_bajo_peso_macrosomia },
+                        { key: "ant_muerte_perinatal", label: "Muerte perinatal", raw: paciente.ant_muerte_perinatal },
+                        { key: "ant_embarazo_ectopico", label: "Embarazo ectópico", raw: paciente.ant_embarazo_ectopico },
+                        { key: "factor_cirugias_pelvico_uterinas", label: "Cirugía pélvico-uterina", raw: paciente.factor_cirugias_pelvico_uterinas },
+                      ];
+                      const positivos = obsItems.filter(
+                        (item) => (antecedentesConPuntos[item.key] || 0) > 0 || Boolean(item.raw)
+                      );
+                      const negativos = obsItems.filter(
+                        (item) => !((antecedentesConPuntos[item.key] || 0) > 0 || Boolean(item.raw))
+                      );
+
+                      return (
+                        <div className="space-y-3">
+                          {positivos.length > 0 ? (
+                            <div className="space-y-1.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300 block">
+                                Hallazgos Obstétricos Positivos ({positivos.length})
+                              </span>
+                              {positivos.map((item) => {
+                                const pts = antecedentesConPuntos[item.key] || 0;
+                                return (
+                                  <div
+                                    key={item.key}
+                                    className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs font-bold ${scoreToneClass(
+                                      pts || 2
+                                    )}`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <i className="fa-solid fa-circle-exclamation text-rose-600 dark:text-rose-400" />
+                                      <span>{item.label}</span>
+                                    </div>
+                                    <span className="font-mono font-black text-[11px] px-2 py-0.5 rounded-md bg-white/70 dark:bg-black/30">
+                                      Sí {pts ? `· +${pts} pts` : ""}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                              <i className="fa-solid fa-circle-check text-emerald-500" />
+                              <span>Sin antecedentes obstétricos adversos</span>
+                            </div>
+                          )}
+
+                          {!soloPositivos && negativos.length > 0 && (
+                            <div className="space-y-1.5 pt-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+                                Condiciones Descartadas ({negativos.length})
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                {negativos.map((item) => (
+                                  <div
+                                    key={item.key}
+                                    className="flex items-center justify-between gap-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 bg-white/70 dark:bg-slate-900/50 px-2.5 py-1.5 text-[11px] text-slate-500 dark:text-slate-400"
+                                  >
+                                    <span className="truncate" title={item.label}>
+                                      {item.label}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 shrink-0">
+                                      <i className="fa-solid fa-check text-emerald-500/70 text-[9px]" />
+                                      No
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* DOMINIO 2: COMORBILIDADES CRÓNICAS */}
+                <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/60 dark:bg-slate-950/40 p-4 flex flex-col justify-between gap-4">
+                  <div className="space-y-3.5">
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 dark:border-white/10 pb-2.5">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-cyan-700 dark:text-cyan-300 flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-cyan-300">
+                          <i className="fa-solid fa-heart-circle-exclamation text-[11px]" />
+                        </span>
+                        <span>Comorbilidades Crónicas</span>
+                      </h3>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-800 dark:text-cyan-200 border border-cyan-500/20">
+                        Patologías Sistémicas
+                      </span>
+                    </div>
+
+                    {(() => {
+                      const comorbilidades = [
+                        { key: "factor_diabetes", label: "Diabetes Mellitus", raw: paciente.factor_diabetes },
+                        { key: "factor_hipertension", label: "Hipertensión Arterial", raw: paciente.factor_hipertension },
+                        { key: "factor_obesidad", label: "Obesidad Clínica", raw: paciente.factor_obesidad },
+                        { key: "factor_cardiopatia", label: "Cardiopatía", raw: paciente.factor_cardiopatia },
+                        { key: "factor_hepatopatia", label: "Hepatopatía", raw: paciente.factor_hepatopatia },
+                        { key: "factor_nefropatia", label: "Nefropatía", raw: paciente.factor_nefropatia },
+                        { key: "factor_coagulopatias", label: "Coagulopatías", raw: paciente.factor_coagulopatias },
+                        { key: "factor_enf_autoinmune", label: "Enf. Autoinmune", raw: paciente.factor_enf_autoinmune },
+                        { key: "factor_endocrinopatia", label: "Endocrinopatía", raw: paciente.factor_endocrinopatia },
+                        { key: "factor_neumopatia", label: "Neumopatía", raw: paciente.factor_neumopatia },
+                        { key: "factor_neuropatia", label: "Neuropatía / Epilepsia", raw: paciente.factor_neuropatia },
+                        { key: "factor_enf_psiquiatrica", label: "Enf. Psiquiátrica", raw: paciente.factor_enf_psiquiatrica },
+                        { key: "factor_its", label: "Infección Transmisión Sexual", raw: paciente.factor_its },
+                      ];
+
+                      const positivos = comorbilidades.filter(
+                        (item) => (antecedentesConPuntos[item.key] || 0) > 0 || Boolean(item.raw)
+                      );
+                      const negativos = comorbilidades.filter(
+                        (item) => !((antecedentesConPuntos[item.key] || 0) > 0 || Boolean(item.raw))
+                      );
+
+                      return (
+                        <div className="space-y-3">
+                          {positivos.length > 0 ? (
+                            <div className="space-y-1.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300 block">
+                                Patologías Activas Detectadas ({positivos.length})
+                              </span>
+                              {positivos.map((item) => {
+                                const pts = antecedentesConPuntos[item.key] || 0;
+                                return (
+                                  <div
+                                    key={item.key}
+                                    className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs font-bold ${scoreToneClass(
+                                      pts || 2
+                                    )}`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400" />
+                                      <span>{item.label}</span>
+                                    </div>
+                                    <span className="font-mono font-black text-[11px] px-2 py-0.5 rounded-md bg-white/70 dark:bg-black/30">
+                                      Positivo {pts ? `· +${pts} pts` : ""}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                              <i className="fa-solid fa-shield-heart text-emerald-500" />
+                              <span>Sin comorbilidades crónicas activas</span>
+                            </div>
+                          )}
+
+                          {!soloPositivos && negativos.length > 0 && (
+                            <div className="space-y-1.5 pt-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+                                Patologías Descartadas ({negativos.length})
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                {negativos.map((item) => (
+                                  <div
+                                    key={item.key}
+                                    className="flex items-center justify-between gap-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 bg-white/70 dark:bg-slate-900/50 px-2.5 py-1.5 text-[11px] text-slate-500 dark:text-slate-400"
+                                  >
+                                    <span className="truncate" title={item.label}>
+                                      {item.label}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 shrink-0">
+                                      <i className="fa-solid fa-check text-emerald-500/70 text-[9px]" />
+                                      No
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* DOMINIO 3: PANEL DE TAMIZAJES Y PSICOSOCIALES */}
+                <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/60 dark:bg-slate-950/40 p-4 flex flex-col justify-between gap-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 dark:border-white/10 pb-2.5">
+                        <h3 className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-300">
+                            <i className="fa-solid fa-microscope text-[11px]" />
+                          </span>
+                          <span>Tamizajes Prenatales</span>
+                        </h3>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-900 dark:text-amber-200 border border-amber-500/30">
+                          +{Number(paciente.factor_riesgo_tamizajes) || 0} pts
+                        </span>
+                      </div>
+
+                      {(() => {
+                        const tamizajesList = [
+                          { key: "prueba_vih", label: "Prueba VIH", val: paciente.prueba_vih },
+                          { key: "prueba_vdrl", label: "Sífilis (VDRL)", val: paciente.prueba_vdrl },
+                          { key: "prueba_hepatitis_c", label: "Hepatitis C", val: paciente.prueba_hepatitis_c },
+                          { key: "diabetes_glicemia", label: "Diabetes / Glicemia", val: paciente.diabetes_glicemia },
+                          { key: "violencia", label: "Tamizaje Violencia", val: paciente.violencia },
+                        ];
+                        const visibles = tamizajesList.filter(
+                          (item) => !soloPositivos || (tamizajesConPuntos[item.key] || 0) > 0
+                        );
+
+                        if (visibles.length === 0) {
+                          return (
+                            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                              <i className="fa-solid fa-circle-check text-emerald-500" />
+                              <span>Sin tamizajes reactivos o alterados</span>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-1.5">
+                            {visibles.map((item) => {
+                              const pts = tamizajesConPuntos[item.key] || 0;
+                              return (
+                                <div
+                                  key={item.key}
+                                  className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs transition ${
+                                    pts > 0
+                                      ? scoreToneClass(pts)
+                                      : "border-slate-200/70 dark:border-white/5 bg-white dark:bg-slate-900/60 text-slate-700 dark:text-slate-200"
+                                  }`}
+                                >
+                                  <span className="font-semibold">{item.label}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                                        pts > 0
+                                          ? "bg-white/75 dark:bg-black/30"
+                                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                                      }`}
+                                    >
+                                      {formatValue(item.val)}
+                                    </span>
+                                    {pts > 0 && (
+                                      <span className="font-mono font-black text-[10px] px-1.5 py-0.5 rounded bg-rose-600 text-white">
+                                        +{pts} pts
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+
+                      {(detecciones?.prueba_vih_t3 || detecciones?.prueba_vdrl_t3 || detecciones?.prueba_hepatitis_c_t3) && (
+                        <div className="pt-2 border-t border-slate-200/60 dark:border-white/10 space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                            Detecciones 3er Trimestre
+                          </span>
+                          <div className="grid grid-cols-3 gap-1.5 text-[11px]">
+                            <div className="rounded-lg bg-white dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/5 px-2 py-1 text-center">
+                              <span className="text-[9px] text-slate-400 block">VIH 3T</span>
+                              <span className="font-bold">{formatValue(detecciones?.prueba_vih_t3)}</span>
+                            </div>
+                            <div className="rounded-lg bg-white dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/5 px-2 py-1 text-center">
+                              <span className="text-[9px] text-slate-400 block">VDRL 3T</span>
+                              <span className="font-bold">{formatValue(detecciones?.prueba_vdrl_t3)}</span>
+                            </div>
+                            <div className="rounded-lg bg-white dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/5 px-2 py-1 text-center">
+                              <span className="text-[9px] text-slate-400 block">Hep C 3T</span>
+                              <span className="font-bold">{formatValue(detecciones?.prueba_hepatitis_c_t3)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Sub-bloque 3B: Factores Psicosociales y Toxicomanías */}
+                    <div className="space-y-2 pt-2 border-t border-slate-200/70 dark:border-white/10">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+                        Factores Psicosociales y Toxicomanías
+                      </span>
+                      {(() => {
+                        const psicoItems = [
+                          { key: "factor_alcoholismo", label: "Alcoholismo", raw: paciente.factor_alcoholismo },
+                          { key: "factor_tabaquismo", label: "Tabaquismo", raw: paciente.factor_tabaquismo },
+                          { key: "factor_drogas_ilicitas", label: "Otras Drogas", raw: paciente.factor_drogas_ilicitas },
+                          { key: "factor_discapacidad", label: "Discapacidad", raw: paciente.factor_discapacidad },
+                        ];
+                        const visibles = psicoItems.filter(
+                          (item) =>
+                            !soloPositivos ||
+                            (antecedentesConPuntos[item.key] || 0) > 0 ||
+                            Boolean(item.raw)
+                        );
+
+                        if (visibles.length === 0) {
+                          return (
+                            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                              <i className="fa-solid fa-check text-emerald-500" />
+                              <span>Sin toxicomanías ni factores psicosociales activos</span>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {visibles.map((item) => {
+                              const pts = antecedentesConPuntos[item.key] || 0;
+                              const activo = pts > 0 || Boolean(item.raw);
+                              return (
+                                <div
+                                  key={item.key}
+                                  className={`flex items-center justify-between gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] ${
+                                    activo
+                                      ? scoreToneClass(pts || 2)
+                                      : "border-slate-200/60 dark:border-white/5 bg-white/70 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400"
+                                  }`}
+                                >
+                                  <span className="truncate font-medium">{item.label}</span>
+                                  <span className="font-mono font-bold text-[10px] shrink-0">
+                                    {activo ? `Sí${pts ? ` (+${pts})` : ""}` : "No"}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+
+                      {paciente.otros_antecedentes && (
+                        <div className="rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-900/70 p-2.5 text-xs">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                            Otros antecedentes registrados
+                          </span>
+                          <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
+                            {paciente.otros_antecedentes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CollapsibleSection>
+
+            {/* HISTORIAL DE CONSULTAS INTERACTIVO */}
+            <CollapsibleSection
+              title={`Historial de Consultas Prenatales (${consultas.length})`}
+              subtitle="Haga clic en cualquier fila para inspeccionar sus signos vitales y diagnóstico en el monitor superior"
               icon="fa-solid fa-clock-rotate-left"
               defaultOpen={false}
             >
@@ -1149,58 +2024,85 @@ export default function RegionPacienteResumenPage() {
                   <table className="w-full text-xs table-fixed text-left">
                     <thead className="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 font-bold">
                       <tr className="whitespace-nowrap">
-                        <th className="w-[100px] px-3 py-2.5">Fecha</th>
-                        <th className="w-[60px] px-2.5 py-2.5">SDG</th>
+                        <th className="w-[115px] px-3 py-2.5">Fecha</th>
+                        <th className="w-[55px] px-2.5 py-2.5">SDG</th>
                         <th className="px-2.5 py-2.5">T/A</th>
                         <th className="px-2.5 py-2.5">FC</th>
-                        <th className="w-[60px] px-2.5 py-2.5 hidden sm:table-cell">FR</th>
+                        <th className="w-[55px] px-2.5 py-2.5 hidden sm:table-cell">FR</th>
                         <th className="px-2.5 py-2.5 hidden md:table-cell">Temp</th>
                         <th className="px-2.5 py-2.5 hidden lg:table-cell">Índice choque</th>
-                        <th className="w-[95px] px-2.5 py-2.5 text-right hidden sm:table-cell">Pts consulta</th>
-                        <th className="w-[105px] px-2.5 py-2.5 text-right">Puntaje total</th>
-                        <th className="w-[85px] px-3 py-2.5 text-center">Riesgo ≥25</th>
+                        <th className="w-[90px] px-2.5 py-2.5 text-right hidden sm:table-cell">Pts consulta</th>
+                        <th className="w-[100px] px-2.5 py-2.5 text-right">Puntaje total</th>
+                        <th className="w-[85px] px-3 py-2.5 text-center">Acción</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                      {consultas.map((consulta) => {
+                      {consultas.map((consulta, idx) => {
                         const scores = getConsultaScores(consulta);
+                        const isSelected = consultaActiva?.id === consulta.id;
                         return (
-                          <tr key={consulta.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors whitespace-nowrap">
+                          <tr
+                            key={consulta.id}
+                            onClick={() => {
+                              setSelectedConsultaId(consulta.id);
+                              setMonitorOpen(true);
+                            }}
+                            className={`transition-colors whitespace-nowrap cursor-pointer ${
+                              isSelected
+                                ? "bg-emerald-500/10 dark:bg-emerald-500/15 font-semibold"
+                                : "hover:bg-slate-50 dark:hover:bg-white/5"
+                            }`}
+                          >
                             <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 font-medium">
-                              {formatDate(consulta.fecha_consulta)}
+                              <div className="flex items-center gap-1.5">
+                                <span>{formatDate(consulta.fecha_consulta)}</span>
+                                {idx === 0 && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold">
+                                    Actual
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-2.5 py-2.5 font-bold text-slate-900 dark:text-white">
                               {consulta.sdg ?? "—"}
                             </td>
                             <td className="px-2.5 py-2.5 text-slate-800 dark:text-slate-200">
                               {formatValue(consulta.ta_sistolica)}/{formatValue(consulta.ta_diastolica)}
-                              <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.taTotal)}`}>
-                                +{scores.taTotal}
-                              </span>
+                              {scores.taTotal > 0 && (
+                                <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.taTotal)}`}>
+                                  +{scores.taTotal}
+                                </span>
+                              )}
                             </td>
                             <td className="px-2.5 py-2.5 text-slate-800 dark:text-slate-200">
                               {formatValue(consulta.frecuencia_cardiaca)}
-                              <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.frecuenciaCardiaca)}`}>
-                                +{scores.frecuenciaCardiaca}
-                              </span>
+                              {scores.frecuenciaCardiaca > 0 && (
+                                <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.frecuenciaCardiaca)}`}>
+                                  +{scores.frecuenciaCardiaca}
+                                </span>
+                              )}
                             </td>
                             <td className="px-2.5 py-2.5 text-slate-700 dark:text-slate-300 hidden sm:table-cell">
                               {formatValue(consulta.frecuencia_respiratoria)}
                             </td>
                             <td className="px-2.5 py-2.5 text-slate-800 dark:text-slate-200 hidden md:table-cell">
                               {formatValue(consulta.temperatura)}
-                              <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.temperatura)}`}>
-                                +{scores.temperatura}
-                              </span>
+                              {scores.temperatura > 0 && (
+                                <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.temperatura)}`}>
+                                  +{scores.temperatura}
+                                </span>
+                              )}
                             </td>
                             <td className="px-2.5 py-2.5 text-slate-800 dark:text-slate-200 hidden lg:table-cell">
                               {formatValue(consulta.indice_choque)}
-                              <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.indiceChoque)}`}>
-                                +{scores.indiceChoque}
-                              </span>
+                              {scores.indiceChoque > 0 && (
+                                <span className={`ml-1.5 inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${scoreBadgeClass(scores.indiceChoque)}`}>
+                                  +{scores.indiceChoque}
+                                </span>
+                              )}
                             </td>
                             <td className="px-2.5 py-2.5 text-right font-semibold text-slate-700 dark:text-slate-300 hidden sm:table-cell">
-                              {formatValue(consulta.puntaje_consulta_parametros)}
+                              +{consulta.puntaje_consulta_parametros ?? 0}
                             </td>
                             <td className="px-2.5 py-2.5 text-right">
                               <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold bg-rose-100 dark:bg-rose-500/20 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-500/40">
@@ -1208,15 +2110,16 @@ export default function RegionPacienteResumenPage() {
                               </span>
                             </td>
                             <td className="px-3 py-2.5 text-center">
-                              {consulta.riesgo_25_plus ? (
-                                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold bg-rose-100 dark:bg-rose-500/20 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-500/40">
-                                  Sí
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-500/40">
-                                  No
-                                </span>
-                              )}
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                                  isSelected
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300"
+                                }`}
+                              >
+                                <i className="fa-solid fa-eye text-[9px]" />
+                                <span>{isSelected ? "En monitor" : "Ver"}</span>
+                              </span>
                             </td>
                           </tr>
                         );
@@ -1280,23 +2183,42 @@ export default function RegionPacienteResumenPage() {
               </section>
             )}
 
-            <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 space-y-4 shadow-xl transition-colors">
-              <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-white/10 pb-3">
-                <i className="fa-solid fa-syringe text-emerald-600 dark:text-emerald-400 text-lg"></i>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                  Acciones preventivas
-                </h2>
+            {/* ACCIONES PREVENTIVAS COMPACTAS (COLAPSABLE) */}
+            <CollapsibleSection
+              title="Acciones Preventivas y Vacunación"
+              subtitle="Esquema preventivo registrado durante el control prenatal"
+              icon="fa-solid fa-syringe"
+              defaultOpen={false}
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 text-xs">
+                {[
+                  { label: "TD", val: acciones?.td },
+                  { label: "TDPA", val: acciones?.tdpa },
+                  { label: "Influenza", val: acciones?.influenza },
+                  { label: "COVID-19", val: acciones?.covid },
+                  { label: "Estomatología", val: acciones?.estomatologia },
+                  { label: "Nutrición", val: acciones?.nutricion },
+                  { label: "Otras", val: acciones?.otras },
+                ].map((acc) => {
+                  const aplicada = Boolean(acc.val);
+                  return (
+                    <div
+                      key={acc.label}
+                      className={`rounded-xl border px-3 py-2.5 flex flex-col justify-between gap-1 ${
+                        aplicada
+                          ? "border-emerald-500/35 bg-emerald-50/70 dark:bg-emerald-950/35 text-emerald-900 dark:text-emerald-100"
+                          : "border-slate-200/70 dark:border-white/5 bg-slate-50/60 dark:bg-slate-900/50 text-slate-400"
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-wider">{acc.label}</span>
+                      <span className="font-mono font-bold text-xs">
+                        {aplicada ? formatDate(acc.val) : "Pendiente"}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                <Info label="TD" value={formatDate(acciones?.td || null)} />
-                <Info label="TDPA" value={formatDate(acciones?.tdpa || null)} />
-                <Info label="Influenza" value={formatDate(acciones?.influenza || null)} />
-                <Info label="COVID" value={formatDate(acciones?.covid || null)} />
-                <Info label="Otras" value={formatDate(acciones?.otras || null)} />
-                <Info label="Estomatología" value={formatDate(acciones?.estomatologia || null)} />
-                <Info label="Nutrición" value={formatDate(acciones?.nutricion || null)} />
-              </div>
-            </section>
+            </CollapsibleSection>
           </>
         )}
       </div>
@@ -1310,16 +2232,26 @@ function CollapsibleSection({
   icon,
   children,
   defaultOpen = true,
+  open,
+  onToggle,
 }: {
   title: string;
   subtitle?: string;
   icon?: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  open?: boolean;
+  onToggle?: (nextOpen: boolean) => void;
 }) {
+  const isControlled = open !== undefined;
   return (
     <details
-      open={defaultOpen}
+      open={isControlled ? open : defaultOpen}
+      onToggle={
+        isControlled && onToggle
+          ? (e) => onToggle((e.currentTarget as HTMLDetailsElement).open)
+          : undefined
+      }
       className="group rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/85 p-5 sm:p-6 shadow-xl transition-colors"
     >
       <summary className="list-none cursor-pointer select-none">
@@ -1348,38 +2280,14 @@ function ScoreLegend() {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
       <span className="inline-flex items-center rounded-lg border border-emerald-300 dark:border-emerald-400/35 bg-emerald-50 dark:bg-emerald-900/40 px-2.5 py-1 font-semibold text-emerald-800 dark:text-emerald-100">
-        Sin puntos
+        0 pts · Normal
       </span>
       <span className="inline-flex items-center rounded-lg border border-amber-300 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/20 px-2.5 py-1 font-semibold text-amber-800 dark:text-amber-200">
-        2 pts · alerta
+        +2 pts · Alerta moderada
       </span>
       <span className="inline-flex items-center rounded-lg border border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-500/20 px-2.5 py-1 font-semibold text-rose-800 dark:text-rose-200">
-        4+ pts · alto riesgo
+        +4 pts o más · Alto riesgo
       </span>
-    </div>
-  );
-}
-
-function Info({
-  label,
-  value,
-  toneClass,
-}: {
-  label: string;
-  value: string | number | null | undefined;
-  toneClass?: string;
-}) {
-  return (
-    <div
-      className={`rounded-xl border px-3.5 py-2.5 transition-colors ${
-        toneClass ||
-        "border-slate-200 dark:border-white/10 bg-slate-50/90 dark:bg-slate-800/70 text-slate-900 dark:text-white"
-      }`}
-    >
-      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-        {label}
-      </p>
-      <p className="text-sm font-semibold mt-0.5 break-words">{formatValue(value)}</p>
     </div>
   );
 }

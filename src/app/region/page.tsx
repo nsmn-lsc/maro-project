@@ -125,6 +125,8 @@ export default function RegionPage() {
   const [busqueda, setBusqueda] = useState("");
   const [folioFilter, setFolioFilter] = useState("");
   const [municipioFilter, setMunicipioFilter] = useState("");
+  const [pageAltoRiesgo, setPageAltoRiesgo] = useState(1);
+  const [perPageAltoRiesgo, setPerPageAltoRiesgo] = useState(15);
   const [alertaFlotante, setAlertaFlotante] = useState<AlertaFlotante | null>(null);
   const [exportingReporte, setExportingReporte] = useState(false);
   const knownHighRiskRef = useRef<Set<string>>(new Set());
@@ -191,7 +193,7 @@ export default function RegionPage() {
 
       try {
         const [listData, metData, segData] = await Promise.all([
-          fetch(`/api/pacientes?region=${encodeURIComponent(region)}&limit=100`, {
+          fetch(`/api/pacientes?region=${encodeURIComponent(region)}&limit=all`, {
             cache: "no-store",
           }).then((r) => r.json()),
           fetch(`/api/pacientes?summary=metrics&region=${encodeURIComponent(region)}`, {
@@ -340,6 +342,15 @@ export default function RegionPage() {
   const bajoMedioRiesgo = pacientesFiltrados
     .filter((p) => (p.puntaje_total_actual ?? 0) < 25 && !esAlertaPorCriterioClinico(p))
     .sort((a, b) => (b.puntaje_total_actual ?? 0) - (a.puntaje_total_actual ?? 0));
+
+  const totalPagesAltoRiesgo = Math.max(1, Math.ceil(altoRiesgo.length / perPageAltoRiesgo));
+  const currentPageAltoRiesgo = Math.min(pageAltoRiesgo, totalPagesAltoRiesgo);
+  const startAltoRiesgo = (currentPageAltoRiesgo - 1) * perPageAltoRiesgo;
+  const altoRiesgoPaginado = altoRiesgo.slice(startAltoRiesgo, startAltoRiesgo + perPageAltoRiesgo);
+
+  useEffect(() => {
+    setPageAltoRiesgo(1);
+  }, [busqueda, folioFilter, municipioFilter, perPageAltoRiesgo]);
 
   const semaforoStats = useMemo(() => {
     let conteoAlto = 0;
@@ -812,12 +823,27 @@ export default function RegionPage() {
                   </p>
                 </div>
               </div>
-              <span className="text-xs text-rose-900 dark:text-rose-200 bg-rose-100 dark:bg-rose-500/25 border border-rose-300 dark:border-rose-400/40 px-3 py-1 rounded-full font-bold">
-                {altoRiesgo.length} {altoRiesgo.length === 1 ? "caso activo" : "casos activos"}
-              </span>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-semibold">
+                  <span>Filas:</span>
+                  <select
+                    value={perPageAltoRiesgo}
+                    onChange={(e) => setPerPageAltoRiesgo(Number(e.target.value))}
+                    className="rounded-lg border border-rose-300 dark:border-rose-500/35 bg-rose-50/80 dark:bg-slate-900 px-2 py-1 text-xs font-bold text-rose-900 dark:text-rose-200 focus:outline-none focus:ring-2 focus:ring-rose-500/40 cursor-pointer"
+                  >
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                </label>
+                <span className="text-xs text-rose-900 dark:text-rose-200 bg-rose-100 dark:bg-rose-500/25 border border-rose-300 dark:border-rose-400/40 px-3 py-1 rounded-full font-bold">
+                  {altoRiesgo.length} {altoRiesgo.length === 1 ? "caso activo" : "casos activos"}
+                </span>
+              </div>
             </div>
 
-            <div className="max-h-[380px] overflow-y-auto overflow-x-hidden rounded-xl border border-rose-200 dark:border-rose-500/25">
+            <div className="overflow-x-hidden rounded-xl border border-rose-200 dark:border-rose-500/25">
               <table className="w-full text-xs table-fixed text-left">
                 <thead className="sticky top-0 z-10 bg-rose-50/95 dark:bg-slate-950/95 backdrop-blur-sm border-b border-rose-200 dark:border-rose-500/25 text-rose-900 dark:text-rose-200 font-bold">
                   <tr className="whitespace-nowrap">
@@ -833,7 +859,7 @@ export default function RegionPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-rose-100 dark:divide-rose-500/15">
-                  {altoRiesgo.map((p) => (
+                  {altoRiesgoPaginado.map((p) => (
                     <tr key={p.id} className="hover:bg-rose-50/70 dark:hover:bg-rose-500/10 transition-colors whitespace-nowrap">
                       <td className="px-3 py-2.5 font-mono font-bold text-rose-800 dark:text-rose-300 truncate" title={p.folio}>
                         {p.folio}
@@ -917,6 +943,58 @@ export default function RegionPage() {
                 </tbody>
               </table>
             </div>
+
+            {altoRiesgo.length > perPageAltoRiesgo && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Mostrando{" "}
+                  <span className="font-bold text-rose-800 dark:text-rose-200">
+                    {startAltoRiesgo + 1}–{Math.min(startAltoRiesgo + perPageAltoRiesgo, altoRiesgo.length)}
+                  </span>{" "}
+                  de{" "}
+                  <span className="font-bold text-rose-800 dark:text-rose-200">
+                    {altoRiesgo.length}
+                  </span>{" "}
+                  casos activos · Página {currentPageAltoRiesgo} de {totalPagesAltoRiesgo}
+                </p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setPageAltoRiesgo(1)}
+                    disabled={currentPageAltoRiesgo === 1}
+                    className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50/70 dark:bg-white/5 text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-40 transition-colors cursor-pointer"
+                    title="Primera página"
+                  >
+                    «
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPageAltoRiesgo((prev) => Math.max(1, Math.min(prev, totalPagesAltoRiesgo) - 1))}
+                    disabled={currentPageAltoRiesgo === 1}
+                    className="text-xs font-bold px-3.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50/70 dark:bg-white/5 text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-40 transition-colors cursor-pointer"
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPageAltoRiesgo((prev) => Math.min(totalPagesAltoRiesgo, Math.min(prev, totalPagesAltoRiesgo) + 1))}
+                    disabled={currentPageAltoRiesgo === totalPagesAltoRiesgo}
+                    className="text-xs font-bold px-3.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50/70 dark:bg-white/5 text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-40 transition-colors cursor-pointer"
+                  >
+                    Siguiente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPageAltoRiesgo(totalPagesAltoRiesgo)}
+                    disabled={currentPageAltoRiesgo === totalPagesAltoRiesgo}
+                    className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50/70 dark:bg-white/5 text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-40 transition-colors cursor-pointer"
+                    title="Última página"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
